@@ -26,7 +26,13 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Star, AlertTriangle,
 };
 
-const DOT_COLORS = ['#2563eb', '#f59e0b', '#22c55e', '#ef4444'];
+const DOMAIN_CARD_BACKGROUNDS: Record<string, string> = {
+  设备: '/device-domain-bg.png',
+  轧线: '/rolling-domain-bg.jpg',
+  冷轧: '/cold-domain-bg.jpg',
+  能源: '/energy-domain-bg.jpg',
+};
+
 const HERO_IMAGE_URLS = [
   '/banner-hero-1.jpg',
   '/banner-hero-2.jpg',
@@ -38,6 +44,10 @@ const BANNER_BACKGROUNDS = [
   `linear-gradient(120deg, rgba(11, 24, 26, 0.53) 0%, rgba(12, 53, 42, 0.39) 42%, rgba(12, 53, 42, 0.13) 100%), radial-gradient(circle at 74% 22%, rgba(104, 211, 145, 0.12) 0%, rgba(104, 211, 145, 0) 25%), url("${HERO_IMAGE_URLS[1]}")`,
   `linear-gradient(120deg, rgba(21, 14, 38, 0.55) 0%, rgba(45, 26, 76, 0.39) 44%, rgba(45, 26, 76, 0.13) 100%), radial-gradient(circle at 76% 24%, rgba(168, 85, 247, 0.11) 0%, rgba(168, 85, 247, 0) 24%), url("${HERO_IMAGE_URLS[2]}")`,
 ] as const;
+
+function getPrimaryTag(file: FileItem) {
+  return file.tags.find((t) => t !== '最新精选' && t !== '典型案例');
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -160,17 +170,18 @@ export default function HomePage() {
       {/* Main content */}
       <div className={s.container}>
         {/* Domain navigation */}
-        <div className={s.section}>
-          <SectionHeader icon={Building} title="业务域导航" />
+        <div className={`${s.section} ${s.domainSection}`}>
+          <SectionHeader icon={Building} title="业务域导航" size="large" />
           <div className={s.domainGrid}>
             {CFG.domains.map((d) => {
               const Icon = DOMAIN_ICONS[d.icon] || Settings;
-              const usesBannerThumb = d.name === '设备';
+              const domainBackground = DOMAIN_CARD_BACKGROUNDS[d.name];
+              const usesBannerThumb = Boolean(domainBackground);
               return (
                 <div
                   key={d.name}
                   className={`${s.domainCard} ${usesBannerThumb ? s.domainCardImage : ''}`}
-                  style={usesBannerThumb ? { backgroundImage: `url("${HERO_IMAGE_URLS[2]}")` } : undefined}
+                  style={usesBannerThumb ? { backgroundImage: `url("${domainBackground}")` } : undefined}
                   onClick={() => navigate(`/space/${d.spaceId}`)}
                 >
                   {usesBannerThumb ? null : (
@@ -192,6 +203,9 @@ export default function HomePage() {
             {CFG.sections.map((sec) => {
               const Icon = SECTION_ICONS[sec.icon] || Star;
               const items = sectionData[sec.tag] || [];
+              const showSummary = sec.tag === '最新精选' || sec.tag === '典型案例';
+              const featuredItem = sec.tag === '最新精选' ? items[0] : null;
+              const listItems = sec.tag === '最新精选' ? items.slice(1) : items;
               return (
                 <div key={sec.tag} className={s.panel}>
                   <div className={s.panelHeader}>
@@ -203,22 +217,38 @@ export default function HomePage() {
                       更多 <ChevronRight size={14} />
                     </Link>
                   </div>
-                  {items.map((f, i) => (
+                  {featuredItem ? (
+                    <div
+                      className={s.featuredItem}
+                      onClick={() => navigate(`/space/${featuredItem.spaceId}/file/${featuredItem.id}`)}
+                    >
+                      <div className={s.featuredTitle}>{featuredItem.title}</div>
+                      <div className={s.featuredSummary}>{featuredItem.summary}</div>
+                      <div className={s.featuredMeta}>
+                        {getPrimaryTag(featuredItem) ? (
+                          <TagPill name={getPrimaryTag(featuredItem)!} neutral />
+                        ) : null}
+                        <span className={s.featuredDate}>{featuredItem.date}</span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {listItems.map((f) => (
                     <div
                       key={f.id}
                       className={s.listItem}
                       onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
                     >
-                      <span
-                        className={s.itemDot}
-                        style={{ background: DOT_COLORS[i % 4] }}
-                      />
-                      <span className={s.itemTitle}>{f.title}</span>
-                      <div className={s.itemMeta}>
-                        {f.tags.filter((t) => t !== '最新精选' && t !== '典型案例')[0] && (
-                          <TagPill name={f.tags.filter((t) => t !== '最新精选' && t !== '典型案例')[0]} />
-                        )}
-                        <span className={s.itemDate}>{f.date}</span>
+                      <div className={s.itemBody}>
+                        <span className={s.itemTitle}>{f.title}</span>
+                        {showSummary ? (
+                          <div className={s.itemSummary}>{f.summary}</div>
+                        ) : null}
+                        <div className={s.itemMeta}>
+                          {getPrimaryTag(f) ? (
+                            <TagPill name={getPrimaryTag(f)!} neutral />
+                          ) : null}
+                          <span className={s.itemDate}>{f.date}</span>
+                        </div>
                       </div>
                     </div>
                   ))}

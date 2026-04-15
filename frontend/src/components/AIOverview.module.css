@@ -1,0 +1,36 @@
+.wrap {
+  background: var(--primary-50);
+  border: 1px solid var(--primary-100);
+  border-left: 3px solid var(--primary-500);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-600);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+
+.text {
+  font-size: 0.85rem;
+  line-height: 1.75;
+  color: var(--neutral-700);
+  white-space: pre-wrap;
+}
+
+.cursor {
+  animation: blink 0.7s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

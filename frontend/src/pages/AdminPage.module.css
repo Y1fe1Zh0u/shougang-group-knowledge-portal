@@ -1,0 +1,126 @@
+.layout {
+  display: flex;
+  height: calc(100vh - var(--header-h));
+}
+
+/* Left nav */
+.nav {
+  width: 190px;
+  background: var(--surface);
+  border-right: 1px solid var(--neutral-200);
+  padding: 12px 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.navItem:hover {
+  background: var(--neutral-50);
+}
+
+.navItemActive {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  font-weight: 600;
+}
+
+/* Main */
+.main {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+  background: var(--neutral-50);
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.pageTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 18px;
+  font-size: 0.82rem;
+  background: var(--primary-600);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(37,99,235,0.25);
+  transition: background 0.15s ease;
+}
+
+.addBtn:hover {
+  background: var(--primary-700);
+}
+
+/* Table */
+.table {
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+.table th {
+  background: var(--neutral-50);
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.table td {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--neutral-800);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.editBtn {
+  font-size: 0.78rem;
+  color: var(--primary-600);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.editBtn:hover {
+  color: var(--primary-700);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 0.68rem;
+  background: var(--primary-50);
+  color: var(--primary-600);
+  border-radius: 9999px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
