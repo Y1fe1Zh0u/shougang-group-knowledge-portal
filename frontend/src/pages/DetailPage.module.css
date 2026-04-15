@@ -1,5 +1,6 @@
 .container {
-  max-width: 920px;
+  width: 100%;
+  max-width: var(--max-w);
   margin: 0 auto;
   padding: 28px 24px 56px;
 }
@@ -111,15 +112,27 @@
 }
 
 .previewArea {
-  background: var(--neutral-100);
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
-  min-height: 350px;
+  min-height: 72vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.previewFrame {
+  width: 100%;
+  min-height: 72vh;
+  border: none;
+  background: #fff;
+}
+
+.previewFallback {
   color: var(--neutral-400);
   font-size: 0.96rem;
-  margin-bottom: 24px;
 }
 
 .downloadBar {

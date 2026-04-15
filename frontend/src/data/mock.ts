@@ -63,6 +63,11 @@ export interface FileDetail extends FileItem {
   space: { id: number; name: string };
 }
 
+export interface FilePreviewData {
+  originalUrl: string;
+  previewUrl: string;
+}
+
 // ======================= Config =======================
 
 export const CFG = {
@@ -710,6 +715,118 @@ export function getFileDetail(fid: number): FileDetail | null {
     ...file,
     space: space ? { id: space.id, name: space.name } : { id: file.spaceId, name: '未知空间' },
   };
+}
+
+export function getFilePreview(fid: number): FilePreviewData | null {
+  const file = FILES.find((f) => f.id === fid);
+  if (!file) return null;
+
+  const title = file.title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const summary = file.summary.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const source = file.source.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tags = file.tags.filter((tag) => !META_TAGS.includes(tag));
+  const html = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --surface: #ffffff;
+      --accent: #dbeafe;
+      --accent-ink: #1d4ed8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      color: var(--ink);
+      background: #f3f4f6;
+      line-height: 1.75;
+    }
+    .page {
+      width: min(100%, 960px);
+      margin: 24px auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px 48px 56px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 28px;
+      line-height: 1.35;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0 24px;
+    }
+    .tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 13px;
+    }
+    .block {
+      border-top: 1px solid var(--line);
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+    .label {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    p {
+      margin: 0;
+      color: #374151;
+    }
+    .placeholder {
+      margin-top: 28px;
+      padding: 18px 20px;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <article class="page">
+    <h1>${title}</h1>
+    <div class="meta">来源：${source} · 更新时间：${file.date} · 文件类型：${file.ext.toUpperCase()}</div>
+    <div class="tags">${tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}</div>
+    <section class="block">
+      <div class="label">文档摘要</div>
+      <p>${summary}</p>
+    </section>
+    <section class="block">
+      <div class="label">预览说明</div>
+      <p>当前为前端 mock 预览容器示意。接入真实后端后，这里替换为文件预览接口返回的 preview_url 内容。</p>
+    </section>
+    <div class="placeholder">预览容器已放大，适合承载 PDF、Office 在线预览或 iframe 形式的内容展示。</div>
+  </article>
+</body>
+</html>`;
+
+  const previewUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+  const originalContent = `标题：${file.title}\n来源：${file.source}\n更新时间：${file.date}\n文件类型：${file.ext}\n\n摘要：\n${file.summary}\n`;
+  const originalUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(originalContent)}`;
+
+  return { originalUrl, previewUrl };
 }
 
 export function getRelatedFiles(fid: number, limit = 5): FileItem[] {

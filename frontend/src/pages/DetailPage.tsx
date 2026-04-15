@@ -3,7 +3,7 @@ import { ArrowLeft, Download, Sparkles, Star } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
-import { getFileDetail, getRelatedFiles } from '../data/mock';
+import { getFileDetail, getFilePreview, getRelatedFiles } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
 import s from './DetailPage.module.css';
 
@@ -14,6 +14,7 @@ export default function DetailPage() {
 
   const fileId = Number(fileIdStr);
   const detail = getFileDetail(fileId);
+  const preview = getFilePreview(fileId);
   const related = getRelatedFiles(fileId, DISPLAY_CONFIG.detail.relatedFilesCount);
   const backTarget = typeof location.state?.returnTo === 'string' ? location.state.returnTo : `/space/${spaceIdStr}`;
 
@@ -63,12 +64,26 @@ export default function DetailPage() {
             </div>
             <div className={s.summaryText}>{detail.summary}</div>
           </div>
-          <div className={s.previewArea}>文件预览区域</div>
+          <div className={s.previewArea}>
+            {preview ? (
+              <iframe
+                className={s.previewFrame}
+                title={`${detail.title} 预览`}
+                src={preview.previewUrl}
+              />
+            ) : (
+              <div className={s.previewFallback}>文件预览区域</div>
+            )}
+          </div>
           <div className={s.downloadBar}>
-            <button className={s.downloadBtn}>
+            <a
+              className={s.downloadBtn}
+              href={preview?.originalUrl}
+              download={`${detail.title}.${detail.ext}`}
+            >
               <Download size={16} />
               下载原文件
-            </button>
+            </a>
           </div>
         </div>
 
