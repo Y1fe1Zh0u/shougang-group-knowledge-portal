@@ -1,0 +1,306 @@
+{
+  "spaces": [
+    {
+      "id": 12,
+      "name": "轧线技术案例库",
+      "file_count": 156,
+      "tag_count": 8,
+      "enabled": true
+    },
+    {
+      "id": 18,
+      "name": "冷轧技术手册",
+      "file_count": 89,
+      "tag_count": 5,
+      "enabled": true
+    },
+    {
+      "id": 25,
+      "name": "设备维修规范",
+      "file_count": 234,
+      "tag_count": 12,
+      "enabled": true
+    },
+    {
+      "id": 30,
+      "name": "能源管理文档",
+      "file_count": 67,
+      "tag_count": 6,
+      "enabled": true
+    },
+    {
+      "id": 35,
+      "name": "安全培训资料",
+      "file_count": 112,
+      "tag_count": 9,
+      "enabled": true
+    },
+    {
+      "id": 40,
+      "name": "质量管理体系",
+      "file_count": 78,
+      "tag_count": 7,
+      "enabled": true
+    },
+    {
+      "id": 45,
+      "name": "生产调度手册",
+      "file_count": 45,
+      "tag_count": 4,
+      "enabled": true
+    },
+    {
+      "id": 50,
+      "name": "环保合规文档",
+      "file_count": 33,
+      "tag_count": 3,
+      "enabled": true
+    }
+  ],
+  "domains": [
+    {
+      "name": "设备",
+      "space_ids": [
+        25
+      ],
+      "color": "#2563eb",
+      "bg": "#eff6ff",
+      "icon": "Settings",
+      "enabled": true
+    },
+    {
+      "name": "轧线",
+      "space_ids": [
+        12
+      ],
+      "color": "#059669",
+      "bg": "#d1fae5",
+      "icon": "Factory",
+      "enabled": true
+    },
+    {
+      "name": "冷轧",
+      "space_ids": [
+        18
+      ],
+      "color": "#6366f1",
+      "bg": "#ede9fe",
+      "icon": "Snowflake",
+      "enabled": true
+    },
+    {
+      "name": "能源",
+      "space_ids": [
+        30
+      ],
+      "color": "#d97706",
+      "bg": "#fef3c7",
+      "icon": "Zap",
+      "enabled": true
+    },
+    {
+      "name": "安全",
+      "space_ids": [
+        35
+      ],
+      "color": "#dc2626",
+      "bg": "#fee2e2",
+      "icon": "Shield",
+      "enabled": true
+    },
+    {
+      "name": "质量",
+      "space_ids": [
+        40
+      ],
+      "color": "#7c3aed",
+      "bg": "#f5f3ff",
+      "icon": "CheckCircle",
+      "enabled": true
+    },
+    {
+      "name": "生产",
+      "space_ids": [
+        45
+      ],
+      "color": "#0f766e",
+      "bg": "#ccfbf1",
+      "icon": "Factory",
+      "enabled": true
+    },
+    {
+      "name": "环保",
+      "space_ids": [
+        50
+      ],
+      "color": "#16a34a",
+      "bg": "#dcfce7",
+      "icon": "Leaf",
+      "enabled": true
+    },
+    {
+      "name": "物流",
+      "space_ids": [
+        45
+      ],
+      "color": "#1d4ed8",
+      "bg": "#dbeafe",
+      "icon": "Truck",
+      "enabled": true
+    },
+    {
+      "name": "调度",
+      "space_ids": [
+        45
+      ],
+      "color": "#ea580c",
+      "bg": "#ffedd5",
+      "icon": "Network",
+      "enabled": true
+    },
+    {
+      "name": "检修",
+      "space_ids": [
+        25
+      ],
+      "color": "#475569",
+      "bg": "#e2e8f0",
+      "icon": "Wrench",
+      "enabled": true
+    },
+    {
+      "name": "培训",
+      "space_ids": [
+        35
+      ],
+      "color": "#be185d",
+      "bg": "#fce7f3",
+      "icon": "GraduationCap",
+      "enabled": true
+    }
+  ],
+  "sections": [
+    {
+      "title": "知识推荐 · 最新精选",
+      "tag": "最新精选",
+      "link": "/list?tag=最新精选",
+      "icon": "Star",
+      "enabled": true
+    },
+    {
+      "title": "典型案例 · 事故分析",
+      "tag": "典型案例",
+      "link": "/list?tag=典型案例",
+      "icon": "AlertTriangle",
+      "enabled": true
+    }
+  ],
+  "qa": {
+    "knowledge_space_ids": [
+      12,
+      18,
+      25,
+      30,
+      35,
+      40,
+      45,
+      50
+    ],
+    "hot_questions": [
+      "振动纹通常如何排查？",
+      "热轧精轧机轴承维护周期是多久？",
+      "冷轧板面缺陷有哪些常见类型？",
+      "高炉煤气利用率如何提升？",
+      "安全巡检标准操作流程是什么？"
+    ]
+  },
+  "recommendation": {
+    "provider": "tag_feed",
+    "home_strategy": "tag+updated_at",
+    "detail_strategy": "shared_tags+updated_at"
+  },
+  "display": {
+    "home": {
+      "section_page_size": 6,
+      "hot_tags_count": 8,
+      "qa_hot_count": 4,
+      "domain_count": 6,
+      "spaces_count": 6,
+      "apps_count": 6
+    },
+    "list": {
+      "page_size": 10,
+      "visible_tag_count": 2
+    },
+    "search": {
+      "page_size": 10,
+      "visible_tag_count": 2
+    },
+    "detail": {
+      "related_files_count": 3,
+      "visible_tag_count": 2
+    }
+  },
+  "apps": [
+    {
+      "id": 1,
+      "name": "写作助手",
+      "icon": "PenLine",
+      "desc": "智能写作辅助工具，快速生成技术文档",
+      "color": "#2563eb",
+      "bg": "#eff6ff",
+      "url": "",
+      "enabled": true
+    },
+    {
+      "id": 2,
+      "name": "语义搜索",
+      "icon": "Search",
+      "desc": "精准检索语义匹配，深度挖掘知识",
+      "color": "#059669",
+      "bg": "#d1fae5",
+      "url": "",
+      "enabled": true
+    },
+    {
+      "id": 3,
+      "name": "智能问答",
+      "icon": "MessageSquare",
+      "desc": "知识问答即时回答，AI 驱动",
+      "color": "#7c3aed",
+      "bg": "#f5f3ff",
+      "url": "",
+      "enabled": true
+    },
+    {
+      "id": 4,
+      "name": "文档翻译",
+      "icon": "Globe",
+      "desc": "多语翻译文档互译，支持主流语种",
+      "color": "#d97706",
+      "bg": "#fef3c7",
+      "url": "",
+      "enabled": true
+    },
+    {
+      "id": 5,
+      "name": "报告生成",
+      "icon": "BarChart3",
+      "desc": "自动汇总分析数据，生成专业报告",
+      "color": "#dc2626",
+      "bg": "#fee2e2",
+      "url": "",
+      "enabled": true
+    },
+    {
+      "id": 6,
+      "name": "知识图谱",
+      "icon": "Network",
+      "desc": "可视化知识关联，发现隐性关系",
+      "color": "#0891b2",
+      "bg": "#cffafe",
+      "url": "",
+      "enabled": true
+    }
+  ]
+}

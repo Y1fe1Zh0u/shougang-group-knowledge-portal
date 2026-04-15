@@ -45,6 +45,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 12px;
 }
 
 .pageTitle {
@@ -75,6 +76,51 @@
 
 .addBtn:hover {
   background: var(--primary-700);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.statusText {
+  font-size: 0.84rem;
+  color: var(--neutral-500);
+}
+
+.errorBox {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+}
+
+.subtleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.subtleBtn:hover {
+  background: var(--neutral-50);
 }
 
 /* Table */
@@ -115,10 +161,22 @@
   color: var(--primary-600);
   cursor: pointer;
   transition: color 0.15s ease;
+  margin-right: 10px;
 }
 
 .editBtn:hover {
   color: var(--primary-700);
+}
+
+.deleteBtn {
+  font-size: 0.78rem;
+  color: #dc2626;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.deleteBtn:hover {
+  color: #b91c1c;
 }
 
 .badge {
@@ -130,4 +188,13 @@
   border-radius: 9999px;
   margin-left: 8px;
   vertical-align: middle;
+}
+
+.emptyState {
+  padding: 28px;
+  text-align: center;
+  color: var(--neutral-500);
+  background: var(--surface);
+  border: 1px dashed var(--neutral-200);
+  border-radius: var(--radius-md);
 }
