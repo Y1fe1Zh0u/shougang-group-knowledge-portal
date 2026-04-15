@@ -5,6 +5,7 @@ import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { getFileDetail, getFilePreview, getRelatedFiles } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
+import { resolveDetailBackTarget } from '../utils/detailPage';
 import s from './DetailPage.module.css';
 
 export default function DetailPage() {
@@ -16,7 +17,7 @@ export default function DetailPage() {
   const detail = getFileDetail(fileId);
   const preview = getFilePreview(fileId);
   const related = getRelatedFiles(fileId, DISPLAY_CONFIG.detail.relatedFilesCount);
-  const backTarget = typeof location.state?.returnTo === 'string' ? location.state.returnTo : `/space/${spaceIdStr}`;
+  const backTarget = resolveDetailBackTarget(location.state?.returnTo, spaceIdStr);
 
   if (!detail) {
     return (

@@ -7,7 +7,8 @@ import Pagination from '../components/Pagination';
 import { queryFiles, getAIResponse, allTags, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
-import { getVisibleRange, useListControls } from '../hooks/useListControls';
+import { useListControls } from '../hooks/useListControls';
+import { getVisibleRange } from '../utils/listControls';
 import s from './SearchPage.module.css';
 
 export default function SearchPage() {

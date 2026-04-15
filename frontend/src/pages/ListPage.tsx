@@ -3,10 +3,12 @@ import { ArrowLeft } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import FileListItem from '../components/FileListItem';
 import Pagination from '../components/Pagination';
-import { queryFiles, spaceFiles, allTags, SPACES, SPACE_TAGS, CFG } from '../data/mock';
+import { queryFiles, spaceFiles } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
-import { getVisibleRange, useListControls } from '../hooks/useListControls';
+import { useListControls } from '../hooks/useListControls';
+import { getVisibleRange } from '../utils/listControls';
+import { resolveListPageContext } from '../utils/listPage';
 import type { FileItem } from '../data/mock';
 import s from './ListPage.module.css';
 
@@ -16,25 +18,13 @@ export default function ListPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const matchedDomain = domainName ? CFG.domains.find((item) => item.name === domainName) : undefined;
-  const spaceId = matchedDomain ? matchedDomain.spaceId : spaceIdStr ? Number(spaceIdStr) : undefined;
   const tagParam = params.get('tag') || '';
   const fileExt = params.get('file_ext') || '';
-
-  /* Resolve page title and available tags */
-  let pageTitle = '';
-  let availableTags: string[] = [];
-
-  if (spaceId) {
-    const space = SPACES.find((sp) => sp.id === spaceId);
-    pageTitle = matchedDomain?.name || space?.name || '知识空间';
-    const spaceTags = SPACE_TAGS[spaceId];
-    availableTags = spaceTags ? spaceTags.map((t) => t.name) : [];
-  } else if (tagParam) {
-    const sec = CFG.sections.find((ss) => ss.tag === tagParam);
-    pageTitle = sec?.title || tagParam;
-    availableTags = allTags();
-  }
+  const { spaceId, pageTitle, availableTags } = resolveListPageContext({
+    domainName,
+    spaceIdParam: spaceIdStr,
+    tagParam,
+  });
 
   /* Query */
   let files: FileItem[] = [];

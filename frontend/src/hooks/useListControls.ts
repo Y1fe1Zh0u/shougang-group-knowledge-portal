@@ -1,18 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-
-export function getVisibleRange(total: number, page: number, pageSize: number, currentCount: number) {
-  if (total === 0 || currentCount === 0) {
-    return { start: 0, end: 0 };
-  }
-
-  const start = (page - 1) * pageSize + 1;
-  return { start, end: start + currentCount - 1 };
-}
+import { parsePageParam } from '../utils/listControls';
 
 export function useListControls() {
   const [params, setParams] = useSearchParams();
-  const page = Number(params.get('page') || '1');
+  const page = parsePageParam(params.get('page'));
   const resultsTopRef = useRef<HTMLDivElement | null>(null);
   const previousPageRef = useRef(page);
 
