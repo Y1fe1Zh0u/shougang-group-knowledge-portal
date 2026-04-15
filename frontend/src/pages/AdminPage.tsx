@@ -105,7 +105,7 @@ function DomainsTable() {
       </div>
       {/* TODO: Confirm with product whether domain cards should use photo backgrounds, logo/icon cards, or support both as a configurable strategy. */}
       <p className={s.pageNote}>
-        待与产品确认最终卡片策略：业务域卡片是采用“图片背景卡”还是“Logo/图标卡”，后台当前同时预留背景图和 Logo/图标 配置位。首页业务域导航则由“是否放首页”和“首页排序”两个字段控制。
+        待与产品确认最终卡片策略：业务域卡片是采用“图片背景卡”还是“Logo/图标卡”，后台当前同时预留背景图和 Logo/图标 配置位。首页业务域导航当前按前端数组顺序取前 N 个展示。
       </p>
       <table className={s.table}>
         <thead>
@@ -113,8 +113,6 @@ function DomainsTable() {
             <th>业务域名称</th>
             <th>Logo/图标</th>
             <th>背景图</th>
-            <th>放首页</th>
-            <th>首页排序</th>
             <th>绑定空间</th>
             <th>操作</th>
           </tr>
@@ -128,8 +126,6 @@ function DomainsTable() {
                 <td>{d.name}</td>
                 <td>{d.icon}</td>
                 <td>{backgroundImage || '未配置'}</td>
-                <td>{d.showOnHome ? '是' : '否'}</td>
-                <td>{d.homeOrder}</td>
                 <td>{sp?.name || String(d.spaceId)}</td>
                 <td><span className={s.editBtn}>编辑</span></td>
               </tr>

@@ -96,10 +96,8 @@ export default function HomePage() {
   const spaceCount = SPACES.length;
   const activeBanner = CFG.banners[bannerIdx];
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
-  // Homepage domains are a configured subset; order comes from the admin-managed homeOrder field.
-  const homeDomains = [...CFG.domains]
-    .filter((domain) => domain.showOnHome)
-    .sort((a, b) => a.homeOrder - b.homeOrder || a.name.localeCompare(b.name, 'zh-CN'));
+  // Homepage domain order follows CFG.domains order; the homepage only renders the first N items.
+  const homeDomains = CFG.domains.slice(0, DISPLAY_CONFIG.home.domainCount);
   const hotTags = [...FILES.reduce((acc, file) => {
     file.tags.forEach((tag) => {
       if (META_TAGS.has(tag)) return;
