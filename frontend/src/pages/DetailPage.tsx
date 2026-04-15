@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { getFileDetail, getRelatedFiles } from '../data/mock';
+import { DISPLAY_CONFIG } from '../config/display';
 import s from './DetailPage.module.css';
 
 export default function DetailPage() {
@@ -13,7 +14,7 @@ export default function DetailPage() {
 
   const fileId = Number(fileIdStr);
   const detail = getFileDetail(fileId);
-  const related = getRelatedFiles(fileId, 3);
+  const related = getRelatedFiles(fileId, DISPLAY_CONFIG.detail.relatedFilesCount);
 
   if (!detail) {
     return (
@@ -80,7 +81,7 @@ export default function DetailPage() {
                   >
                     <div className={s.relatedTitle}>{f.title}</div>
                     <div className={s.relatedTags}>
-                      {rTags.slice(0, 2).map((t) => <TagPill key={t} name={t} />)}
+                      {rTags.slice(0, DISPLAY_CONFIG.detail.visibleTagCount).map((t) => <TagPill key={t} name={t} />)}
                     </div>
                   </div>
                 );

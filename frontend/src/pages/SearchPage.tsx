@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TagPill from '../components/TagPill';
 import { queryFiles, getAIResponse, allTags, CFG } from '../data/mock';
+import { DISPLAY_CONFIG } from '../config/display';
 import type { FileItem } from '../data/mock';
 import s from './SearchPage.module.css';
 
@@ -31,7 +32,7 @@ export default function SearchPage() {
     ext: fileExt || undefined,
     sort,
     page,
-    pageSize: 10,
+    pageSize: DISPLAY_CONFIG.search.pageSize,
   });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -160,7 +161,7 @@ function FileListItem({ file, onClick }: { file: FileItem; onClick: () => void }
         <div className={s.fileSummary}>{file.summary}</div>
         <div className={s.fileMeta}>
           <span className={s.fileSource}>{file.source}</span>
-          {displayTags.slice(0, 2).map((t) => (
+          {displayTags.slice(0, DISPLAY_CONFIG.search.visibleTagCount).map((t) => (
             <TagPill key={t} name={t} />
           ))}
           <span className={s.fileDate}>{file.date}</span>

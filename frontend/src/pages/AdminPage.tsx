@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import {
-  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus,
+  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal,
 } from 'lucide-react';
 import Header from '../components/Header';
 import { SPACES, CFG } from '../data/mock';
+import { DISPLAY_CONFIG_ITEMS } from '../config/display';
 import s from './AdminPage.module.css';
 
 const NAV_ITEMS = [
@@ -12,6 +13,7 @@ const NAV_ITEMS = [
   { key: 'sections', label: '首页分区', icon: Tag },
   { key: 'qa', label: '问答配置', icon: Bot },
   { key: 'recommend', label: '推荐策略', icon: Star },
+  { key: 'display', label: '展示配置', icon: SlidersHorizontal },
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
 ];
 
@@ -46,6 +48,7 @@ export default function AdminPage() {
           {active === 'sections' && <SectionsTable />}
           {active === 'qa' && <QAConfig />}
           {active === 'recommend' && <RecommendConfig />}
+          {active === 'display' && <DisplayConfigTable />}
           {active === 'apps' && <AppsTable />}
         </main>
       </div>
@@ -207,6 +210,38 @@ function RecommendConfig() {
             <td>tag_feed (同标签 + 最近更新)</td>
             <td><span className={s.editBtn}>编辑</span></td>
           </tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function DisplayConfigTable() {
+  return (
+    <>
+      <div className={s.titleBar}>
+        <h2 className={s.pageTitle}>展示配置</h2>
+      </div>
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>分组</th>
+            <th>配置项</th>
+            <th>键名</th>
+            <th>当前值</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {DISPLAY_CONFIG_ITEMS.map((item) => (
+            <tr key={item.key}>
+              <td>{item.group}</td>
+              <td>{item.label}</td>
+              <td>{item.key}</td>
+              <td>{item.value}</td>
+              <td><span className={s.editBtn}>编辑</span></td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </>

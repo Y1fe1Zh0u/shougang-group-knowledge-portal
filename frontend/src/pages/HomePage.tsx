@@ -11,6 +11,7 @@ import Footer from '../components/Footer';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { CFG, SPACES, FILES, queryFiles } from '../data/mock';
+import { DISPLAY_CONFIG } from '../config/display';
 import type { FileItem } from '../data/mock';
 import s from './HomePage.module.css';
 
@@ -75,7 +76,7 @@ export default function HomePage() {
   /* Data for sections */
   const sectionData: Record<string, FileItem[]> = {};
   for (const sec of CFG.sections) {
-    sectionData[sec.tag] = queryFiles({ tag: sec.tag, pageSize: 6 }).data;
+    sectionData[sec.tag] = queryFiles({ tag: sec.tag, pageSize: DISPLAY_CONFIG.home.sectionPageSize }).data;
   }
 
   /* Stats */
@@ -93,7 +94,7 @@ export default function HomePage() {
     return acc;
   }, new Map<string, number>()).entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'))
-    .slice(0, 8);
+    .slice(0, DISPLAY_CONFIG.home.hotTagsCount);
 
   return (
     <>
@@ -306,7 +307,7 @@ export default function HomePage() {
                   进入智能问答
                 </button>
               </div>
-              {CFG.qaHot.slice(0, 4).map((q, i) => (
+              {CFG.qaHot.slice(0, DISPLAY_CONFIG.home.qaHotCount).map((q, i) => (
                 <div
                   key={i}
                   className={s.qaItem}
@@ -350,7 +351,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={s.squareGrid}>
-                {SPACES.map((sp) => (
+                {SPACES.slice(0, DISPLAY_CONFIG.home.spacesCount).map((sp) => (
                   <div
                     key={sp.id}
                     className={s.squareCard}
@@ -365,6 +366,7 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
+
           </div>
         </div>
 
@@ -372,7 +374,7 @@ export default function HomePage() {
         <div className={s.section}>
           <SectionHeader icon={LayoutGrid} title="应用市场" moreLink="/apps" moreText="全部应用" size="large" />
           <div className={s.appGrid}>
-            {CFG.apps.map((app) => {
+            {CFG.apps.slice(0, DISPLAY_CONFIG.home.appsCount).map((app) => {
               const Icon = APP_ICONS[app.icon] || FileText;
               return (
                 <div key={app.id} className={s.appCard}>

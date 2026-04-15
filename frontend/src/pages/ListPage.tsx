@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TagPill from '../components/TagPill';
 import { queryFiles, spaceFiles, allTags, SPACES, SPACE_TAGS, CFG } from '../data/mock';
+import { DISPLAY_CONFIG } from '../config/display';
 import type { FileItem } from '../data/mock';
 import s from './ListPage.module.css';
 
@@ -35,7 +36,7 @@ export default function ListPage() {
   /* Query */
   let files: FileItem[] = [];
   let total = 0;
-  let pageSize = 10;
+  let pageSize: number = DISPLAY_CONFIG.list.pageSize;
 
   if (spaceId) {
     const result = spaceFiles({
@@ -43,7 +44,7 @@ export default function ListPage() {
       ext: fileExt || undefined,
       tag: tagParam || undefined,
       page,
-      pageSize: 10,
+      pageSize: DISPLAY_CONFIG.list.pageSize,
     });
     files = result.data;
     total = result.total;
@@ -53,7 +54,7 @@ export default function ListPage() {
       tag: tagParam || undefined,
       ext: fileExt || undefined,
       page,
-      pageSize: 10,
+      pageSize: DISPLAY_CONFIG.list.pageSize,
     });
     files = result.data;
     total = result.total;
@@ -143,7 +144,7 @@ function FileListItem({ file, onClick }: { file: FileItem; onClick: () => void }
         <div className={s.fileSummary}>{file.summary}</div>
         <div className={s.fileMeta}>
           <span className={s.fileSource}>{file.source}</span>
-          {displayTags.slice(0, 2).map((t) => (
+          {displayTags.slice(0, DISPLAY_CONFIG.list.visibleTagCount).map((t) => (
             <TagPill key={t} name={t} />
           ))}
           <span className={s.fileDate}>{file.date}</span>
