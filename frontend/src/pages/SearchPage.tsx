@@ -19,6 +19,7 @@ export default function SearchPage() {
   const sort = params.get('sort') || 'relevance';
   const page = Number(params.get('page') || '1');
   const hasSearch = Boolean(q.trim());
+  const fileExtOptions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'html'];
 
   /* Resolve domain to space IDs */
   const sids = domain
@@ -132,7 +133,7 @@ export default function SearchPage() {
             </select>
             <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
               <option value="">文档类型</option>
-              {['pdf', 'docx', 'xlsx', 'pptx'].map((t) => <option key={t} value={t}>{t}</option>)}
+              {fileExtOptions.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <select className={s.filterSelect} value={tag} onChange={(e) => setFilter('tag', e.target.value)}>
               <option value="">标签</option>

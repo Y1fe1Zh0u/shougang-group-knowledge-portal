@@ -16,6 +16,7 @@ export default function ListPage() {
   const tagParam = params.get('tag') || '';
   const fileExt = params.get('file_ext') || '';
   const page = Number(params.get('page') || '1');
+  const fileExtOptions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'html'];
 
   /* Resolve page title and available tags */
   let pageTitle = '';
@@ -84,7 +85,7 @@ export default function ListPage() {
         <div className={s.filterBar}>
           <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
             <option value="">文件格式</option>
-            {['pdf', 'docx', 'xlsx', 'pptx'].map((t) => <option key={t} value={t}>{t}</option>)}
+            {fileExtOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <select className={s.filterSelect} value={tagParam} onChange={(e) => setFilter('tag', e.target.value)}>
             <option value="">标签</option>
