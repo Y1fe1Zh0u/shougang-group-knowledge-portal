@@ -1,7 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import PageShell from '../components/PageShell';
-import TagPill from '../components/TagPill';
+import FileListItem from '../components/FileListItem';
+import Pagination from '../components/Pagination';
 import { queryFiles, spaceFiles, allTags, SPACES, SPACE_TAGS, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
@@ -62,7 +63,6 @@ export default function ListPage() {
     pageSize = result.pageSize;
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const visibleRange = getVisibleRange(total, page, pageSize, files.length);
 
   return (
@@ -95,54 +95,22 @@ export default function ListPage() {
 
         {/* File list */}
         {files.map((f) => (
-          <FileListItem key={f.id} file={f} onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)} />
+          <FileListItem
+            key={f.id}
+            file={f}
+            visibleTagCount={DISPLAY_CONFIG.list.visibleTagCount}
+            onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
+          />
         ))}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className={s.pagination}>
-            {page > 1 && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1), false)}>
-                &lsaquo;
-              </button>
-            )}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                className={`${s.pageBtn} ${p === page ? s.pageBtnActive : ''}`}
-                onClick={() => setFilter('page', String(p), false)}
-              >
-                {p}
-              </button>
-            ))}
-            {page < totalPages && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page + 1), false)}>
-                &rsaquo;
-              </button>
-            )}
-          </div>
-        )}
+        <Pagination
+          page={page}
+          total={total}
+          pageSize={pageSize}
+          onChange={(nextPage) => setFilter('page', String(nextPage), false)}
+        />
       </div>
     </PageShell>
-  );
-}
-
-function FileListItem({ file, onClick }: { file: FileItem; onClick: () => void }) {
-  const META_TAGS = ['最新精选', '典型案例'];
-  const displayTags = file.tags.filter((t) => !META_TAGS.includes(t));
-  return (
-    <div className={s.fileItem} onClick={onClick}>
-      <div className={s.fileBody}>
-        <div className={s.fileTitle}>{file.title}</div>
-        <div className={s.fileSummary}>{file.summary}</div>
-        <div className={s.fileMeta}>
-          <span className={s.fileSource}>{file.source}</span>
-          {displayTags.slice(0, DISPLAY_CONFIG.list.visibleTagCount).map((t) => (
-            <TagPill key={t} name={t} neutral />
-          ))}
-          <span className={s.fileDate}>{file.date}</span>
-        </div>
-      </div>
-    </div>
   );
 }

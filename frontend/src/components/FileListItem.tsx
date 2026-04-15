@@ -1,4 +1,3 @@
-import { FileText } from 'lucide-react';
 import type { FileItem } from '../data/mock';
 import TagPill from './TagPill';
 import s from './FileListItem.module.css';
@@ -6,21 +5,23 @@ import s from './FileListItem.module.css';
 interface Props {
   file: FileItem;
   onClick?: () => void;
+  visibleTagCount?: number;
 }
 
-export default function FileListItem({ file, onClick }: Props) {
+const META_TAGS = ['最新精选', '典型案例'];
+
+export default function FileListItem({ file, onClick, visibleTagCount = 2 }: Props) {
+  const displayTags = file.tags.filter((tag) => !META_TAGS.includes(tag));
+
   return (
     <div className={s.item} onClick={onClick}>
-      <div className={s.iconBox}>
-        <FileText size={20} />
-      </div>
       <div className={s.body}>
         <div className={s.title}>{file.title}</div>
-        {file.summary && <div className={s.summary}>{file.summary}</div>}
+        {file.summary ? <div className={s.summary}>{file.summary}</div> : null}
         <div className={s.meta}>
           <span className={s.source}>{file.source}</span>
-          {file.tags.map((t) => (
-            <TagPill key={t} name={t} />
+          {displayTags.slice(0, visibleTagCount).map((tag) => (
+            <TagPill key={tag} name={tag} neutral />
           ))}
           <span className={s.date}>{file.date}</span>
         </div>

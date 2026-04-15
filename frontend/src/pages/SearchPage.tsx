@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import PageShell from '../components/PageShell';
-import TagPill from '../components/TagPill';
+import FileListItem from '../components/FileListItem';
+import Pagination from '../components/Pagination';
 import { queryFiles, getAIResponse, allTags, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
 import { getVisibleRange, useListControls } from '../hooks/useListControls';
-import type { FileItem } from '../data/mock';
 import s from './SearchPage.module.css';
 
 export default function SearchPage() {
@@ -36,7 +36,6 @@ export default function SearchPage() {
     page,
     pageSize: DISPLAY_CONFIG.search.pageSize,
   });
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const visibleRange = getVisibleRange(total, page, pageSize, files.length);
 
   /* AI streaming */
@@ -148,54 +147,24 @@ export default function SearchPage() {
 
         {/* File list */}
         {hasSearch && files.map((f) => (
-          <FileListItem key={f.id} file={f} onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)} />
+          <FileListItem
+            key={f.id}
+            file={f}
+            visibleTagCount={DISPLAY_CONFIG.search.visibleTagCount}
+            onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
+          />
         ))}
 
         {/* Pagination */}
-        {hasSearch && totalPages > 1 && (
-          <div className={s.pagination}>
-            {page > 1 && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1), false)}>
-                &lsaquo;
-              </button>
-            )}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                className={`${s.pageBtn} ${p === page ? s.pageBtnActive : ''}`}
-                onClick={() => setFilter('page', String(p), false)}
-              >
-                {p}
-              </button>
-            ))}
-            {page < totalPages && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page + 1), false)}>
-                &rsaquo;
-              </button>
-            )}
-          </div>
+        {hasSearch && (
+          <Pagination
+            page={page}
+            total={total}
+            pageSize={pageSize}
+            onChange={(nextPage) => setFilter('page', String(nextPage), false)}
+          />
         )}
       </div>
     </PageShell>
-  );
-}
-
-function FileListItem({ file, onClick }: { file: FileItem; onClick: () => void }) {
-  const META_TAGS = ['最新精选', '典型案例'];
-  const displayTags = file.tags.filter((t) => !META_TAGS.includes(t));
-  return (
-    <div className={s.fileItem} onClick={onClick}>
-      <div className={s.fileBody}>
-        <div className={s.fileTitle}>{file.title}</div>
-        <div className={s.fileSummary}>{file.summary}</div>
-        <div className={s.fileMeta}>
-          <span className={s.fileSource}>{file.source}</span>
-          {displayTags.slice(0, DISPLAY_CONFIG.search.visibleTagCount).map((t) => (
-            <TagPill key={t} name={t} neutral />
-          ))}
-          <span className={s.fileDate}>{file.date}</span>
-        </div>
-      </div>
-    </div>
   );
 }
