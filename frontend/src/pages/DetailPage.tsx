@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Download, Sparkles, Star } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
-import { getFileDetail, getFilePreview, getRelatedFiles } from '../data/mock';
+import { fetchFileDetail, fetchFilePreview, fetchRelatedFiles, type FileDetail, type FileItem, type FilePreviewData } from '../api/content';
 import { DISPLAY_CONFIG } from '../config/display';
 import { resolveDetailBackTarget } from '../utils/detailPage';
 import s from './DetailPage.module.css';
@@ -12,19 +13,61 @@ export default function DetailPage() {
   const { spaceId: spaceIdStr = '', fileId: fileIdStr = '' } = useParams<{ spaceId: string; fileId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [detail, setDetail] = useState<FileDetail | null>(null);
+  const [preview, setPreview] = useState<FilePreviewData | null>(null);
+  const [related, setRelated] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fileId = Number(fileIdStr);
-  const detail = getFileDetail(fileId);
-  const preview = getFilePreview(fileId);
-  const related = getRelatedFiles(fileId, DISPLAY_CONFIG.detail.relatedFilesCount);
+  const spaceId = Number(spaceIdStr);
   const backTarget = resolveDetailBackTarget(location.state?.returnTo, spaceIdStr);
 
-  if (!detail) {
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    void (async () => {
+      try {
+        const [detailResult, previewResult, relatedResult] = await Promise.all([
+          fetchFileDetail(spaceId, fileId),
+          fetchFilePreview(spaceId, fileId),
+          fetchRelatedFiles(spaceId, fileId, DISPLAY_CONFIG.detail.relatedFilesCount),
+        ]);
+        if (!active) return;
+        setDetail(detailResult);
+        setPreview(previewResult);
+        setRelated(relatedResult);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : '详情加载失败');
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [fileId, spaceId]);
+
+  if (loading) {
     return (
       <PageShell>
         <div className={s.container}>
           <p style={{ padding: '48px 0', textAlign: 'center', color: 'var(--neutral-400)' }}>
-            文档不存在
+            正在加载文档详情...
+          </p>
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (error || !detail) {
+    return (
+      <PageShell>
+        <div className={s.container}>
+          <p style={{ padding: '48px 0', textAlign: 'center', color: 'var(--neutral-400)' }}>
+            {error || '文档不存在'}
           </p>
         </div>
       </PageShell>
@@ -37,7 +80,6 @@ export default function DetailPage() {
   return (
     <PageShell>
       <div className={s.container}>
-        {/* Top bar */}
         <div className={s.topBar}>
           <Link to={backTarget} className={s.backLink}>
             <ArrowLeft size={16} />
@@ -46,7 +88,6 @@ export default function DetailPage() {
           <span className={s.sourceLabel}>来源：{detail.space.name}</span>
         </div>
 
-        {/* Content card */}
         <div className={s.card}>
           <h1 className={s.title}>{detail.title}</h1>
           <div className={s.meta}>
@@ -88,7 +129,6 @@ export default function DetailPage() {
           </div>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div className={s.relatedSection}>
             <SectionHeader icon={Star} title="相关推荐" />

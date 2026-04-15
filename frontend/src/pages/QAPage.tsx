@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Bot, User, Send, Plus } from 'lucide-react';
 import Header from '../components/Header';
-import { getAIResponse } from '../data/mock';
+import { fetchPortalContentConfig, streamChatCompletion } from '../api/content';
 import s from './QAPage.module.css';
 
 interface Message {
@@ -18,29 +18,9 @@ interface Session {
 const INIT_SESSIONS: Session[] = [
   {
     id: 'sess1',
-    title: '振动纹排查',
+    title: '新会话',
     messages: [
       { role: 'bot', text: '你好，我是首钢知库智能助手，请问有什么可以帮您？' },
-      { role: 'user', text: '振动纹通常如何排查？' },
-      { role: 'bot', text: getAIResponse('振动纹') },
-    ],
-  },
-  {
-    id: 'sess2',
-    title: '设备巡检流程',
-    messages: [
-      { role: 'bot', text: '你好，我是首钢知库智能助手，请问有什么可以帮您？' },
-      { role: 'user', text: '设备巡检流程有哪些关键步骤？' },
-      { role: 'bot', text: getAIResponse('设备巡检流程') },
-    ],
-  },
-  {
-    id: 'sess3',
-    title: '质量异议处理',
-    messages: [
-      { role: 'bot', text: '你好，我是首钢知库智能助手，请问有什么可以帮您？' },
-      { role: 'user', text: '质量异议处理的标准流程是什么？' },
-      { role: 'bot', text: getAIResponse('质量异议处理') },
     ],
   },
 ];
@@ -50,8 +30,8 @@ export default function QAPage() {
   const [activeId, setActiveId] = useState(INIT_SESSIONS[0].id);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [knowledgeSpaceIds, setKnowledgeSpaceIds] = useState<number[]>([]);
   const msgEndRef = useRef<HTMLDivElement>(null);
-  const streamRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const activeSession = sessions.find((ss) => ss.id === activeId)!;
 
@@ -59,10 +39,20 @@ export default function QAPage() {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession.messages, streaming]);
 
-  /* Cleanup on unmount */
   useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const config = await fetchPortalContentConfig();
+        if (active) {
+          setKnowledgeSpaceIds(config.qa.knowledge_space_ids);
+        }
+      } catch {
+        // Keep the page usable even when config fails to load.
+      }
+    })();
     return () => {
-      if (streamRef.current) clearInterval(streamRef.current);
+      active = false;
     };
   }, []);
 
@@ -70,12 +60,8 @@ export default function QAPage() {
     if (!input.trim() || streaming) return;
     const text = input.trim();
     setInput('');
-
-    const fullResponse = getAIResponse(text);
     setStreaming(true);
-    let idx = 0;
 
-    /* Add user message + empty bot message */
     setSessions((prev) =>
       prev.map((ss) =>
         ss.id === activeId
@@ -84,22 +70,36 @@ export default function QAPage() {
       ),
     );
 
-    streamRef.current = setInterval(() => {
-      idx++;
+    void streamChatCompletion({
+      scene: 'qa',
+      text,
+      knowledgeSpaceIds,
+      onFinalText(finalText) {
+        setSessions((prev) =>
+          prev.map((ss) => {
+            if (ss.id !== activeId) return ss;
+            const msgs = [...ss.messages];
+            msgs[msgs.length - 1] = { role: 'bot', text: finalText };
+            return {
+              ...ss,
+              title: ss.title === '新会话' ? text.slice(0, 12) : ss.title,
+              messages: msgs,
+            };
+          }),
+        );
+      },
+    }).catch(() => {
       setSessions((prev) =>
         prev.map((ss) => {
           if (ss.id !== activeId) return ss;
           const msgs = [...ss.messages];
-          msgs[msgs.length - 1] = { role: 'bot', text: fullResponse.slice(0, idx) };
+          msgs[msgs.length - 1] = { role: 'bot', text: '问答请求失败，请稍后重试。' };
           return { ...ss, messages: msgs };
         }),
       );
-      if (idx >= fullResponse.length) {
-        if (streamRef.current) clearInterval(streamRef.current);
-        streamRef.current = null;
-        setStreaming(false);
-      }
-    }, 30);
+    }).finally(() => {
+      setStreaming(false);
+    });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -121,7 +121,6 @@ export default function QAPage() {
     <>
       <Header />
       <div className={s.layout}>
-        {/* Sidebar */}
         <aside className={s.sidebar}>
           <div className={s.sideHeader}>历史会话</div>
           <div className={s.sessionList}>
@@ -141,7 +140,6 @@ export default function QAPage() {
           </button>
         </aside>
 
-        {/* Main */}
         <div className={s.main}>
           <div className={s.messages}>
             {activeSession.messages.map((msg, i) => (

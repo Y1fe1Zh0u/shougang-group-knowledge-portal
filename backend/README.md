@@ -37,3 +37,17 @@ pytest
 - `PORTAL_BISHENG_BASE_URL`
 - `PORTAL_BISHENG_TIMEOUT_SECONDS`
 - `PORTAL_BISHENG_API_TOKEN`
+
+## BiSheng Auth
+
+The portal backend currently does not log in to BiSheng with username/password.
+
+For the current stage, configure `PORTAL_BISHENG_API_TOKEN` with a valid BiSheng
+`access_token_cookie` value from an administrator session. The client will send
+it as both:
+
+- `Authorization: Bearer <token>`
+- Cookie `access_token_cookie=<token>`
+
+This keeps BiSheng unchanged while allowing the portal backend to call the
+existing knowledge and workstation APIs.

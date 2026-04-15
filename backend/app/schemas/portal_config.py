@@ -37,6 +37,8 @@ class SectionConfig(BaseModel):
 class QAConfig(BaseModel):
     knowledge_space_ids: list[int] = Field(default_factory=list)
     hot_questions: list[str] = Field(default_factory=list)
+    ai_search_system_prompt: str = ""
+    qa_system_prompt: str = ""
 
 
 class RecommendationConfig(BaseModel):

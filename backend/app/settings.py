@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     bisheng_base_url: AnyHttpUrl = Field(default="http://localhost:7860")
     bisheng_timeout_seconds: float = 30.0
     bisheng_api_token: Optional[str] = None
+    bisheng_default_model: Optional[str] = None
+    bisheng_page_size_limit: int = 100
     portal_config_path: Path = Field(
         default=Path(__file__).resolve().parent / "config" / "data" / "portal_config.json"
     )

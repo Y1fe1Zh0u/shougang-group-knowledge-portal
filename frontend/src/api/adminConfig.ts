@@ -27,6 +27,8 @@ export interface SectionConfig {
 export interface QAConfig {
   knowledge_space_ids: number[];
   hot_questions: string[];
+  ai_search_system_prompt: string;
+  qa_system_prompt: string;
 }
 
 export interface RecommendationConfig {

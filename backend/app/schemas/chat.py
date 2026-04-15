@@ -1,0 +1,27 @@
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
+
+
+class UseKnowledgeBaseParam(BaseModel):
+    personal_knowledge_enabled: bool = False
+    organization_knowledge_ids: list[int] = Field(default_factory=list)
+    knowledge_space_ids: list[int] = Field(default_factory=list)
+
+
+class PortalChatCompletionRequest(BaseModel):
+    clientTimestamp: str
+    model: str = ""
+    scene: str = "qa"
+    conversationId: Optional[str] = None
+    error: bool = False
+    generation: str = ""
+    isCreatedByUser: bool = False
+    isContinued: bool = False
+    text: str = ""
+    search_enabled: bool = False
+    use_knowledge_base: Optional[UseKnowledgeBaseParam] = None
+    files: list[dict[str, Any]] = Field(default_factory=list)
+    parentMessageId: Optional[str] = None
+    overrideParentMessageId: Optional[str] = None
+    responseMessageId: Optional[str] = None

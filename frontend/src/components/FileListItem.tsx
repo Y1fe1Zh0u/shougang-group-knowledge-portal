@@ -1,4 +1,4 @@
-import type { FileItem } from '../data/mock';
+import type { FileItem } from '../api/content';
 import TagPill from './TagPill';
 import s from './FileListItem.module.css';
 

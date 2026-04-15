@@ -14,6 +14,8 @@ class BishengClient:
             timeout=timeout_seconds,
             headers=headers,
         )
+        if api_token:
+            self._client.cookies.set("access_token_cookie", api_token)
 
     async def get(self, path: str, params: Optional[dict] = None) -> httpx.Response:
         response = await self._client.get(path, params=params)
@@ -25,12 +27,20 @@ class BishengClient:
         response.raise_for_status()
         return response
 
-    async def stream_post(self, path: str, json: Optional[dict] = None) -> AsyncIterator[str]:
+    async def get_json(self, path: str, params: Optional[dict] = None) -> dict:
+        response = await self.get(path, params=params)
+        return response.json()
+
+    async def post_json(self, path: str, json: Optional[dict] = None) -> dict:
+        response = await self.post(path, json=json)
+        return response.json()
+
+    async def stream_post(self, path: str, json: Optional[dict] = None) -> AsyncIterator[bytes]:
         async with self._client.stream("POST", path, json=json) as response:
             response.raise_for_status()
-            async for line in response.aiter_lines():
-                if line:
-                    yield line
+            async for chunk in response.aiter_bytes():
+                if chunk:
+                    yield chunk
 
     async def aclose(self) -> None:
         await self._client.aclose()

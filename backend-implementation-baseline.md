@@ -7,7 +7,7 @@
 当前优先级判断：
 
 - 先把后端能力跑稳
-- 前端先不追求做完，接口层后续再跟
+- 后台前端可以同步接通真实配置接口
 - 当前第一优先是**后台配置系统**
 - 知识检索 / 详情 / 问答接口属于下一阶段
 
@@ -75,6 +75,13 @@ backend/
 5. `recommendation`
 6. `display`
 7. `apps`
+
+并且当前已经额外明确：
+
+- AI 搜索的 LLM `system prompt` 写在门户后端
+- 技术问答的 LLM `system prompt` 写在门户后端
+- 这两个 prompt 不写到 BiSheng 后端
+- 这两个 prompt 需要在后台可配置
 
 说明：
 
@@ -190,6 +197,8 @@ backend/
 
 - `knowledge_space_ids`
 - `hot_questions`
+- `ai_search_system_prompt`
+- `qa_system_prompt`
 
 ### 7.5 `recommendation`
 
@@ -243,7 +252,9 @@ backend/
 4. 配置 schema
 5. 配置文件落盘服务
 6. 后台配置 API
-7. 基础测试
+7. `/admin` 前端改为真实读取和保存配置
+8. AI 搜索 / 技术问答 `system prompt` 已纳入门户后端配置
+9. 基础测试
 
 ## 9. 当前验证方式
 
@@ -261,12 +272,19 @@ cd backend
 .venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 ```
 
+前端当前以这些命令验证：
+
+```bash
+cd frontend
+npm run build
+```
+
 ## 10. 下一步顺序
 
 当前建议按这个顺序推进：
 
 1. 先继续把后端配置能力收稳
-2. 明确配置文件初始化、默认值、错误处理
+2. 让更多前台页面逐步消费门户配置
 3. 再开始接下一阶段知识接口
 
 下一阶段知识接口顺序建议：
@@ -283,9 +301,9 @@ cd backend
 最终按下面这套执行：
 
 - 当前阶段先做后端，不先追前端
-- 当前阶段主目标是后台配置系统
+- 当前阶段主目标是后台配置系统，但 `/admin` 前端允许同步接真实接口
 - 配置系统只服务于当前前端 `/admin` 页真实需要的 7 组配置
 - 配置先用 JSON 文件持久化
 - 不在这一阶段引入数据库和复杂管理流程
+- AI 搜索 / 技术问答的 `system prompt` 明确放在门户后端配置中，不放在 BiSheng
 - BiSheng 对接放到下一阶段知识接口开发中处理
-

@@ -4,12 +4,23 @@ import { Search } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import FileListItem from '../components/FileListItem';
 import Pagination from '../components/Pagination';
-import { queryFiles, getAIResponse, allTags, CFG } from '../data/mock';
+import {
+  fetchAggregatedTags,
+  fetchPortalContentConfig,
+  searchFiles,
+  streamChatCompletion,
+  type FileItem,
+} from '../api/content';
 import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
 import { useListControls } from '../hooks/useListControls';
 import { getVisibleRange } from '../utils/listControls';
 import s from './SearchPage.module.css';
+
+type DomainOption = {
+  name: string;
+  spaceIds: number[];
+};
 
 export default function SearchPage() {
   const { params, page, resultsTopRef, setFilter, setParams } = useListControls();
@@ -22,47 +33,105 @@ export default function SearchPage() {
   const tag = params.get('tag') || '';
   const sort = params.get('sort') || 'relevance';
   const hasSearch = Boolean(q.trim());
-
-  /* Resolve domain to space IDs */
-  const sids = domain
-    ? CFG.domains.filter((d) => d.name === domain).map((d) => d.spaceId)
-    : undefined;
-
-  /* Query */
-  const { data: files, total, pageSize } = queryFiles({
-    q: q || undefined,
-    tag: tag || undefined,
-    sids,
-    ext: fileExt || undefined,
-    sort,
-    page,
-    pageSize: DISPLAY_CONFIG.search.pageSize,
-  });
-  const visibleRange = getVisibleRange(total, page, pageSize, files.length);
-
-  /* AI streaming */
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(DISPLAY_CONFIG.search.pageSize);
+  const [tags, setTags] = useState<string[]>([]);
+  const [domains, setDomains] = useState<DomainOption[]>([]);
+  const [qaSpaceIds, setQaSpaceIds] = useState<number[]>([]);
   const [aiText, setAiText] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const fullText = useRef('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const requestSeq = useRef(0);
+
+  const selectedDomain = domains.find((item) => item.name === domain);
+  const sids = selectedDomain?.spaceIds;
+  const visibleRange = getVisibleRange(total, page, pageSize, files.length);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const config = await fetchPortalContentConfig();
+        if (!active) return;
+        setDomains(
+          config.domains
+            .filter((item) => item.enabled)
+            .map((item) => ({ name: item.name, spaceIds: item.space_ids })),
+        );
+        setQaSpaceIds(config.qa.knowledge_space_ids);
+      } catch {
+        // Keep page usable even if config fetch fails.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!hasSearch) {
+      setFiles([]);
+      setTotal(0);
+      setAiText('');
+      setTags([]);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    void (async () => {
+      try {
+        const [result, loadedTags] = await Promise.all([
+          searchFiles({
+            q: q || undefined,
+            tag: tag || undefined,
+            spaceIds: sids,
+            fileExt: fileExt || undefined,
+            sort,
+            page,
+            pageSize: DISPLAY_CONFIG.search.pageSize,
+          }),
+          fetchAggregatedTags(sids),
+        ]);
+        if (!active) return;
+        setFiles(result.data);
+        setTotal(result.total);
+        setPageSize(result.pageSize);
+        setTags(loadedTags);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : '搜索失败');
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [fileExt, hasSearch, page, q, sids, sort, tag]);
 
   useEffect(() => {
     if (!q) return;
-    fullText.current = getAIResponse(q);
+    const currentRequest = ++requestSeq.current;
     setAiText('');
     setStreaming(true);
-    let idx = 0;
-    const timer = setInterval(() => {
-      idx++;
-      setAiText(fullText.current.slice(0, idx));
-      if (idx >= fullText.current.length) {
-        clearInterval(timer);
+    void streamChatCompletion({
+      scene: 'search',
+      text: q,
+      knowledgeSpaceIds: qaSpaceIds,
+      onFinalText(text) {
+        if (requestSeq.current !== currentRequest) return;
+        setAiText(text);
+      },
+    }).finally(() => {
+      if (requestSeq.current === currentRequest) {
         setStreaming(false);
       }
-    }, 30);
-    return () => clearInterval(timer);
-  }, [q]);
-
-  const tags = allTags();
+    });
+  }, [q, qaSpaceIds]);
 
   const submitSearch = () => {
     const keyword = draft.trim();
@@ -107,12 +176,11 @@ export default function SearchPage() {
           )}
         </div>
 
-        {/* Filters */}
         {hasSearch && (
           <div className={s.filterBar}>
             <select className={s.filterSelect} value={domain} onChange={(e) => setFilter('domain', e.target.value)}>
               <option value="">业务域</option>
-              {CFG.domains.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+              {domains.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
             </select>
             <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
               <option value="">文档类型</option>
@@ -120,7 +188,7 @@ export default function SearchPage() {
             </select>
             <select className={s.filterSelect} value={tag} onChange={(e) => setFilter('tag', e.target.value)}>
               <option value="">标签</option>
-              {tags.map((t) => <option key={t} value={t}>{t}</option>)}
+              {tags.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
             <div className={s.sortWrap}>
               排序：
@@ -132,14 +200,12 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* AI Overview */}
         {hasSearch && (
           <div className={s.aiOverview}>
             <div className={s.aiBadge}>
               <Search size={12} />
               AI Overview
             </div>
-            {/* Frontend intentionally does not cap overview length; trim/summarize on the LLM/backend side if needed. */}
             <div className={s.aiText}>
               {aiText}
               {streaming && <span className={s.aiCursor} />}
@@ -147,8 +213,20 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* File list */}
-        {hasSearch && files.map((f) => (
+        {error ? (
+          <div className={s.emptyState}>
+            <div className={s.emptyTitle}>搜索失败</div>
+            <div className={s.emptyDesc}>{error}</div>
+          </div>
+        ) : null}
+
+        {hasSearch && loading ? (
+          <div className={s.emptyState}>
+            <div className={s.emptyTitle}>正在加载搜索结果</div>
+          </div>
+        ) : null}
+
+        {hasSearch && !loading && files.map((f) => (
           <FileListItem
             key={f.id}
             file={f}
@@ -160,7 +238,6 @@ export default function SearchPage() {
           />
         ))}
 
-        {/* Pagination */}
         {hasSearch && (
           <Pagination
             page={page}

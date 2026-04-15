@@ -152,6 +152,8 @@ export default function AdminPage() {
               saving={saving}
               onEditSpaces={() => void handleEditQaSpaces(config.qa, runSave, setConfig)}
               onEditQuestions={() => void handleEditQaQuestions(config.qa, runSave, setConfig)}
+              onEditSearchPrompt={() => void handleEditQaPrompt(config.qa, 'ai_search_system_prompt', runSave, setConfig)}
+              onEditQaPrompt={() => void handleEditQaPrompt(config.qa, 'qa_system_prompt', runSave, setConfig)}
             />
           )}
           {config && active === 'recommend' && (
@@ -342,12 +344,16 @@ function QAConfigTable({
   saving,
   onEditSpaces,
   onEditQuestions,
+  onEditSearchPrompt,
+  onEditQaPrompt,
 }: {
   qa: QAConfig;
   spaces: SpaceConfig[];
   saving: boolean;
   onEditSpaces: () => void;
   onEditQuestions: () => void;
+  onEditSearchPrompt: () => void;
+  onEditQaPrompt: () => void;
 }) {
   return (
     <>
@@ -372,6 +378,16 @@ function QAConfigTable({
             <td>热门问题</td>
             <td>{qa.hot_questions.length} 条</td>
             <td><span className={s.editBtn} onClick={onEditQuestions}>{saving ? '保存中...' : '编辑'}</span></td>
+          </tr>
+          <tr>
+            <td>AI 搜索 System Prompt</td>
+            <td>{qa.ai_search_system_prompt ? truncateText(qa.ai_search_system_prompt, 72) : '未配置'}</td>
+            <td><span className={s.editBtn} onClick={onEditSearchPrompt}>{saving ? '保存中...' : '编辑'}</span></td>
+          </tr>
+          <tr>
+            <td>技术问答 System Prompt</td>
+            <td>{qa.qa_system_prompt ? truncateText(qa.qa_system_prompt, 72) : '未配置'}</td>
+            <td><span className={s.editBtn} onClick={onEditQaPrompt}>{saving ? '保存中...' : '编辑'}</span></td>
           </tr>
         </tbody>
       </table>
@@ -634,6 +650,17 @@ async function handleEditQaQuestions(qa: QAConfig, runSave: SaveRunner, setConfi
   await runSave(() => persistQa({ ...qa, hot_questions }, setConfig));
 }
 
+async function handleEditQaPrompt(
+  qa: QAConfig,
+  key: 'ai_search_system_prompt' | 'qa_system_prompt',
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+) {
+  const raw = window.prompt('请输入 System Prompt', qa[key]);
+  if (raw === null) return;
+  await runSave(() => persistQa({ ...qa, [key]: raw.trim() }, setConfig));
+}
+
 async function handleEditRecommendation(
   recommendation: RecommendationConfig,
   key: 'home_strategy' | 'detail_strategy',
@@ -754,6 +781,11 @@ function promptOptionalText(label: string, current: string): string {
   const value = window.prompt(label, current);
   if (value === null) return current;
   return value.trim();
+}
+
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}...`;
 }
 
 function promptNumber(label: string, current?: number): number | null {
