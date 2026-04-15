@@ -156,6 +156,7 @@ export default function SearchPage() {
               <Search size={12} />
               AI Overview
             </div>
+            {/* Frontend intentionally does not cap overview length; trim/summarize on the LLM/backend side if needed. */}
             <div className={s.aiText}>
               {aiText}
               {streaming && <span className={s.aiCursor} />}
