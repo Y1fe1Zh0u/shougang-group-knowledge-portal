@@ -1,5 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import s from './Header.module.css';
 
@@ -12,15 +11,6 @@ const NAV_ITEMS = [
 
 export default function Header() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [query, setQuery] = useState('');
-  const isHome = location.pathname === '/';
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
-    }
-  };
 
   return (
     <header className={s.header}>
@@ -33,19 +23,6 @@ export default function Header() {
           />
           <span>首钢知库</span>
         </div>
-
-        {!isHome ? (
-          <div className={s.searchWrap} style={{ position: 'relative' }}>
-            <Search size={14} className={s.searchIcon} />
-            <input
-              className={s.searchInput}
-              placeholder="搜索知识文档..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
-        ) : null}
 
         <nav className={s.nav}>
           {NAV_ITEMS.map((item) => (
@@ -62,16 +39,14 @@ export default function Header() {
           ))}
         </nav>
 
-        {isHome ? (
-          <button
-            type="button"
-            className={s.searchFab}
-            onClick={() => navigate('/search')}
-            aria-label="搜索"
-          >
-            <Search size={16} />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={s.searchFab}
+          onClick={() => navigate('/search')}
+          aria-label="搜索"
+        >
+          <Search size={16} />
+        </button>
 
         <div className={s.avatar}>演</div>
       </div>
