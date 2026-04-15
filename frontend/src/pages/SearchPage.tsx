@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import TagPill from '../components/TagPill';
 import { queryFiles, getAIResponse, allTags, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
+import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
+import { getVisibleRange, useListControls } from '../hooks/useListControls';
 import type { FileItem } from '../data/mock';
 import s from './SearchPage.module.css';
 
 export default function SearchPage() {
-  const [params, setParams] = useSearchParams();
+  const { params, page, resultsTopRef, setFilter, setParams } = useListControls();
   const navigate = useNavigate();
   const q = params.get('q') || '';
   const [draft, setDraft] = useState(q);
@@ -17,9 +19,7 @@ export default function SearchPage() {
   const fileExt = params.get('file_ext') || '';
   const tag = params.get('tag') || '';
   const sort = params.get('sort') || 'relevance';
-  const page = Number(params.get('page') || '1');
   const hasSearch = Boolean(q.trim());
-  const fileExtOptions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'html'];
 
   /* Resolve domain to space IDs */
   const sids = domain
@@ -37,15 +37,12 @@ export default function SearchPage() {
     pageSize: DISPLAY_CONFIG.search.pageSize,
   });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = total === 0 ? 0 : rangeStart + files.length - 1;
+  const visibleRange = getVisibleRange(total, page, pageSize, files.length);
 
   /* AI streaming */
   const [aiText, setAiText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const fullText = useRef('');
-  const resultsTopRef = useRef<HTMLDivElement | null>(null);
-  const prevPageRef = useRef(page);
 
   useEffect(() => {
     if (!q) return;
@@ -63,21 +60,6 @@ export default function SearchPage() {
     }, 30);
     return () => clearInterval(timer);
   }, [q]);
-
-  useEffect(() => {
-    if (page !== prevPageRef.current) {
-      resultsTopRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
-      prevPageRef.current = page;
-    }
-  }, [page]);
-
-  const setFilter = (key: string, value: string, resetPage = true) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    if (resetPage) next.set('page', '1');
-    setParams(next);
-  };
 
   const tags = allTags();
 
@@ -119,7 +101,7 @@ export default function SearchPage() {
           ) : (
             <div className={s.resultCount}>
               搜索 &ldquo;<strong>{q}</strong>&rdquo; 共 {total} 条结果
-              {total > 0 ? `，当前显示 ${rangeStart}-${rangeEnd} 条` : ''}
+              {total > 0 ? `，当前显示 ${visibleRange.start}-${visibleRange.end} 条` : ''}
             </div>
           )}
         </div>
@@ -133,7 +115,7 @@ export default function SearchPage() {
             </select>
             <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
               <option value="">文档类型</option>
-              {fileExtOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+              {FILE_EXT_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <select className={s.filterSelect} value={tag} onChange={(e) => setFilter('tag', e.target.value)}>
               <option value="">标签</option>

@@ -1,23 +1,23 @@
-import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import TagPill from '../components/TagPill';
 import { queryFiles, spaceFiles, allTags, SPACES, SPACE_TAGS, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
+import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
+import { getVisibleRange, useListControls } from '../hooks/useListControls';
 import type { FileItem } from '../data/mock';
 import s from './ListPage.module.css';
 
 export default function ListPage() {
   const { spaceId: spaceIdStr, domainName } = useParams<{ spaceId?: string; domainName?: string }>();
-  const [params, setParams] = useSearchParams();
+  const { params, page, resultsTopRef, setFilter } = useListControls();
   const navigate = useNavigate();
 
   const matchedDomain = domainName ? CFG.domains.find((item) => item.name === domainName) : undefined;
   const spaceId = matchedDomain ? matchedDomain.spaceId : spaceIdStr ? Number(spaceIdStr) : undefined;
   const tagParam = params.get('tag') || '';
   const fileExt = params.get('file_ext') || '';
-  const page = Number(params.get('page') || '1');
-  const fileExtOptions = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'html'];
 
   /* Resolve page title and available tags */
   let pageTitle = '';
@@ -63,18 +63,12 @@ export default function ListPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const setFilter = (key: string, value: string) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    next.set('page', '1');
-    setParams(next);
-  };
+  const visibleRange = getVisibleRange(total, page, pageSize, files.length);
 
   return (
     <PageShell>
       <div className={s.container}>
+        <div ref={resultsTopRef} />
         <Link to="/" className={s.backLink}>
           <ArrowLeft size={16} />
           返回首页
@@ -86,7 +80,7 @@ export default function ListPage() {
         <div className={s.filterBar}>
           <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
             <option value="">文件格式</option>
-            {fileExtOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+            {FILE_EXT_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <select className={s.filterSelect} value={tagParam} onChange={(e) => setFilter('tag', e.target.value)}>
             <option value="">标签</option>
@@ -94,7 +88,10 @@ export default function ListPage() {
           </select>
         </div>
 
-        <div className={s.fileCount}>共 {total} 篇文档</div>
+        <div className={s.fileCount}>
+          共 {total} 篇文档
+          {total > 0 ? `，当前显示 ${visibleRange.start}-${visibleRange.end} 篇` : ''}
+        </div>
 
         {/* File list */}
         {files.map((f) => (
@@ -105,7 +102,7 @@ export default function ListPage() {
         {totalPages > 1 && (
           <div className={s.pagination}>
             {page > 1 && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1))}>
+              <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1), false)}>
                 &lsaquo;
               </button>
             )}
@@ -113,13 +110,13 @@ export default function ListPage() {
               <button
                 key={p}
                 className={`${s.pageBtn} ${p === page ? s.pageBtnActive : ''}`}
-                onClick={() => setFilter('page', String(p))}
+                onClick={() => setFilter('page', String(p), false)}
               >
                 {p}
               </button>
             ))}
             {page < totalPages && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page + 1))}>
+              <button className={s.pageBtn} onClick={() => setFilter('page', String(page + 1), false)}>
                 &rsaquo;
               </button>
             )}
