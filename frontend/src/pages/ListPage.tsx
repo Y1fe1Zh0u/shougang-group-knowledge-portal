@@ -8,11 +8,12 @@ import type { FileItem } from '../data/mock';
 import s from './ListPage.module.css';
 
 export default function ListPage() {
-  const { spaceId: spaceIdStr } = useParams<{ spaceId: string }>();
+  const { spaceId: spaceIdStr, domainName } = useParams<{ spaceId?: string; domainName?: string }>();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const spaceId = spaceIdStr ? Number(spaceIdStr) : undefined;
+  const matchedDomain = domainName ? CFG.domains.find((item) => item.name === domainName) : undefined;
+  const spaceId = matchedDomain ? matchedDomain.spaceId : spaceIdStr ? Number(spaceIdStr) : undefined;
   const tagParam = params.get('tag') || '';
   const fileExt = params.get('file_ext') || '';
   const page = Number(params.get('page') || '1');
@@ -24,7 +25,7 @@ export default function ListPage() {
 
   if (spaceId) {
     const space = SPACES.find((sp) => sp.id === spaceId);
-    pageTitle = space?.name || '知识空间';
+    pageTitle = matchedDomain?.name || space?.name || '知识空间';
     const spaceTags = SPACE_TAGS[spaceId];
     availableTags = spaceTags ? spaceTags.map((t) => t.name) : [];
   } else if (tagParam) {

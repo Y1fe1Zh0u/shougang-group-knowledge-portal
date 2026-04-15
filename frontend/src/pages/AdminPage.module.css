@@ -53,6 +53,13 @@
   color: var(--neutral-900);
 }
 
+.pageNote {
+  margin: -6px 0 16px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--neutral-500);
+}
+
 .addBtn {
   display: inline-flex;
   align-items: center;

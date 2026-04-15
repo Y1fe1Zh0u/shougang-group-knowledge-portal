@@ -202,7 +202,7 @@ export default function HomePage() {
                   key={d.name}
                   className={`${s.domainCard} ${usesBannerThumb ? s.domainCardImage : ''}`}
                   style={usesBannerThumb ? { backgroundImage: `url("${domainBackground}")` } : undefined}
-                  onClick={() => navigateToTop(`/space/${d.spaceId}`)}
+                  onClick={() => navigateToTop(`/domain/${encodeURIComponent(d.name)}`)}
                 >
                   {usesBannerThumb ? null : (
                     <div className={s.domainIcon} style={{ background: d.bg, color: d.color }}>

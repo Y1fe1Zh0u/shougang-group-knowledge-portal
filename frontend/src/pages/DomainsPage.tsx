@@ -56,7 +56,7 @@ export default function DomainsPage() {
                 type="button"
                 className={`${s.card} ${usesBannerThumb ? s.cardImage : ''}`}
                 style={usesBannerThumb ? { backgroundImage: `url("${domainBackground}")` } : undefined}
-                onClick={() => navigateToTop(`/space/${domain.spaceId}`)}
+                onClick={() => navigateToTop(`/domain/${encodeURIComponent(domain.name)}`)}
               >
                 {usesBannerThumb ? null : (
                   <div className={s.iconWrap} style={{ background: domain.bg, color: domain.color }}>

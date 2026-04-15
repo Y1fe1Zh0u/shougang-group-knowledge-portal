@@ -17,6 +17,13 @@ const NAV_ITEMS = [
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
 ];
 
+const DOMAIN_CARD_BACKGROUNDS: Record<string, string> = {
+  设备: '/device-domain-bg.png',
+  轧线: '/rolling-domain-bg.jpg',
+  冷轧: '/cold-domain-bg.jpg',
+  能源: '/energy-domain-bg.jpg',
+};
+
 export default function AdminPage() {
   const [active, setActive] = useState('spaces');
 
@@ -96,11 +103,16 @@ function DomainsTable() {
         <h2 className={s.pageTitle}>业务域管理</h2>
         <button className={s.addBtn}><Plus size={14} /> 添加</button>
       </div>
+      {/* TODO: Confirm with product whether domain cards should use photo backgrounds, logo/icon cards, or support both as a configurable strategy. */}
+      <p className={s.pageNote}>
+        待与产品确认最终卡片策略：业务域卡片是采用“图片背景卡”还是“Logo/图标卡”，后台当前同时预留背景图和 Logo/图标 配置位。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
             <th>业务域名称</th>
-            <th>图标</th>
+            <th>Logo/图标</th>
+            <th>背景图</th>
             <th>绑定空间</th>
             <th>操作</th>
           </tr>
@@ -108,10 +120,12 @@ function DomainsTable() {
         <tbody>
           {CFG.domains.map((d) => {
             const sp = SPACES.find((ss) => ss.id === d.spaceId);
+            const backgroundImage = DOMAIN_CARD_BACKGROUNDS[d.name];
             return (
               <tr key={d.name}>
                 <td>{d.name}</td>
                 <td>{d.icon}</td>
+                <td>{backgroundImage || '未配置'}</td>
                 <td>{sp?.name || String(d.spaceId)}</td>
                 <td><span className={s.editBtn}>编辑</span></td>
               </tr>
