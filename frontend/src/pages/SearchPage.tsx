@@ -36,11 +36,15 @@ export default function SearchPage() {
     pageSize: DISPLAY_CONFIG.search.pageSize,
   });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = total === 0 ? 0 : rangeStart + files.length - 1;
 
   /* AI streaming */
   const [aiText, setAiText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const fullText = useRef('');
+  const resultsTopRef = useRef<HTMLDivElement | null>(null);
+  const prevPageRef = useRef(page);
 
   useEffect(() => {
     if (!q) return;
@@ -59,11 +63,18 @@ export default function SearchPage() {
     return () => clearInterval(timer);
   }, [q]);
 
-  const setFilter = (key: string, value: string) => {
+  useEffect(() => {
+    if (page !== prevPageRef.current) {
+      resultsTopRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+      prevPageRef.current = page;
+    }
+  }, [page]);
+
+  const setFilter = (key: string, value: string, resetPage = true) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
-    next.set('page', '1');
+    if (resetPage) next.set('page', '1');
     setParams(next);
   };
 
@@ -82,6 +93,7 @@ export default function SearchPage() {
     <PageShell>
       <div className={s.container}>
         <div className={s.searchHero}>
+          <div ref={resultsTopRef} />
           <div className={s.searchHeroInputWrap}>
             <Search size={18} className={s.searchHeroIcon} />
             <input
@@ -106,6 +118,7 @@ export default function SearchPage() {
           ) : (
             <div className={s.resultCount}>
               搜索 &ldquo;<strong>{q}</strong>&rdquo; 共 {total} 条结果
+              {total > 0 ? `，当前显示 ${rangeStart}-${rangeEnd} 条` : ''}
             </div>
           )}
         </div>
@@ -158,7 +171,7 @@ export default function SearchPage() {
         {hasSearch && totalPages > 1 && (
           <div className={s.pagination}>
             {page > 1 && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1))}>
+              <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1), false)}>
                 &lsaquo;
               </button>
             )}
@@ -166,13 +179,13 @@ export default function SearchPage() {
               <button
                 key={p}
                 className={`${s.pageBtn} ${p === page ? s.pageBtnActive : ''}`}
-                onClick={() => setFilter('page', String(p))}
+                onClick={() => setFilter('page', String(p), false)}
               >
                 {p}
               </button>
             ))}
             {page < totalPages && (
-              <button className={s.pageBtn} onClick={() => setFilter('page', String(page + 1))}>
+              <button className={s.pageBtn} onClick={() => setFilter('page', String(page + 1), false)}>
                 &rsaquo;
               </button>
             )}
