@@ -1,21 +1,21 @@
 .container {
   max-width: 920px;
   margin: 0 auto;
-  padding: 24px 24px 48px;
+  padding: 28px 24px 56px;
 }
 
 .topBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .backLink {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   color: var(--primary-600);
   transition: color 0.15s ease;
 }
@@ -25,7 +25,7 @@
 }
 
 .sourceLabel {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: var(--neutral-500);
 }
 
@@ -34,53 +34,80 @@
   background: var(--surface);
   border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
-  padding: 32px 36px;
+  padding: 36px 40px;
   box-shadow: var(--shadow-sm);
   margin-bottom: 32px;
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: var(--neutral-900);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tags {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .updateDate {
-  font-size: 0.73rem;
+  font-size: 0.86rem;
   color: var(--neutral-400);
 }
 
 .divider {
   height: 1px;
   background: var(--neutral-100);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .summaryBlock {
   background: var(--primary-50);
   border-left: 3px solid var(--primary-500);
   border-radius: var(--radius-sm);
-  padding: 14px 18px;
-  font-size: 0.85rem;
-  line-height: 1.75;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.summaryIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summaryTitle {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--primary-700);
+}
+
+.summaryText {
+  font-size: 0.95rem;
+  line-height: 1.8;
   color: var(--neutral-800);
-  margin-bottom: 20px;
 }
 
 .previewArea {
@@ -91,8 +118,8 @@
   align-items: center;
   justify-content: center;
   color: var(--neutral-400);
-  font-size: 0.88rem;
-  margin-bottom: 20px;
+  font-size: 0.96rem;
+  margin-bottom: 24px;
 }
 
 .downloadBar {
@@ -104,8 +131,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 18px;
-  font-size: 0.82rem;
+  padding: 9px 20px;
+  font-size: 0.92rem;
   background: var(--primary-600);
   color: #fff;
   border-radius: var(--radius-sm);
@@ -119,20 +146,20 @@
 
 /* Related */
 .relatedSection {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .relatedGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .relatedCard {
   background: var(--surface);
   border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 18px;
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
@@ -142,16 +169,27 @@
 }
 
 .relatedTitle {
-  font-size: 0.88rem;
+  font-size: 1.06rem;
   font-weight: 700;
   color: var(--neutral-900);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.5;
+  line-height: 1.6;
   transition: color 0.15s ease;
+}
+
+.relatedSummary {
+  font-size: 0.92rem;
+  color: var(--neutral-600);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 10px;
 }
 
 .relatedCard:hover .relatedTitle {
@@ -160,6 +198,28 @@
 
 .relatedTags {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.relatedMeta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.relatedSource {
+  font-size: 0.84rem;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relatedDate {
+  font-size: 0.84rem;
+  color: var(--neutral-400);
+  white-space: nowrap;
 }

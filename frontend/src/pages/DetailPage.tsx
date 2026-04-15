@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Star } from 'lucide-react';
+import { ArrowLeft, Download, Sparkles, Star } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import SectionHeader from '../components/SectionHeader';
@@ -51,12 +51,20 @@ export default function DetailPage() {
           <h1 className={s.title}>{detail.title}</h1>
           <div className={s.meta}>
             <div className={s.tags}>
-              {displayTags.map((t) => <TagPill key={t} name={t} />)}
+              {displayTags.map((t) => <TagPill key={t} name={t} neutral />)}
             </div>
             <span className={s.updateDate}>更新于 {detail.date}</span>
           </div>
           <div className={s.divider} />
-          <div className={s.summaryBlock}>{detail.summary}</div>
+          <div className={s.summaryBlock}>
+            <div className={s.summaryHeader}>
+              <div className={s.summaryIcon}>
+                <Sparkles size={14} />
+              </div>
+              <span className={s.summaryTitle}>AI概览</span>
+            </div>
+            <div className={s.summaryText}>{detail.summary}</div>
+          </div>
           <div className={s.previewArea}>文件预览区域</div>
           <div className={s.downloadBar}>
             <button className={s.downloadBtn}>
@@ -80,8 +88,13 @@ export default function DetailPage() {
                     onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
                   >
                     <div className={s.relatedTitle}>{f.title}</div>
+                    <div className={s.relatedSummary}>{f.summary}</div>
                     <div className={s.relatedTags}>
-                      {rTags.slice(0, DISPLAY_CONFIG.detail.visibleTagCount).map((t) => <TagPill key={t} name={t} />)}
+                      {rTags.map((t) => <TagPill key={t} name={t} neutral />)}
+                    </div>
+                    <div className={s.relatedMeta}>
+                      <span className={s.relatedSource}>{f.source}</span>
+                      <span className={s.relatedDate}>{f.date}</span>
                     </div>
                   </div>
                 );

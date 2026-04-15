@@ -1,5 +1,5 @@
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TagPill from '../components/TagPill';
@@ -136,16 +136,13 @@ function FileListItem({ file, onClick }: { file: FileItem; onClick: () => void }
   const displayTags = file.tags.filter((t) => !META_TAGS.includes(t));
   return (
     <div className={s.fileItem} onClick={onClick}>
-      <div className={s.fileIcon}>
-        <FileText size={20} />
-      </div>
       <div className={s.fileBody}>
         <div className={s.fileTitle}>{file.title}</div>
         <div className={s.fileSummary}>{file.summary}</div>
         <div className={s.fileMeta}>
           <span className={s.fileSource}>{file.source}</span>
           {displayTags.slice(0, DISPLAY_CONFIG.list.visibleTagCount).map((t) => (
-            <TagPill key={t} name={t} />
+            <TagPill key={t} name={t} neutral />
           ))}
           <span className={s.fileDate}>{file.date}</span>
         </div>
