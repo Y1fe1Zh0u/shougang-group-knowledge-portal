@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import FileListItem from '../components/FileListItem';
@@ -13,6 +13,7 @@ import s from './SearchPage.module.css';
 export default function SearchPage() {
   const { params, page, resultsTopRef, setFilter, setParams } = useListControls();
   const navigate = useNavigate();
+  const location = useLocation();
   const q = params.get('q') || '';
   const [draft, setDraft] = useState(q);
   const domain = params.get('domain') || '';
@@ -151,7 +152,10 @@ export default function SearchPage() {
             key={f.id}
             file={f}
             visibleTagCount={DISPLAY_CONFIG.search.visibleTagCount}
-            onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
+            onClick={() =>
+              navigate(`/space/${f.spaceId}/file/${f.id}`, {
+                state: { returnTo: `${location.pathname}${location.search}` },
+              })}
           />
         ))}
 

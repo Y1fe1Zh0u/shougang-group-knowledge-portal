@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import FileListItem from '../components/FileListItem';
@@ -14,6 +14,7 @@ export default function ListPage() {
   const { spaceId: spaceIdStr, domainName } = useParams<{ spaceId?: string; domainName?: string }>();
   const { params, page, resultsTopRef, setFilter } = useListControls();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const matchedDomain = domainName ? CFG.domains.find((item) => item.name === domainName) : undefined;
   const spaceId = matchedDomain ? matchedDomain.spaceId : spaceIdStr ? Number(spaceIdStr) : undefined;
@@ -99,7 +100,10 @@ export default function ListPage() {
             key={f.id}
             file={f}
             visibleTagCount={DISPLAY_CONFIG.list.visibleTagCount}
-            onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
+            onClick={() =>
+              navigate(`/space/${f.spaceId}/file/${f.id}`, {
+                state: { returnTo: `${location.pathname}${location.search}` },
+              })}
           />
         ))}
 

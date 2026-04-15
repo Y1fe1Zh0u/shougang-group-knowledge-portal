@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Download, Sparkles, Star } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
@@ -10,10 +10,12 @@ import s from './DetailPage.module.css';
 export default function DetailPage() {
   const { spaceId: spaceIdStr = '', fileId: fileIdStr = '' } = useParams<{ spaceId: string; fileId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fileId = Number(fileIdStr);
   const detail = getFileDetail(fileId);
   const related = getRelatedFiles(fileId, DISPLAY_CONFIG.detail.relatedFilesCount);
+  const backTarget = typeof location.state?.returnTo === 'string' ? location.state.returnTo : `/space/${spaceIdStr}`;
 
   if (!detail) {
     return (
@@ -35,7 +37,7 @@ export default function DetailPage() {
       <div className={s.container}>
         {/* Top bar */}
         <div className={s.topBar}>
-          <Link to={`/space/${spaceIdStr}`} className={s.backLink}>
+          <Link to={backTarget} className={s.backLink}>
             <ArrowLeft size={16} />
             返回列表
           </Link>
@@ -81,7 +83,10 @@ export default function DetailPage() {
                   <div
                     key={f.id}
                     className={s.relatedCard}
-                    onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
+                    onClick={() =>
+                      navigate(`/space/${f.spaceId}/file/${f.id}`, {
+                        state: { returnTo: `${location.pathname}${location.search}` },
+                      })}
                   >
                     <div className={s.relatedTitle}>{f.title}</div>
                     <div className={s.relatedSummary}>{f.summary}</div>

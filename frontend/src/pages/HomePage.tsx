@@ -244,7 +244,10 @@ export default function HomePage() {
                   {featuredItem ? (
                     <div
                       className={s.featuredItem}
-                      onClick={() => navigate(`/space/${featuredItem.spaceId}/file/${featuredItem.id}`)}
+                      onClick={() =>
+                        navigate(`/space/${featuredItem.spaceId}/file/${featuredItem.id}`, {
+                          state: { returnTo: sec.link },
+                        })}
                     >
                       <div className={s.featuredTitle}>{featuredItem.title}</div>
                       <div className={s.featuredSummary}>{featuredItem.summary}</div>
@@ -260,7 +263,10 @@ export default function HomePage() {
                     <div
                       key={f.id}
                       className={s.listItem}
-                      onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)}
+                      onClick={() =>
+                        navigate(`/space/${f.spaceId}/file/${f.id}`, {
+                          state: { returnTo: sec.link },
+                        })}
                     >
                       <div className={s.itemBody}>
                         <span className={s.itemTitle}>{f.title}</span>
