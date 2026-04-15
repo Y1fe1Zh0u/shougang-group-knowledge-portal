@@ -4,7 +4,7 @@ import {
   Search, Building, Star, AlertTriangle, FolderOpen, LayoutGrid,
   BarChart3, Bot, ChevronRight, FileText, Tag,
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
-  PenLine, MessageSquare, Globe, Network,
+  PenLine, MessageSquare, Globe, Network, User,
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -49,6 +49,8 @@ function getPrimaryTag(file: FileItem) {
   return file.tags.find((t) => t !== '最新精选' && t !== '典型案例');
 }
 
+const META_TAGS = new Set(['最新精选', '典型案例']);
+
 export default function HomePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -83,6 +85,15 @@ export default function HomePage() {
   const spaceCount = SPACES.length;
   const activeBanner = CFG.banners[bannerIdx];
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
+  const hotTags = [...FILES.reduce((acc, file) => {
+    file.tags.forEach((tag) => {
+      if (META_TAGS.has(tag)) return;
+      acc.set(tag, (acc.get(tag) ?? 0) + 1);
+    });
+    return acc;
+  }, new Map<string, number>()).entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'))
+    .slice(0, 8);
 
   return (
     <>
@@ -258,7 +269,7 @@ export default function HomePage() {
           </div>
 
           {/* Right column */}
-          <div>
+          <div className={s.sideColumn}>
             {/* QA */}
             <div className={s.qaPanel}>
               <div className={s.qaHeader}>
@@ -269,6 +280,31 @@ export default function HomePage() {
                 <Link to="/qa" className={s.panelMore}>
                   提问 <ChevronRight size={14} />
                 </Link>
+              </div>
+              <div className={s.qaComposerWrap}>
+                <div className={s.qaPreview} onClick={() => navigate('/qa')}>
+                  <div className={s.qaPreviewRow}>
+                    <div className={s.qaComposerAvatar}>
+                      <Bot size={16} />
+                    </div>
+                    <div className={s.qaComposerBubble}>
+                      你好，我是首钢知库智能助手，请问有什么可以帮您？
+                    </div>
+                  </div>
+                    <div className={`${s.qaPreviewRow} ${s.qaPreviewRowUser}`}>
+                      <div className={s.qaUserBubble}>振动纹通常如何排查？</div>
+                      <div className={`${s.qaComposerAvatar} ${s.qaComposerAvatarUser}`}>
+                        <User size={16} />
+                      </div>
+                    </div>
+                </div>
+                <button
+                  type="button"
+                  className={s.qaComposerButton}
+                  onClick={() => navigate('/qa')}
+                >
+                  进入智能问答
+                </button>
               </div>
               {CFG.qaHot.slice(0, 4).map((q, i) => (
                 <div
@@ -282,32 +318,59 @@ export default function HomePage() {
               ))}
               <div className={s.qaFooter}>本周活跃专家：12人</div>
             </div>
-          </div>
-        </div>
 
-        {/* Knowledge square */}
-        <div className={s.section}>
-          <SectionHeader icon={FolderOpen} title="知识广场" />
-          <div className={s.squareGrid}>
-            {SPACES.map((sp) => (
-              <div
-                key={sp.id}
-                className={s.squareCard}
-                onClick={() => navigate(`/space/${sp.id}`)}
-              >
-                <span className={s.squareName}>{sp.name}</span>
-                <span className={s.squareCount}>
-                  <span className={s.squareNum}>{sp.fileCount}</span>
-                  <span className={s.squareUnit}>篇</span>
-                </span>
+            <div className={`${s.qaPanel} ${s.rankPanel}`}>
+              <div className={s.qaHeader}>
+                <div className={s.qaHeaderLeft}>
+                  <div className={s.panelIcon}><Tag size={14} /></div>
+                  <span className={s.panelTitle}>热门标签</span>
+                </div>
               </div>
-            ))}
+              <div className={s.tagRankGrid}>
+                {hotTags.map(([tagName, count], index) => (
+                  <button
+                    key={tagName}
+                    type="button"
+                    className={s.tagRankItem}
+                    onClick={() => navigate(`/list?tag=${encodeURIComponent(tagName)}`)}
+                  >
+                    <span className={s.tagRankIndex}>#{index + 1}</span>
+                    <span className={s.tagRankName}>{tagName}</span>
+                    <span className={s.tagRankCount}>{count} 篇</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={s.qaPanel}>
+              <div className={s.qaHeader}>
+                <div className={s.qaHeaderLeft}>
+                  <div className={s.panelIcon}><FolderOpen size={14} /></div>
+                  <span className={s.panelTitle}>知识广场</span>
+                </div>
+              </div>
+              <div className={s.squareGrid}>
+                {SPACES.map((sp) => (
+                  <div
+                    key={sp.id}
+                    className={s.squareCard}
+                    onClick={() => navigate(`/space/${sp.id}`)}
+                  >
+                    <span className={s.squareName}>{sp.name}</span>
+                    <span className={s.squareCount}>
+                      <span className={s.squareNum}>{sp.fileCount}</span>
+                      <span className={s.squareUnit}>篇</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* App market */}
         <div className={s.section}>
-          <SectionHeader icon={LayoutGrid} title="应用市场" moreLink="/apps" moreText="全部应用" />
+          <SectionHeader icon={LayoutGrid} title="应用市场" moreLink="/apps" moreText="全部应用" size="large" />
           <div className={s.appGrid}>
             {CFG.apps.map((app) => {
               const Icon = APP_ICONS[app.icon] || FileText;

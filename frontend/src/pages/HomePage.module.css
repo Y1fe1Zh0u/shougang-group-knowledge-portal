@@ -317,6 +317,12 @@
   margin-top: 36px;
 }
 
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 /* Knowledge list panel */
 .panel {
   background: var(--surface);
@@ -524,7 +530,8 @@
 .qaPanel {
   background: var(--surface);
   border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .qaHeader {
@@ -535,17 +542,108 @@
   border-bottom: 1px solid var(--neutral-100);
 }
 
+.rankPanel .qaHeader {
+  border-bottom: none;
+}
+
 .qaHeaderLeft {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+.qaComposerWrap {
+  padding: 18px 20px 10px;
+}
+
+.qaPreview {
+  border: 1px solid var(--neutral-200);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.qaPreview:hover {
+  border-color: var(--primary-300);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.qaPreviewRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.qaPreviewRow + .qaPreviewRow {
+  margin-top: 16px;
+}
+
+.qaPreviewRowUser {
+  justify-content: flex-end;
+}
+
+.qaComposerAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #eef4ff;
+  color: var(--primary-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qaComposerAvatarUser {
+  background: var(--primary-600);
+  color: #fff;
+}
+
+.qaComposerBubble {
+  max-width: calc(100% - 44px);
+  padding: 14px 16px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 16px;
+  background: #fff;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--neutral-800);
+}
+
+.qaUserBubble {
+  max-width: calc(100% - 44px);
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--primary-600);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.qaComposerButton {
+  width: 100%;
+  margin-top: 12px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--primary-600);
+  color: #fff;
+  font-size: 0.94rem;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+.qaComposerButton:hover {
+  background: var(--primary-700);
+}
+
 .qaItem {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 20px;
+  gap: 12px;
+  padding: 14px 20px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -555,12 +653,12 @@
 }
 
 .qaBadge {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   background: var(--primary-50);
   color: var(--primary-600);
   border-radius: var(--radius-sm);
-  font-size: 0.73rem;
+  font-size: 0.82rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -569,39 +667,84 @@
 }
 
 .qaText {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--neutral-800);
-  line-height: 1.5;
+  line-height: 1.65;
 }
 
 .qaFooter {
   padding: 12px 20px;
-  font-size: 0.73rem;
+  font-size: 0.82rem;
   color: var(--neutral-500);
   border-top: 1px solid var(--neutral-100);
+}
+
+.tagRankGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 0 0 6px;
+}
+
+.tagRankItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: transparent;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.tagRankItem + .tagRankItem {
+  border-top: 1px solid var(--neutral-100);
+}
+
+.tagRankItem:hover {
+  background: var(--primary-50);
+}
+
+.tagRankIndex {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--neutral-500);
+}
+
+.tagRankName {
+  display: block;
+  min-width: 0;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  line-height: 1.45;
+}
+
+.tagRankCount {
+  font-size: 0.82rem;
+  color: var(--neutral-500);
+  white-space: nowrap;
 }
 
 /* Knowledge square */
 .squareGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr;
 }
 
 .squareCard {
   background: var(--surface);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-md);
+  border-top: 1px solid var(--neutral-100);
   padding: 18px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .squareCard:hover {
-  border-color: var(--primary-200);
+  background: var(--primary-50);
 }
 
 .squareName {
@@ -687,6 +830,7 @@
   .columns {
     grid-template-columns: 1fr;
   }
+
 }
 
 @media (max-width: 720px) {
@@ -770,7 +914,6 @@
     border-right: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .squareGrid,
   .appGrid {
     grid-template-columns: repeat(2, 1fr);
   }
