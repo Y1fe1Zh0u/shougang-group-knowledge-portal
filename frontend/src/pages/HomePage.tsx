@@ -56,6 +56,17 @@ export default function HomePage() {
   const [query, setQuery] = useState('');
   const [bannerIdx, setBannerIdx] = useState(0);
 
+  const navigateToTop = useCallback((path: string) => {
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    navigate(path);
+    requestAnimationFrame(() => {
+      root.style.scrollBehavior = previousScrollBehavior;
+    });
+  }, [navigate]);
+
   /* Banner auto-play */
   useEffect(() => {
     const timer = setInterval(() => {
@@ -180,7 +191,7 @@ export default function HomePage() {
       <div className={s.container}>
         {/* Domain navigation */}
         <div className={`${s.section} ${s.domainSection}`}>
-          <SectionHeader icon={Building} title="业务域导航" size="large" />
+          <SectionHeader icon={Building} title="业务域导航" moreLink="/domains" moreText="全部业务域" size="large" />
           <div className={s.domainGrid}>
             {CFG.domains.map((d) => {
               const Icon = DOMAIN_ICONS[d.icon] || Settings;
@@ -191,7 +202,7 @@ export default function HomePage() {
                   key={d.name}
                   className={`${s.domainCard} ${usesBannerThumb ? s.domainCardImage : ''}`}
                   style={usesBannerThumb ? { backgroundImage: `url("${domainBackground}")` } : undefined}
-                  onClick={() => navigate(`/space/${d.spaceId}`)}
+                  onClick={() => navigateToTop(`/space/${d.spaceId}`)}
                 >
                   {usesBannerThumb ? null : (
                     <div className={s.domainIcon} style={{ background: d.bg, color: d.color }}>

@@ -1,0 +1,128 @@
+.container {
+  width: 100%;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 24px 24px 56px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 18px;
+  color: var(--neutral-500);
+  font-size: 0.92rem;
+}
+
+.backLink:hover {
+  color: var(--primary-600);
+}
+
+.lead {
+  margin: -6px 0 22px;
+  color: var(--neutral-500);
+  font-size: 0.96rem;
+}
+
+.grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  padding: 24px 20px;
+  min-height: 168px;
+  text-align: center;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--primary-200);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.cardImage {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  border: none;
+  text-align: left;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.cardImage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.06) 0%, rgba(17, 24, 39, 0.68) 100%);
+}
+
+.iconWrap {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.cardBody {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0;
+}
+
+.cardImage .cardBody {
+  padding: 18px 18px 16px;
+}
+
+.name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.meta {
+  margin-top: 6px;
+  color: var(--neutral-500);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.cardImage .name,
+.cardImage .meta {
+  color: #fff;
+}
+
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .container {
+    padding: 20px 16px 48px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
