@@ -18,6 +18,8 @@ export interface DomainItem {
   color: string;
   bg: string;
   icon: string;
+  showOnHome: boolean;
+  homeOrder: number;
 }
 
 export interface SectionConfig {
@@ -92,18 +94,19 @@ export const CFG = {
   ] as BannerItem[],
 
   domains: [
-    { name: '设备', spaceId: 25, color: '#2563eb', bg: '#eff6ff', icon: 'Settings' },
-    { name: '轧线', spaceId: 12, color: '#059669', bg: '#d1fae5', icon: 'Factory' },
-    { name: '冷轧', spaceId: 18, color: '#6366f1', bg: '#ede9fe', icon: 'Snowflake' },
-    { name: '能源', spaceId: 30, color: '#d97706', bg: '#fef3c7', icon: 'Zap' },
-    { name: '安全', spaceId: 35, color: '#dc2626', bg: '#fee2e2', icon: 'Shield' },
-    { name: '质量', spaceId: 40, color: '#7c3aed', bg: '#f5f3ff', icon: 'CheckCircle' },
-    { name: '生产', spaceId: 45, color: '#0f766e', bg: '#ccfbf1', icon: 'Factory' },
-    { name: '环保', spaceId: 50, color: '#16a34a', bg: '#dcfce7', icon: 'Leaf' },
-    { name: '物流', spaceId: 45, color: '#1d4ed8', bg: '#dbeafe', icon: 'Truck' },
-    { name: '调度', spaceId: 45, color: '#ea580c', bg: '#ffedd5', icon: 'Network' },
-    { name: '检修', spaceId: 25, color: '#475569', bg: '#e2e8f0', icon: 'Wrench' },
-    { name: '培训', spaceId: 35, color: '#be185d', bg: '#fce7f3', icon: 'GraduationCap' },
+    // showOnHome/homeOrder drive the homepage domain strip; full domain pages still use the full configured list.
+    { name: '设备', spaceId: 25, color: '#2563eb', bg: '#eff6ff', icon: 'Settings', showOnHome: true, homeOrder: 1 },
+    { name: '轧线', spaceId: 12, color: '#059669', bg: '#d1fae5', icon: 'Factory', showOnHome: true, homeOrder: 2 },
+    { name: '冷轧', spaceId: 18, color: '#6366f1', bg: '#ede9fe', icon: 'Snowflake', showOnHome: true, homeOrder: 3 },
+    { name: '能源', spaceId: 30, color: '#d97706', bg: '#fef3c7', icon: 'Zap', showOnHome: true, homeOrder: 4 },
+    { name: '安全', spaceId: 35, color: '#dc2626', bg: '#fee2e2', icon: 'Shield', showOnHome: true, homeOrder: 5 },
+    { name: '质量', spaceId: 40, color: '#7c3aed', bg: '#f5f3ff', icon: 'CheckCircle', showOnHome: true, homeOrder: 6 },
+    { name: '生产', spaceId: 45, color: '#0f766e', bg: '#ccfbf1', icon: 'Factory', showOnHome: false, homeOrder: 7 },
+    { name: '环保', spaceId: 50, color: '#16a34a', bg: '#dcfce7', icon: 'Leaf', showOnHome: false, homeOrder: 8 },
+    { name: '物流', spaceId: 45, color: '#1d4ed8', bg: '#dbeafe', icon: 'Truck', showOnHome: false, homeOrder: 9 },
+    { name: '调度', spaceId: 45, color: '#ea580c', bg: '#ffedd5', icon: 'Network', showOnHome: false, homeOrder: 10 },
+    { name: '检修', spaceId: 25, color: '#475569', bg: '#e2e8f0', icon: 'Wrench', showOnHome: false, homeOrder: 11 },
+    { name: '培训', spaceId: 35, color: '#be185d', bg: '#fce7f3', icon: 'GraduationCap', showOnHome: false, homeOrder: 12 },
   ] as DomainItem[],
 
   sections: [

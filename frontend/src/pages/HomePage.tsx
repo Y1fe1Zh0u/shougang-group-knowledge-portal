@@ -96,6 +96,10 @@ export default function HomePage() {
   const spaceCount = SPACES.length;
   const activeBanner = CFG.banners[bannerIdx];
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
+  // Homepage domains are a configured subset; order comes from the admin-managed homeOrder field.
+  const homeDomains = [...CFG.domains]
+    .filter((domain) => domain.showOnHome)
+    .sort((a, b) => a.homeOrder - b.homeOrder || a.name.localeCompare(b.name, 'zh-CN'));
   const hotTags = [...FILES.reduce((acc, file) => {
     file.tags.forEach((tag) => {
       if (META_TAGS.has(tag)) return;
@@ -193,7 +197,7 @@ export default function HomePage() {
         <div className={`${s.section} ${s.domainSection}`}>
           <SectionHeader icon={Building} title="业务域导航" moreLink="/domains" moreText="全部业务域" size="large" />
           <div className={s.domainGrid}>
-            {CFG.domains.map((d) => {
+            {homeDomains.map((d) => {
               const Icon = DOMAIN_ICONS[d.icon] || Settings;
               const domainBackground = DOMAIN_CARD_BACKGROUNDS[d.name];
               const usesBannerThumb = Boolean(domainBackground);
