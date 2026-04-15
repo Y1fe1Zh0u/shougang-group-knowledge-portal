@@ -2,8 +2,7 @@ import {
   LayoutGrid, FileText, Search, Bot, BarChart3,
   PenLine, MessageSquare, Globe, Network,
 } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import { CFG } from '../data/mock';
 import s from './AppsPage.module.css';
@@ -14,8 +13,7 @@ const APP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 
 export default function AppsPage() {
   return (
-    <>
-      <Header />
+    <PageShell>
       <div className={s.container}>
         <SectionHeader icon={LayoutGrid} title="应用市场" />
         <div className={s.grid}>
@@ -34,7 +32,6 @@ export default function AppsPage() {
           })}
         </div>
       </div>
-      <Footer />
-    </>
+    </PageShell>
   );
 }

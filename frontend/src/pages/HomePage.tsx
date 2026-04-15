@@ -6,8 +6,7 @@ import {
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
   PenLine, MessageSquare, Globe, Network, User,
 } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { CFG, SPACES, FILES, queryFiles } from '../data/mock';
@@ -97,9 +96,7 @@ export default function HomePage() {
     .slice(0, DISPLAY_CONFIG.home.hotTagsCount);
 
   return (
-    <>
-      <Header />
-
+    <PageShell>
       {/* Hero */}
       <section className={s.hero}>
         <div
@@ -392,8 +389,6 @@ export default function HomePage() {
 
         <div className={s.bottomPad} />
       </div>
-
-      <Footer />
-    </>
+    </PageShell>
   );
 }

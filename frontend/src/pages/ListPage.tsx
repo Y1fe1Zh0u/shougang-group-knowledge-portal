@@ -1,7 +1,6 @@
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import PageShell from '../components/PageShell';
 import TagPill from '../components/TagPill';
 import { queryFiles, spaceFiles, allTags, SPACES, SPACE_TAGS, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
@@ -72,8 +71,7 @@ export default function ListPage() {
   };
 
   return (
-    <>
-      <Header />
+    <PageShell>
       <div className={s.container}>
         <Link to="/" className={s.backLink}>
           <ArrowLeft size={16} />
@@ -126,8 +124,7 @@ export default function ListPage() {
           </div>
         )}
       </div>
-      <Footer />
-    </>
+    </PageShell>
   );
 }
 

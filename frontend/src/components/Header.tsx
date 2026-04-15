@@ -66,11 +66,7 @@ export default function Header() {
           <button
             type="button"
             className={s.searchFab}
-            onClick={() => {
-              const heroInput = document.querySelector<HTMLInputElement>('input[placeholder="输入关键词搜索知识文档..."]');
-              heroInput?.focus();
-              heroInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }}
+            onClick={() => navigate('/search')}
             aria-label="搜索"
           >
             <Search size={16} />

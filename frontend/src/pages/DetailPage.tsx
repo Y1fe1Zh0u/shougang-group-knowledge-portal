@@ -1,7 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Download, Sparkles, Star } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { getFileDetail, getRelatedFiles } from '../data/mock';
@@ -18,15 +17,13 @@ export default function DetailPage() {
 
   if (!detail) {
     return (
-      <>
-        <Header />
+      <PageShell>
         <div className={s.container}>
           <p style={{ padding: '48px 0', textAlign: 'center', color: 'var(--neutral-400)' }}>
             文档不存在
           </p>
         </div>
-        <Footer />
-      </>
+      </PageShell>
     );
   }
 
@@ -34,8 +31,7 @@ export default function DetailPage() {
   const displayTags = detail.tags.filter((t) => !META_TAGS.includes(t));
 
   return (
-    <>
-      <Header />
+    <PageShell>
       <div className={s.container}>
         {/* Top bar */}
         <div className={s.topBar}>
@@ -103,7 +99,6 @@ export default function DetailPage() {
           </div>
         )}
       </div>
-      <Footer />
-    </>
+    </PageShell>
   );
 }

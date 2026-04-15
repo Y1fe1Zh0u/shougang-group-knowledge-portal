@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import PageShell from '../components/PageShell';
 import TagPill from '../components/TagPill';
 import { queryFiles, getAIResponse, allTags, CFG } from '../data/mock';
 import { DISPLAY_CONFIG } from '../config/display';
@@ -13,11 +12,13 @@ export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const q = params.get('q') || '';
+  const [draft, setDraft] = useState(q);
   const domain = params.get('domain') || '';
   const fileExt = params.get('file_ext') || '';
   const tag = params.get('tag') || '';
   const sort = params.get('sort') || 'relevance';
   const page = Number(params.get('page') || '1');
+  const hasSearch = Boolean(q.trim());
 
   /* Resolve domain to space IDs */
   const sids = domain
@@ -68,39 +69,74 @@ export default function SearchPage() {
 
   const tags = allTags();
 
+  const submitSearch = () => {
+    const keyword = draft.trim();
+    const next = new URLSearchParams(params);
+    if (keyword) next.set('q', keyword);
+    else next.delete('q');
+    next.delete('page');
+    setParams(next);
+  };
+
   return (
-    <>
-      <Header />
+    <PageShell>
       <div className={s.container}>
-        <div className={s.resultCount}>
-          搜索 &ldquo;<strong>{q}</strong>&rdquo; 共 {total} 条结果
+        <div className={s.searchHero}>
+          <div className={s.searchHeroInputWrap}>
+            <Search size={18} className={s.searchHeroIcon} />
+            <input
+              className={s.searchHeroInput}
+              placeholder="请输入关键词开始搜索"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitSearch();
+              }}
+              autoFocus
+            />
+            <button className={s.searchHeroBtn} onClick={submitSearch}>搜索</button>
+          </div>
+          {!hasSearch ? (
+            <div className={s.emptyState}>
+              <div className={s.emptyTitle}>输入关键词开始搜索</div>
+              <div className={s.emptyDesc}>
+                支持按设备、工艺、质量、安全等主题检索知识文档。
+              </div>
+            </div>
+          ) : (
+            <div className={s.resultCount}>
+              搜索 &ldquo;<strong>{q}</strong>&rdquo; 共 {total} 条结果
+            </div>
+          )}
         </div>
 
         {/* Filters */}
-        <div className={s.filterBar}>
-          <select className={s.filterSelect} value={domain} onChange={(e) => setFilter('domain', e.target.value)}>
-            <option value="">业务域</option>
-            {CFG.domains.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
-          </select>
-          <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
-            <option value="">文档类型</option>
-            {['pdf', 'docx', 'xlsx', 'pptx'].map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select className={s.filterSelect} value={tag} onChange={(e) => setFilter('tag', e.target.value)}>
-            <option value="">标签</option>
-            {tags.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <div className={s.sortWrap}>
-            排序：
-            <select className={s.filterSelect} value={sort} onChange={(e) => setFilter('sort', e.target.value)}>
-              <option value="relevance">相关性优先</option>
-              <option value="updated_at">最近更新</option>
+        {hasSearch && (
+          <div className={s.filterBar}>
+            <select className={s.filterSelect} value={domain} onChange={(e) => setFilter('domain', e.target.value)}>
+              <option value="">业务域</option>
+              {CFG.domains.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
             </select>
+            <select className={s.filterSelect} value={fileExt} onChange={(e) => setFilter('file_ext', e.target.value)}>
+              <option value="">文档类型</option>
+              {['pdf', 'docx', 'xlsx', 'pptx'].map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select className={s.filterSelect} value={tag} onChange={(e) => setFilter('tag', e.target.value)}>
+              <option value="">标签</option>
+              {tags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <div className={s.sortWrap}>
+              排序：
+              <select className={s.filterSelect} value={sort} onChange={(e) => setFilter('sort', e.target.value)}>
+                <option value="relevance">相关性优先</option>
+                <option value="updated_at">最近更新</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* AI Overview */}
-        {q && (
+        {hasSearch && (
           <div className={s.aiOverview}>
             <div className={s.aiBadge}>
               <Search size={12} />
@@ -114,12 +150,12 @@ export default function SearchPage() {
         )}
 
         {/* File list */}
-        {files.map((f) => (
+        {hasSearch && files.map((f) => (
           <FileListItem key={f.id} file={f} onClick={() => navigate(`/space/${f.spaceId}/file/${f.id}`)} />
         ))}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {hasSearch && totalPages > 1 && (
           <div className={s.pagination}>
             {page > 1 && (
               <button className={s.pageBtn} onClick={() => setFilter('page', String(page - 1))}>
@@ -143,8 +179,7 @@ export default function SearchPage() {
           </div>
         )}
       </div>
-      <Footer />
-    </>
+    </PageShell>
   );
 }
 
