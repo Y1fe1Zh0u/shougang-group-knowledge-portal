@@ -31,11 +31,15 @@ class SectionConfig(BaseModel):
     tag: str
     link: str
     icon: str
+    color: str = "#2563eb"
+    bg: str = "#eff6ff"
     enabled: bool = True
 
 
 class QAConfig(BaseModel):
     knowledge_space_ids: list[int] = Field(default_factory=list)
+    panel_title: str = "技术问答·专家在线"
+    welcome_message: str = "你好，我是首钢知库智能助手，请问有什么可以帮您？"
     hot_questions: list[str] = Field(default_factory=list)
     ai_search_system_prompt: str = ""
     qa_system_prompt: str = ""

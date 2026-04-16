@@ -15,19 +15,22 @@ interface Session {
   messages: Message[];
 }
 
-const INIT_SESSIONS: Session[] = [
-  {
-    id: 'sess1',
-    title: '新会话',
-    messages: [
-      { role: 'bot', text: '你好，我是首钢知库智能助手，请问有什么可以帮您？' },
-    ],
-  },
-];
+function getWelcomeMessage(welcomeMessage?: string) {
+  return welcomeMessage?.trim() || '你好，我是首钢知库智能助手，请问有什么可以帮您？';
+}
 
 export default function QAPage() {
-  const [sessions, setSessions] = useState<Session[]>(INIT_SESSIONS);
-  const [activeId, setActiveId] = useState(INIT_SESSIONS[0].id);
+  const initialGreeting = getWelcomeMessage();
+  const initialSessions: Session[] = [
+    {
+      id: 'sess1',
+      title: '新会话',
+      messages: [{ role: 'bot', text: initialGreeting }],
+    },
+  ];
+  const [assistantGreeting, setAssistantGreeting] = useState(initialGreeting);
+  const [sessions, setSessions] = useState<Session[]>(initialSessions);
+  const [activeId, setActiveId] = useState(initialSessions[0].id);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [knowledgeSpaceIds, setKnowledgeSpaceIds] = useState<number[]>([]);
@@ -46,6 +49,15 @@ export default function QAPage() {
         const config = await fetchPortalContentConfig();
         if (active) {
           setKnowledgeSpaceIds(config.qa.knowledge_space_ids);
+          const nextGreeting = getWelcomeMessage(config.qa.welcome_message);
+          setAssistantGreeting(nextGreeting);
+          setSessions((prev) => prev.map((session, index) => {
+            if (index !== 0 || session.messages[0]?.role !== 'bot') return session;
+            return {
+              ...session,
+              messages: [{ role: 'bot', text: nextGreeting }, ...session.messages.slice(1)],
+            };
+          }));
         }
       } catch {
         // Keep the page usable even when config fails to load.
@@ -111,7 +123,7 @@ export default function QAPage() {
     const ns: Session = {
       id,
       title: '新会话',
-      messages: [{ role: 'bot', text: '你好，我是首钢知库智能助手，请问有什么可以帮您？' }],
+      messages: [{ role: 'bot', text: assistantGreeting }],
     };
     setSessions((prev) => [...prev, ns]);
     setActiveId(id);

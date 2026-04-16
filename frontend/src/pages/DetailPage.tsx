@@ -5,14 +5,17 @@ import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { fetchFileDetail, fetchFilePreview, fetchRelatedFiles, type FileDetail, type FileItem, type FilePreviewData } from '../api/content';
-import { DISPLAY_CONFIG } from '../config/display';
+import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveDetailBackTarget } from '../utils/detailPage';
+import { toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './DetailPage.module.css';
 
 export default function DetailPage() {
   const { spaceId: spaceIdStr = '', fileId: fileIdStr = '' } = useParams<{ spaceId: string; fileId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { config } = usePortalConfig();
+  const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [detail, setDetail] = useState<FileDetail | null>(null);
   const [preview, setPreview] = useState<FilePreviewData | null>(null);
   const [related, setRelated] = useState<FileItem[]>([]);
@@ -32,7 +35,7 @@ export default function DetailPage() {
         const [detailResult, previewResult, relatedResult] = await Promise.all([
           fetchFileDetail(spaceId, fileId),
           fetchFilePreview(spaceId, fileId),
-          fetchRelatedFiles(spaceId, fileId, DISPLAY_CONFIG.detail.relatedFilesCount),
+          fetchRelatedFiles(spaceId, fileId, displayConfig.detail.relatedFilesCount),
         ]);
         if (!active) return;
         setDetail(detailResult);
@@ -48,7 +51,7 @@ export default function DetailPage() {
     return () => {
       active = false;
     };
-  }, [fileId, spaceId]);
+  }, [displayConfig.detail.relatedFilesCount, fileId, spaceId]);
 
   if (loading) {
     return (

@@ -24,11 +24,29 @@ DEFAULT_PORTAL_CONFIG = {
         {"name": "培训", "space_ids": [35], "color": "#be185d", "bg": "#fce7f3", "icon": "GraduationCap", "background_image": "", "enabled": True},
     ],
     "sections": [
-        {"title": "知识推荐 · 最新精选", "tag": "最新精选", "link": "/list?tag=最新精选", "icon": "Star", "enabled": True},
-        {"title": "典型案例 · 事故分析", "tag": "典型案例", "link": "/list?tag=典型案例", "icon": "AlertTriangle", "enabled": True},
+        {
+            "title": "知识推荐 · 最新精选",
+            "tag": "最新精选",
+            "link": "/list?tag=最新精选",
+            "icon": "Star",
+            "color": "#2563eb",
+            "bg": "#eff6ff",
+            "enabled": True,
+        },
+        {
+            "title": "典型案例 · 事故分析",
+            "tag": "典型案例",
+            "link": "/list?tag=典型案例",
+            "icon": "AlertTriangle",
+            "color": "#dc2626",
+            "bg": "#fee2e2",
+            "enabled": True,
+        },
     ],
     "qa": {
         "knowledge_space_ids": [12, 18, 25, 30, 35, 40, 45, 50],
+        "panel_title": "技术问答·专家在线",
+        "welcome_message": "你好，我是首钢知库智能助手，请问有什么可以帮您？",
         "hot_questions": [
             "振动纹通常如何排查？",
             "热轧精轧机轴承维护周期是多久？",

@@ -78,6 +78,8 @@ def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     assert body["status_code"] == 200
     assert "spaces" in body["data"]
     assert "domains" in body["data"]
+    assert "panel_title" in body["data"]["qa"]
+    assert "welcome_message" in body["data"]["qa"]
     assert "ai_search_system_prompt" in body["data"]["qa"]
     assert "qa_system_prompt" in body["data"]["qa"]
     assert "selected_model" in body["data"]["qa"]
@@ -123,6 +125,8 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
             "/api/v1/admin/config/qa",
             json={
                 "knowledge_space_ids": [12, 18],
+                "panel_title": "技术问答·设备专家",
+                "welcome_message": "你好，我是首钢设备诊断助手，请问有什么可以帮您？",
                 "hot_questions": ["振动纹通常如何排查？"],
                 "ai_search_system_prompt": "搜索提示词",
                 "qa_system_prompt": "问答提示词",
@@ -132,12 +136,47 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
 
     assert response.status_code == 200
     body = response.json()
+    assert body["data"]["panel_title"] == "技术问答·设备专家"
+    assert body["data"]["welcome_message"] == "你好，我是首钢设备诊断助手，请问有什么可以帮您？"
     assert body["data"]["ai_search_system_prompt"] == "搜索提示词"
     assert body["data"]["qa_system_prompt"] == "问答提示词"
     assert body["data"]["selected_model"] == "1"
+    assert service.get_config().qa.panel_title == "技术问答·设备专家"
+    assert service.get_config().qa.welcome_message == "你好，我是首钢设备诊断助手，请问有什么可以帮您？"
     assert service.get_config().qa.ai_search_system_prompt == "搜索提示词"
     assert service.get_config().qa.qa_system_prompt == "问答提示词"
     assert service.get_config().qa.selected_model == "1"
+
+
+def test_put_admin_sections_persists_icon_and_color_fields(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        response = client.put(
+            "/api/v1/admin/config/sections",
+            json={
+                "sections": [
+                    {
+                        "title": "知识推荐 · 最新精选",
+                        "tag": "最新精选",
+                        "link": "/list?tag=%E6%9C%80%E6%96%B0%E7%B2%BE%E9%80%89",
+                        "icon": "Star",
+                        "color": "#2563eb",
+                        "bg": "#eff6ff",
+                        "enabled": True,
+                    }
+                ]
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["sections"][0]["icon"] == "Star"
+    assert body["data"]["sections"][0]["color"] == "#2563eb"
+    assert body["data"]["sections"][0]["bg"] == "#eff6ff"
+    assert service.get_config().sections[0].color == "#2563eb"
+    assert service.get_config().sections[0].bg == "#eff6ff"
 
 
 def test_get_admin_qa_model_options_uses_bisheng_daily_config(tmp_path: Path):

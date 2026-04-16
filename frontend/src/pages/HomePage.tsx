@@ -12,6 +12,7 @@ import TagPill from '../components/TagPill';
 import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content';
 import { CFG } from '../data/mock';
 import { usePortalConfig } from '../hooks/usePortalConfig';
+import { resolveSectionVisual } from '../utils/adminSections';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './HomePage.module.css';
@@ -42,6 +43,10 @@ const BANNER_BACKGROUNDS = [
 
 function getPrimaryTag(file: FileItem) {
   return file.tags.find((t) => t !== '最新精选' && t !== '典型案例');
+}
+
+function getWelcomeMessage(welcomeMessage?: string) {
+  return welcomeMessage?.trim() || '你好，我是首钢知库智能助手，请问有什么可以帮您？';
 }
 
 export default function HomePage() {
@@ -140,6 +145,7 @@ export default function HomePage() {
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
   const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
   const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
+  const assistantGreeting = getWelcomeMessage(config?.qa.welcome_message);
 
   return (
     <PageShell>
@@ -258,6 +264,7 @@ export default function HomePage() {
           <div>
             {enabledSections.map((sec) => {
               const Icon = SECTION_ICONS[sec.icon] || Star;
+              const visual = resolveSectionVisual(sec);
               const items = sectionData[sec.tag] || [];
               const showSummary = sec.tag === '最新精选' || sec.tag === '典型案例';
               const featuredItem = sec.tag === '最新精选' ? items[0] : null;
@@ -266,7 +273,7 @@ export default function HomePage() {
                 <div key={sec.tag} className={s.panel}>
                   <div className={s.panelHeader}>
                     <div className={s.panelHeaderLeft}>
-                      <div className={s.panelIcon}><Icon size={14} /></div>
+                      <div className={s.panelIcon} style={{ background: visual.bg, color: visual.color }}><Icon size={14} /></div>
                       <span className={s.panelTitle}>{sec.title}</span>
                     </div>
                     <Link to={sec.link} className={s.panelMore}>
@@ -326,7 +333,7 @@ export default function HomePage() {
               <div className={s.qaHeader}>
                 <div className={s.qaHeaderLeft}>
                   <div className={s.panelIcon}><Bot size={14} /></div>
-                  <span className={s.panelTitle}>技术问答·专家在线</span>
+                  <span className={s.panelTitle}>{config?.qa.panel_title?.trim() || '技术问答·专家在线'}</span>
                 </div>
                 <Link to="/qa" className={s.panelMore}>
                   提问 <ChevronRight size={14} />
@@ -339,7 +346,7 @@ export default function HomePage() {
                       <Bot size={16} />
                     </div>
                     <div className={s.qaComposerBubble}>
-                      你好，我是首钢知库智能助手，请问有什么可以帮您？
+                      {assistantGreeting}
                     </div>
                   </div>
                     <div className={`${s.qaPreviewRow} ${s.qaPreviewRowUser}`}>

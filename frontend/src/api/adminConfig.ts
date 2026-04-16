@@ -21,11 +21,15 @@ export interface SectionConfig {
   tag: string;
   link: string;
   icon: string;
+  color: string;
+  bg: string;
   enabled: boolean;
 }
 
 export interface QAConfig {
   knowledge_space_ids: number[];
+  panel_title: string;
+  welcome_message: string;
   hot_questions: string[];
   ai_search_system_prompt: string;
   qa_system_prompt: string;

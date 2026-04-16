@@ -61,8 +61,8 @@ test('enabled helpers filter disabled records and orphaned domains', () => {
     { name: '安全', space_ids: [12], color: '#111', bg: '#eee', icon: 'Shield', background_image: '', enabled: false },
   ], spaces);
   const sections = getEnabledSections([
-    { title: '精选', tag: '最新精选', link: '/list?tag=最新精选', icon: 'Star', enabled: true },
-    { title: '案例', tag: '典型案例', link: '/list?tag=典型案例', icon: 'AlertTriangle', enabled: false },
+    { title: '精选', tag: '最新精选', link: '/list?tag=最新精选', icon: 'Star', color: '#2563eb', bg: '#eff6ff', enabled: true },
+    { title: '案例', tag: '典型案例', link: '/list?tag=典型案例', icon: 'AlertTriangle', color: '#dc2626', bg: '#fee2e2', enabled: false },
   ]);
   const apps = getEnabledApps([
     { id: 1, name: '检索', icon: 'Search', desc: 'desc', color: '#111', bg: '#eee', url: '/search', enabled: true },

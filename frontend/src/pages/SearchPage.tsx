@@ -6,15 +6,15 @@ import FileListItem from '../components/FileListItem';
 import Pagination from '../components/Pagination';
 import {
   fetchAggregatedTags,
-  fetchPortalContentConfig,
   searchFiles,
   streamChatCompletion,
   type FileItem,
 } from '../api/content';
-import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
+import { usePortalConfig } from '../hooks/usePortalConfig';
 import { useListControls } from '../hooks/useListControls';
 import { getVisibleRange } from '../utils/listControls';
+import { getEnabledDomains, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './SearchPage.module.css';
 
 type DomainOption = {
@@ -33,9 +33,11 @@ export default function SearchPage() {
   const tag = params.get('tag') || '';
   const sort = params.get('sort') || 'relevance';
   const hasSearch = Boolean(q.trim());
+  const { config } = usePortalConfig();
+  const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [pageSize, setPageSize] = useState<number>(DISPLAY_CONFIG.search.pageSize);
+  const [pageSize, setPageSize] = useState<number>(displayConfig.search.pageSize);
   const [tags, setTags] = useState<string[]>([]);
   const [domains, setDomains] = useState<DomainOption[]>([]);
   const [qaSpaceIds, setQaSpaceIds] = useState<number[]>([]);
@@ -50,25 +52,15 @@ export default function SearchPage() {
   const visibleRange = getVisibleRange(total, page, pageSize, files.length);
 
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const config = await fetchPortalContentConfig();
-        if (!active) return;
-        setDomains(
-          config.domains
-            .filter((item) => item.enabled)
-            .map((item) => ({ name: item.name, spaceIds: item.space_ids })),
-        );
-        setQaSpaceIds(config.qa.knowledge_space_ids);
-      } catch {
-        // Keep page usable even if config fetch fails.
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (!config) return;
+    setDomains(
+      getEnabledDomains(config.domains, config.spaces).map((item) => ({
+        name: item.name,
+        spaceIds: item.space_ids,
+      })),
+    );
+    setQaSpaceIds(config.qa.knowledge_space_ids);
+  }, [config]);
 
   useEffect(() => {
     let active = true;
@@ -92,7 +84,7 @@ export default function SearchPage() {
             fileExt: fileExt || undefined,
             sort,
             page,
-            pageSize: DISPLAY_CONFIG.search.pageSize,
+            pageSize: displayConfig.search.pageSize,
           }),
           fetchAggregatedTags(sids),
         ]);
@@ -111,7 +103,7 @@ export default function SearchPage() {
     return () => {
       active = false;
     };
-  }, [fileExt, hasSearch, page, q, sids, sort, tag]);
+  }, [displayConfig.search.pageSize, fileExt, hasSearch, page, q, sids, sort, tag]);
 
   useEffect(() => {
     if (!q) return;
@@ -230,7 +222,7 @@ export default function SearchPage() {
           <FileListItem
             key={f.id}
             file={f}
-            visibleTagCount={DISPLAY_CONFIG.search.visibleTagCount}
+            visibleTagCount={displayConfig.search.visibleTagCount}
             onClick={() =>
               navigate(`/space/${f.spaceId}/file/${f.id}`, {
                 state: { returnTo: `${location.pathname}${location.search}` },

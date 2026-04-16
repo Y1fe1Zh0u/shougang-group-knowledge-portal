@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 import {
-  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw,
+  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import DomainIcon from '../components/DomainIcon';
 import Header from '../components/Header';
@@ -33,16 +33,34 @@ import {
   validateDomainDraft,
   type DomainDraft,
 } from '../utils/adminDomains';
+import {
+  createSectionDraft,
+  resolveSectionVisual,
+  SECTION_ICON_OPTIONS,
+  validateSectionDraft,
+  type SectionDraft,
+} from '../utils/adminSections';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { canDeleteSpace, getSpaceBindingState, getSpaceUsage, getSpaceUsageSummary, setSpaceEnabled, upsertSpace } from '../utils/adminSpaces';
 import s from './AdminPage.module.css';
+
+const APP_ICON_OPTIONS = [
+  'PenLine',
+  'Search',
+  'MessageSquare',
+  'Globe',
+  'BarChart3',
+  'Network',
+  'Bot',
+  'FileText',
+] as const;
 
 const NAV_ITEMS = [
   { key: 'spaces', label: '知识空间', icon: FolderOpen },
   { key: 'domains', label: '业务域', icon: Building },
   { key: 'sections', label: '首页分区', icon: Tag },
   { key: 'qa', label: '问答配置', icon: Bot },
-  { key: 'recommend', label: '推荐策略', icon: Star },
+  { key: 'recommend', label: '推荐策略', icon: Star, disabled: true },
   { key: 'display', label: '展示配置', icon: SlidersHorizontal },
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
 ];
@@ -55,6 +73,28 @@ type DisplayItem = {
   label: string;
   value: number;
 };
+
+type QaDialogMode =
+  | 'spaces'
+  | 'panel_title'
+  | 'welcome_message'
+  | 'hot_questions'
+  | 'ai_search_system_prompt'
+  | 'qa_system_prompt'
+  | null;
+
+type RecommendationDialogKey = 'home_strategy' | 'detail_strategy' | null;
+
+interface AppDraft {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  color: string;
+  bg: string;
+  url: string;
+  enabled: boolean;
+}
 
 export default function AdminPage() {
   const [active, setActive] = useState<NavKey>('spaces');
@@ -73,6 +113,22 @@ export default function AdminPage() {
   const [domainDraft, setDomainDraft] = useState<DomainDraft>(createDomainDraft());
   const [domainFormError, setDomainFormError] = useState('');
   const [domainDeleteIndex, setDomainDeleteIndex] = useState<number | null>(null);
+  const [sectionEditorOpen, setSectionEditorOpen] = useState(false);
+  const [sectionEditorIndex, setSectionEditorIndex] = useState<number | null>(null);
+  const [sectionDraft, setSectionDraft] = useState<SectionDraft>(createSectionDraft());
+  const [sectionFormError, setSectionFormError] = useState('');
+  const [sectionDeleteIndex, setSectionDeleteIndex] = useState<number | null>(null);
+  const [qaDialogMode, setQaDialogMode] = useState<QaDialogMode>(null);
+  const [qaTextDraft, setQaTextDraft] = useState('');
+  const [qaSpacesDraft, setQaSpacesDraft] = useState<number[]>([]);
+  const [qaDialogError, setQaDialogError] = useState('');
+  const [recommendDialogKey, setRecommendDialogKey] = useState<RecommendationDialogKey>(null);
+  const [recommendDraft, setRecommendDraft] = useState('');
+  const [appEditorOpen, setAppEditorOpen] = useState(false);
+  const [appEditorIndex, setAppEditorIndex] = useState<number | null>(null);
+  const [appDraft, setAppDraft] = useState<AppDraft>(createAppDraft());
+  const [appFormError, setAppFormError] = useState('');
+  const [appDeleteIndex, setAppDeleteIndex] = useState<number | null>(null);
 
   async function loadConfig() {
     setLoading(true);
@@ -132,8 +188,54 @@ export default function AdminPage() {
     setDomainFormError('');
   }
 
+  function openCreateSectionDialog() {
+    setSectionEditorOpen(true);
+    setSectionEditorIndex(null);
+    setSectionDraft(createSectionDraft());
+    setSectionFormError('');
+  }
+
+  function openEditSectionDialog(section: SectionConfig, index: number) {
+    setSectionEditorOpen(true);
+    setSectionEditorIndex(index);
+    setSectionDraft(createSectionDraft(section));
+    setSectionFormError('');
+  }
+
+  function openQaSpacesDialog(qa: QAConfig) {
+    setQaDialogMode('spaces');
+    setQaSpacesDraft(qa.knowledge_space_ids);
+    setQaDialogError('');
+  }
+
+  function openQaTextDialog(mode: Exclude<QaDialogMode, 'spaces' | null>, value: string) {
+    setQaDialogMode(mode);
+    setQaTextDraft(value);
+    setQaDialogError('');
+  }
+
+  function openRecommendationDialog(key: Exclude<RecommendationDialogKey, null>, value: string) {
+    setRecommendDialogKey(key);
+    setRecommendDraft(value);
+  }
+
+  function openCreateAppDialog() {
+    setAppEditorOpen(true);
+    setAppEditorIndex(null);
+    setAppDraft(createAppDraft());
+    setAppFormError('');
+  }
+
+  function openEditAppDialog(app: AppConfig, index: number) {
+    setAppEditorOpen(true);
+    setAppEditorIndex(index);
+    setAppDraft(createAppDraft(app));
+    setAppFormError('');
+  }
+
   const displayItems = config ? getDisplayItems(config.display) : [];
   const deletingSpace = config && spaceDeleteIndex !== null ? config.spaces[spaceDeleteIndex] : null;
+  const deletingApp = config && appDeleteIndex !== null ? config.apps[appDeleteIndex] : null;
 
   return (
     <>
@@ -146,8 +248,11 @@ export default function AdminPage() {
             return (
               <div
                 key={item.key}
-                className={`${s.navItem} ${active === item.key ? s.navItemActive : ''}`}
-                onClick={() => setActive(item.key)}
+                className={`${s.navItem} ${active === item.key ? s.navItemActive : ''} ${item.disabled ? s.navItemDisabled : ''}`}
+                onClick={() => {
+                  if (item.disabled) return;
+                  setActive(item.key);
+                }}
               >
                 <Icon size={16} />
                 {item.label}
@@ -190,15 +295,19 @@ export default function AdminPage() {
               onAdd={openCreateDomainDialog}
               onEdit={(index) => openEditDomainDialog(config.domains[index], index)}
               onDelete={(index) => setDomainDeleteIndex(index)}
+              onMoveUp={(index) => void handleMoveDomain(config.domains, index, -1, runSave, setConfig)}
+              onMoveDown={(index) => void handleMoveDomain(config.domains, index, 1, runSave, setConfig)}
             />
           )}
           {config && active === 'sections' && (
             <SectionsTable
               sections={config.sections}
               saving={saving}
-              onAdd={() => void handleAddSection(config.sections, runSave, setConfig)}
-              onEdit={(index) => void handleEditSection(config.sections, index, runSave, setConfig)}
-              onDelete={(index) => void handleDeleteSection(config.sections, index, runSave, setConfig)}
+              onAdd={openCreateSectionDialog}
+              onEdit={(index) => openEditSectionDialog(config.sections[index], index)}
+              onDelete={(index) => setSectionDeleteIndex(index)}
+              onMoveUp={(index) => void handleMoveSection(config.sections, index, -1, runSave, setConfig)}
+              onMoveDown={(index) => void handleMoveSection(config.sections, index, 1, runSave, setConfig)}
             />
           )}
           {config && active === 'qa' && (
@@ -206,34 +315,36 @@ export default function AdminPage() {
               qa={config.qa}
               spaces={config.spaces}
               saving={saving}
-              onEditSpaces={() => void handleEditQaSpaces(config.qa, runSave, setConfig)}
-              onEditQuestions={() => void handleEditQaQuestions(config.qa, runSave, setConfig)}
-              onEditSearchPrompt={() => void handleEditQaPrompt(config.qa, 'ai_search_system_prompt', runSave, setConfig)}
-              onEditQaPrompt={() => void handleEditQaPrompt(config.qa, 'qa_system_prompt', runSave, setConfig)}
+              onEditSpaces={() => openQaSpacesDialog(config.qa)}
+              onEditPanelTitle={() => openQaTextDialog('panel_title', config.qa.panel_title)}
+              onEditWelcomeMessage={() => openQaTextDialog('welcome_message', config.qa.welcome_message)}
+              onEditQuestions={() => openQaTextDialog('hot_questions', config.qa.hot_questions.join('\n'))}
+              onEditSearchPrompt={() => openQaTextDialog('ai_search_system_prompt', config.qa.ai_search_system_prompt)}
+              onEditQaPrompt={() => openQaTextDialog('qa_system_prompt', config.qa.qa_system_prompt)}
             />
           )}
           {config && active === 'recommend' && (
             <RecommendConfigTable
               recommendation={config.recommendation}
               saving={saving}
-              onEditHome={() => void handleEditRecommendation(config.recommendation, 'home_strategy', runSave, setConfig)}
-              onEditDetail={() => void handleEditRecommendation(config.recommendation, 'detail_strategy', runSave, setConfig)}
+              onEditHome={() => openRecommendationDialog('home_strategy', config.recommendation.home_strategy)}
+              onEditDetail={() => openRecommendationDialog('detail_strategy', config.recommendation.detail_strategy)}
             />
           )}
           {config && active === 'display' && (
             <DisplayConfigTable
               items={displayItems}
               saving={saving}
-              onEdit={(key) => void handleEditDisplay(config.display, key, runSave, setConfig)}
+              onAdjust={(key, delta) => void handleAdjustDisplay(config.display, key, delta, runSave, setConfig)}
             />
           )}
           {config && active === 'apps' && (
             <AppsTable
               apps={config.apps}
               saving={saving}
-              onAdd={() => void handleAddApp(config.apps, runSave, setConfig)}
-              onEdit={(index) => void handleEditApp(config.apps, index, runSave, setConfig)}
-              onDelete={(index) => void handleDeleteApp(config.apps, index, runSave, setConfig)}
+              onAdd={openCreateAppDialog}
+              onEdit={(index) => openEditAppDialog(config.apps[index], index)}
+              onDelete={(index) => setAppDeleteIndex(index)}
             />
           )}
         </main>
@@ -314,6 +425,181 @@ export default function AdminPage() {
           }}
         />
       ) : null}
+      {config && sectionEditorOpen ? (
+        <SectionEditorDialog
+          open
+          draft={sectionDraft}
+          saving={saving}
+          error={sectionFormError}
+          onClose={() => setSectionEditorOpen(false)}
+          onChange={(patch) => {
+            setSectionDraft((current) => ({ ...current, ...patch }));
+            setSectionFormError('');
+          }}
+          onSubmit={() => {
+            const result = validateSectionDraft(sectionDraft);
+            if (!result.section) {
+              setSectionFormError(result.error || '首页分区配置无效');
+              return;
+            }
+            if (sectionEditorIndex === null) {
+              void handleAddSection(config.sections, result.section, runSave, setConfig, {
+                onSuccess: () => setSectionEditorOpen(false),
+              });
+              return;
+            }
+            void handleEditSection(config.sections, sectionEditorIndex, result.section, runSave, setConfig, {
+              onSuccess: () => setSectionEditorOpen(false),
+            });
+          }}
+        />
+      ) : null}
+      {config && sectionDeleteIndex !== null ? (
+        <SectionDeleteDialog
+          open
+          section={config.sections[sectionDeleteIndex]}
+          saving={saving}
+          onClose={() => setSectionDeleteIndex(null)}
+          onConfirm={() => {
+            void handleDeleteSection(config.sections, sectionDeleteIndex, runSave, setConfig, {
+              confirm: false,
+              onSuccess: () => setSectionDeleteIndex(null),
+            });
+          }}
+        />
+      ) : null}
+      {config && qaDialogMode === 'spaces' ? (
+        <QaSpacesDialog
+          open
+          spaces={config.spaces}
+          selectedIds={qaSpacesDraft}
+          saving={saving}
+          error={qaDialogError}
+          onClose={() => setQaDialogMode(null)}
+          onToggle={(spaceId) => {
+            setQaDialogError('');
+            setQaSpacesDraft((current) => (
+              current.includes(spaceId)
+                ? current.filter((id) => id !== spaceId)
+                : [...current, spaceId]
+            ));
+          }}
+          onSubmit={() => {
+            if (!qaSpacesDraft.length) {
+              setQaDialogError('请至少选择一个知识空间');
+              return;
+            }
+            void runSave(async () => {
+              await persistQa({ ...config.qa, knowledge_space_ids: qaSpacesDraft }, setConfig);
+              setQaDialogMode(null);
+            });
+          }}
+        />
+      ) : null}
+      {config && qaDialogMode && qaDialogMode !== 'spaces' ? (
+        <TextEditorDialog
+          open
+          title={getQaDialogTitle(qaDialogMode)}
+          note={getQaDialogNote(qaDialogMode)}
+          label={getQaDialogLabel(qaDialogMode)}
+          value={qaTextDraft}
+          saving={saving}
+          error={qaDialogError}
+          multiline={isQaDialogMultiline(qaDialogMode)}
+          placeholder={getQaDialogPlaceholder(qaDialogMode)}
+          onClose={() => setQaDialogMode(null)}
+          onChange={(value) => {
+            setQaTextDraft(value);
+            setQaDialogError('');
+          }}
+          onSubmit={() => {
+            const trimmed = qaTextDraft.trim();
+            if (!trimmed) {
+              setQaDialogError('请输入内容');
+              return;
+            }
+            const nextQa =
+              qaDialogMode === 'hot_questions'
+                ? { ...config.qa, hot_questions: qaTextDraft.split('\n').map((item) => item.trim()).filter(Boolean) }
+                : { ...config.qa, [qaDialogMode]: trimmed };
+            if (qaDialogMode === 'hot_questions' && !nextQa.hot_questions.length) {
+              setQaDialogError('请至少保留一条热门问题');
+              return;
+            }
+            void runSave(async () => {
+              await persistQa(nextQa, setConfig);
+              setQaDialogMode(null);
+            });
+          }}
+        />
+      ) : null}
+      {config && recommendDialogKey ? (
+        <TextEditorDialog
+          open
+          title={recommendDialogKey === 'home_strategy' ? '编辑首页推荐策略' : '编辑详情页推荐策略'}
+          note="这里只修改当前场景的策略描述，provider 保持现状。"
+          label="策略描述"
+          value={recommendDraft}
+          saving={saving}
+          placeholder="例如：tag+updated_at"
+          onClose={() => setRecommendDialogKey(null)}
+          onChange={setRecommendDraft}
+          onSubmit={() => {
+            const trimmed = recommendDraft.trim();
+            if (!trimmed) return;
+            void runSave(async () => {
+              await persistRecommendation({ ...config.recommendation, [recommendDialogKey]: trimmed }, setConfig);
+              setRecommendDialogKey(null);
+            });
+          }}
+        />
+      ) : null}
+      {config && appEditorOpen ? (
+        <AppEditorDialog
+          open
+          draft={appDraft}
+          saving={saving}
+          error={appFormError}
+          onClose={() => setAppEditorOpen(false)}
+          onChange={(patch) => {
+            setAppDraft((current) => ({ ...current, ...patch }));
+            setAppFormError('');
+          }}
+          onSubmit={() => {
+            const result = validateAppDraft(appDraft);
+            if (!result.app) {
+              setAppFormError(result.error || '应用配置无效');
+              return;
+            }
+            const nextApp = result.app;
+            void runSave(async () => {
+              if (appEditorIndex === null) {
+                await persistApps([...config.apps, nextApp], setConfig);
+              } else {
+                const updated = [...config.apps];
+                updated[appEditorIndex] = nextApp;
+                await persistApps(updated, setConfig);
+              }
+              setAppEditorOpen(false);
+            });
+          }}
+        />
+      ) : null}
+      {config && deletingApp ? (
+        <AppDeleteDialog
+          open
+          app={deletingApp}
+          saving={saving}
+          onClose={() => setAppDeleteIndex(null)}
+          onConfirm={() => {
+            if (appDeleteIndex === null) return;
+            void runSave(async () => {
+              await persistApps(config.apps.filter((_, index) => index !== appDeleteIndex), setConfig);
+              setAppDeleteIndex(null);
+            });
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -345,6 +631,11 @@ function SpacesTable({
         已绑定的空间决定门户可见范围。停用会立即从前台隐藏，删除前需要先解除业务域和问答范围里的引用。
       </p>
       <table className={s.table}>
+        <colgroup>
+          <col className={s.displayGroupCol} />
+          <col />
+          <col className={s.displayValueCol} />
+        </colgroup>
         <thead>
           <tr>
             <th>空间名称</th>
@@ -546,6 +837,8 @@ function DomainsTable({
   onAdd,
   onEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
 }: {
   domains: DomainConfig[];
   spaces: SpaceConfig[];
@@ -553,6 +846,8 @@ function DomainsTable({
   onAdd: () => void;
   onEdit: (index: number) => void;
   onDelete: (index: number) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
 }) {
   return (
     <>
@@ -582,12 +877,7 @@ function DomainsTable({
             return (
               <tr key={d.name}>
                 <td>{d.name}</td>
-                <td>
-                  <div className={s.logoCell}>
-                    <DomainIcon icon={d.icon} color={d.color} bg={d.bg} size={36} />
-                    <span>{d.icon}</span>
-                  </div>
-                </td>
+                <td><AdminIconCell icon={d.icon} color={d.color} bg={d.bg} /></td>
                 <td>
                   {backgroundImage ? (
                     <img src={backgroundImage} alt={`${d.name} 背景`} className={s.backgroundPreview} />
@@ -600,6 +890,24 @@ function DomainsTable({
                   <div className={s.actionGroup}>
                     <button className={s.inlineBtn} onClick={() => onEdit(index)} disabled={saving}>编辑</button>
                     <button className={s.inlineDangerBtn} onClick={() => onDelete(index)} disabled={saving}>删除</button>
+                    <button
+                      className={s.iconActionBtn}
+                      onClick={() => onMoveUp(index)}
+                      disabled={saving || index === 0}
+                      aria-label={`上移${d.name}`}
+                      title="上移"
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+                    <button
+                      className={s.iconActionBtn}
+                      onClick={() => onMoveDown(index)}
+                      disabled={saving || index === domains.length - 1}
+                      aria-label={`下移${d.name}`}
+                      title="下移"
+                    >
+                      <ArrowDown size={15} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -608,6 +916,23 @@ function DomainsTable({
         </tbody>
       </table>
     </>
+  );
+}
+
+function AdminIconCell({
+  icon,
+  color,
+  bg,
+}: {
+  icon: string;
+  color: string;
+  bg: string;
+}) {
+  return (
+    <div className={s.logoCell}>
+      <DomainIcon icon={icon} color={color} bg={bg} size={36} />
+      <span>{icon}</span>
+    </div>
   );
 }
 
@@ -771,12 +1096,16 @@ function SectionsTable({
   onAdd,
   onEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
 }: {
   sections: SectionConfig[];
   saving: boolean;
   onAdd: () => void;
   onEdit: (index: number) => void;
   onDelete: (index: number) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
 }) {
   return (
     <>
@@ -784,30 +1113,192 @@ function SectionsTable({
         <h2 className={s.pageTitle}>首页分区管理</h2>
         <button className={s.addBtn} onClick={onAdd} disabled={saving}><Plus size={14} /> 添加</button>
       </div>
+      <p className={s.pageNote}>
+        首页分区按当前数组顺序展示。每个分区只需要配置标题、标签和图标；跳转地址会按标签自动生成。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
             <th>分区标题</th>
             <th>关联标签</th>
-            <th>链接</th>
+            <th>Logo/图标</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          {sections.map((sec, index) => (
+          {sections.map((sec, index) => {
+            const visual = resolveSectionVisual(sec);
+            return (
             <tr key={sec.tag}>
               <td>{sec.title}</td>
-              <td>{sec.tag}</td>
-              <td>{sec.link}</td>
               <td>
-                <span className={s.editBtn} onClick={() => onEdit(index)}>编辑</span>
-                <span className={s.deleteBtn} onClick={() => onDelete(index)}>删除</span>
+                <span className={s.sectionTagBadge}>
+                  {sec.tag}
+                </span>
+              </td>
+              <td><AdminIconCell icon={sec.icon} color={visual.color} bg={visual.bg} /></td>
+              <td>
+                <div className={s.actionGroup}>
+                  <button className={s.inlineBtn} onClick={() => onEdit(index)} disabled={saving}>编辑</button>
+                  <button className={s.inlineDangerBtn} onClick={() => onDelete(index)} disabled={saving}>删除</button>
+                  <button
+                    className={s.iconActionBtn}
+                    onClick={() => onMoveUp(index)}
+                    disabled={saving || index === 0}
+                    aria-label={`上移${sec.title}`}
+                    title="上移"
+                  >
+                    <ArrowUp size={15} />
+                  </button>
+                  <button
+                    className={s.iconActionBtn}
+                    onClick={() => onMoveDown(index)}
+                    disabled={saving || index === sections.length - 1}
+                    aria-label={`下移${sec.title}`}
+                    title="下移"
+                  >
+                    <ArrowDown size={15} />
+                  </button>
+                </div>
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
     </>
+  );
+}
+
+function SectionEditorDialog({
+  open,
+  draft,
+  saving,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  draft: SectionDraft;
+  saving: boolean;
+  error: string;
+  onClose: () => void;
+  onChange: (patch: Partial<SectionDraft>) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>{draft.title.trim() ? `编辑首页分区：${draft.title}` : '新增首页分区'}</h3>
+            <p className={s.modalNote}>分区卡片会直接出现在首页。你只需要填写标签，跳转地址会按标签自动生成。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.formGrid}>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>分区标题</span>
+            <input
+              className={s.formInput}
+              value={draft.title}
+              onChange={(event) => onChange({ title: event.target.value })}
+              placeholder="例如：知识推荐 · 最新精选"
+            />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>关联标签</span>
+            <input
+              className={s.formInput}
+              value={draft.tag}
+              onChange={(event) => onChange({ tag: event.target.value })}
+              placeholder="例如：最新精选"
+            />
+            <span className={s.fieldHint}>首页分区会按这个标签自动生成站内跳转，不需要单独填写链接。</span>
+          </label>
+          <div className={`${s.formField} ${s.formFieldWide}`}>
+            <span className={s.fieldLabel}>图标</span>
+            <div className={s.optionPickerRow}>
+              {SECTION_ICON_OPTIONS.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  className={`${s.iconOptionBtn} ${draft.icon === icon ? s.iconOptionBtnActive : ''}`}
+                  onClick={() => onChange({ icon })}
+                >
+                  <DomainIcon icon={icon} color={draft.color} bg={draft.bg} size={40} />
+                  <span className={s.optionLabel}>{icon}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={`${s.formField} ${s.formFieldWide}`}>
+            <span className={s.fieldLabel}>颜色</span>
+            <div className={s.optionPickerRow}>
+              {DOMAIN_COLOR_OPTIONS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  className={`${s.colorOptionBtn} ${isSelectedDomainColor(draft, option) ? s.colorOptionBtnActive : ''}`}
+                  onClick={() => onChange({ color: option.color, bg: option.bg })}
+                >
+                  <span className={s.colorPairPreview}>
+                    <span className={s.colorSwatchMain} style={{ background: option.color }} />
+                    <span className={s.colorSwatchBg} style={{ background: option.bg }} />
+                  </span>
+                  <span className={s.optionLabel}>{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionDeleteDialog({
+  open,
+  section,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  section: SectionConfig;
+  saving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.confirmCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>删除首页分区</h3>
+            <p className={s.modalNote}>删除后首页将不再展示该分区入口，但不会影响原有标签和文档数据。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+        </div>
+        <div className={s.confirmBody}>
+          <div className={s.confirmLine}><strong>分区标题：</strong>{section.title}</div>
+          <div className={s.confirmLine}><strong>关联标签：</strong>{section.tag}</div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          <button className={s.dangerBtn} onClick={onConfirm} disabled={saving}>确认删除</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -816,6 +1307,8 @@ function QAConfigTable({
   spaces,
   saving,
   onEditSpaces,
+  onEditPanelTitle,
+  onEditWelcomeMessage,
   onEditQuestions,
   onEditSearchPrompt,
   onEditQaPrompt,
@@ -824,6 +1317,8 @@ function QAConfigTable({
   spaces: SpaceConfig[];
   saving: boolean;
   onEditSpaces: () => void;
+  onEditPanelTitle: () => void;
+  onEditWelcomeMessage: () => void;
   onEditQuestions: () => void;
   onEditSearchPrompt: () => void;
   onEditQaPrompt: () => void;
@@ -833,6 +1328,9 @@ function QAConfigTable({
       <div className={s.titleBar}>
         <h2 className={s.pageTitle}>问答配置</h2>
       </div>
+      <p className={s.pageNote}>
+        这里统一维护问答入口标题、欢迎语、热门问题和两个模型提示词。首页 QA 卡片与问答页会直接读取这些配置。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
@@ -844,23 +1342,59 @@ function QAConfigTable({
         <tbody>
           <tr>
             <td>知识空间范围</td>
-            <td>{qa.knowledge_space_ids.length ? `${qa.knowledge_space_ids.length} 个 (${qa.knowledge_space_ids.map((id) => spaces.find((sp) => sp.id === id)?.name || id).join('、')})` : '未配置'}</td>
-            <td><span className={s.editBtn} onClick={onEditSpaces}>{saving ? '保存中...' : '编辑'}</span></td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{qa.knowledge_space_ids.length ? `${qa.knowledge_space_ids.length} 个空间` : '未配置'}</span>
+                {qa.knowledge_space_ids.length ? (
+                  <span className={s.valueMeta}>{qa.knowledge_space_ids.map((id) => spaces.find((sp) => sp.id === id)?.name || id).join('、')}</span>
+                ) : null}
+              </div>
+            </td>
+            <td>
+              <div className={s.actionGroup}>
+                <button className={s.inlineBtn} onClick={onEditSpaces} disabled={saving}>{saving ? '保存中...' : '编辑'}</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>问答入口标题</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{qa.panel_title || '未配置'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditPanelTitle} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>欢迎语</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{qa.welcome_message || '未配置'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditWelcomeMessage} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
           <tr>
             <td>热门问题</td>
-            <td>{qa.hot_questions.length} 条</td>
-            <td><span className={s.editBtn} onClick={onEditQuestions}>{saving ? '保存中...' : '编辑'}</span></td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{qa.hot_questions.length} 条</span>
+                {qa.hot_questions[0] ? <span className={s.valueMeta}>例如：{qa.hot_questions[0]}</span> : null}
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditQuestions} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
           <tr>
-            <td>AI 搜索 System Prompt</td>
-            <td>{qa.ai_search_system_prompt ? truncateText(qa.ai_search_system_prompt, 72) : '未配置'}</td>
-            <td><span className={s.editBtn} onClick={onEditSearchPrompt}>{saving ? '保存中...' : '编辑'}</span></td>
+            <td>AI Overview</td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{qa.ai_search_system_prompt ? truncateText(qa.ai_search_system_prompt, 72) : '未配置'}</span>
+                <span className={s.valueMeta}>用于搜索页的 AI Overview 总结。</span>
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditSearchPrompt} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
           <tr>
             <td>技术问答 System Prompt</td>
-            <td>{qa.qa_system_prompt ? truncateText(qa.qa_system_prompt, 72) : '未配置'}</td>
-            <td><span className={s.editBtn} onClick={onEditQaPrompt}>{saving ? '保存中...' : '编辑'}</span></td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{qa.qa_system_prompt ? truncateText(qa.qa_system_prompt, 72) : '未配置'}</span>
+                <span className={s.valueMeta}>用于问答页的对话回复。</span>
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditQaPrompt} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
         </tbody>
       </table>
@@ -884,6 +1418,9 @@ function RecommendConfigTable({
       <div className={s.titleBar}>
         <h2 className={s.pageTitle}>推荐策略配置</h2>
       </div>
+      <p className={s.pageNote}>
+        推荐策略目前按场景拆分维护：首页分区推荐和详情页相关推荐可以分别调整，但都会沿用同一个 provider。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
@@ -895,13 +1432,23 @@ function RecommendConfigTable({
         <tbody>
           <tr>
             <td>首页分区推荐</td>
-            <td>{recommendation.provider} ({recommendation.home_strategy})</td>
-            <td><span className={s.editBtn} onClick={onEditHome}>{saving ? '保存中...' : '编辑'}</span></td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{recommendation.home_strategy}</span>
+                <span className={s.valueMeta}>Provider: {recommendation.provider}</span>
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditHome} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
           <tr>
             <td>详情页相关推荐</td>
-            <td>{recommendation.provider} ({recommendation.detail_strategy})</td>
-            <td><span className={s.editBtn} onClick={onEditDetail}>{saving ? '保存中...' : '编辑'}</span></td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{recommendation.detail_strategy}</span>
+                <span className={s.valueMeta}>Provider: {recommendation.provider}</span>
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditDetail} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
         </tbody>
       </table>
@@ -912,25 +1459,26 @@ function RecommendConfigTable({
 function DisplayConfigTable({
   items,
   saving,
-  onEdit,
+  onAdjust,
 }: {
   items: DisplayItem[];
   saving: boolean;
-  onEdit: (key: string) => void;
+  onAdjust: (key: string, delta: -1 | 1) => void;
 }) {
   return (
     <>
       <div className={s.titleBar}>
         <h2 className={s.pageTitle}>展示配置</h2>
       </div>
+      <p className={s.pageNote}>
+        这里只控制前台各模块的展示数量，不改业务内容本身。保存后首页、列表页、搜索页和详情页会按新值渲染。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
             <th>分组</th>
             <th>配置项</th>
-            <th>键名</th>
-            <th>当前值</th>
-            <th>操作</th>
+            <th>显示数量</th>
           </tr>
         </thead>
         <tbody>
@@ -938,9 +1486,29 @@ function DisplayConfigTable({
             <tr key={item.key}>
               <td>{item.group}</td>
               <td>{item.label}</td>
-              <td>{item.key}</td>
-              <td>{item.value}</td>
-              <td><span className={s.editBtn} onClick={() => onEdit(item.key)}>{saving ? '保存中...' : '编辑'}</span></td>
+              <td>
+                <div className={s.stepper}>
+                  <button
+                    type="button"
+                    className={s.stepperBtn}
+                    onClick={() => onAdjust(item.key, -1)}
+                    disabled={saving || item.value <= 0}
+                    aria-label={`减少${item.label}`}
+                  >
+                    -
+                  </button>
+                  <span className={s.stepperValue}>{item.value}</span>
+                  <button
+                    type="button"
+                    className={s.stepperBtn}
+                    onClick={() => onAdjust(item.key, 1)}
+                    disabled={saving}
+                    aria-label={`增加${item.label}`}
+                  >
+                    +
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -968,6 +1536,9 @@ function AppsTable({
         <h2 className={s.pageTitle}>应用市场管理</h2>
         <button className={s.addBtn} onClick={onAdd} disabled={saving}><Plus size={14} /> 添加</button>
       </div>
+      <p className={s.pageNote}>
+        应用市场和首页应用入口共用这一份配置。这里维护展示顺序、名称、描述、跳转地址和启用状态。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
@@ -982,12 +1553,24 @@ function AppsTable({
           {apps.map((app, index) => (
             <tr key={app.id}>
               <td>{app.id}</td>
-              <td>{app.name}</td>
-              <td>{app.icon}</td>
-              <td>{app.desc}</td>
               <td>
-                <span className={s.editBtn} onClick={() => onEdit(index)}>编辑</span>
-                <span className={s.deleteBtn} onClick={() => onDelete(index)}>删除</span>
+                <div className={s.valueStack}>
+                  <span className={s.valueTitle}>{app.name}</span>
+                  <span className={s.valueMeta}>{app.enabled ? '当前已启用' : '当前已停用'}</span>
+                </div>
+              </td>
+              <td><span className={s.keyBadge}>{app.icon}</span></td>
+              <td>
+                <div className={s.valueStack}>
+                  <span className={s.valueTitle}>{truncateText(app.desc, 44)}</span>
+                  <span className={s.valueMeta}>{app.url || '未配置跳转地址'}</span>
+                </div>
+              </td>
+              <td>
+                <div className={s.actionGroup}>
+                  <button className={s.inlineBtn} onClick={() => onEdit(index)} disabled={saving}>编辑</button>
+                  <button className={s.inlineDangerBtn} onClick={() => onDelete(index)} disabled={saving}>删除</button>
+                </div>
               </td>
             </tr>
           ))}
@@ -995,6 +1578,399 @@ function AppsTable({
       </table>
     </>
   );
+}
+
+function TextEditorDialog({
+  open,
+  title,
+  note,
+  label,
+  value,
+  saving,
+  error,
+  multiline = false,
+  placeholder,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  title: string;
+  note?: string;
+  label: string;
+  value: string;
+  saving: boolean;
+  error?: string;
+  multiline?: boolean;
+  placeholder?: string;
+  onClose: () => void;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>{title}</h3>
+            {note ? <p className={s.modalNote}>{note}</p> : null}
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.formGrid}>
+          <label className={`${s.formField} ${s.formFieldWide}`}>
+            <span className={s.fieldLabel}>{label}</span>
+            {multiline ? (
+              <textarea
+                className={s.formTextarea}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                placeholder={placeholder}
+              />
+            ) : (
+              <input
+                className={s.formInput}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                placeholder={placeholder}
+              />
+            )}
+          </label>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QaSpacesDialog({
+  open,
+  spaces,
+  selectedIds,
+  saving,
+  error,
+  onClose,
+  onToggle,
+  onSubmit,
+}: {
+  open: boolean;
+  spaces: SpaceConfig[];
+  selectedIds: number[];
+  saving: boolean;
+  error?: string;
+  onClose: () => void;
+  onToggle: (spaceId: number) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>编辑知识空间范围</h3>
+            <p className={s.modalNote}>勾选后会同时影响首页问答入口和问答页实际可用的知识空间。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.modalHint}>当前已选 {selectedIds.length} 个知识空间</div>
+        <div className={s.optionList}>
+          <div className={s.checkboxList}>
+            {spaces.map((space) => {
+              const checked = selectedIds.includes(space.id);
+              return (
+                <button
+                  key={space.id}
+                  type="button"
+                  className={`${s.optionRow} ${checked ? s.optionRowActive : ''}`}
+                  onClick={() => onToggle(space.id)}
+                >
+                  <span className={s.optionMain}>
+                    <span className={s.optionName}>{space.name}</span>
+                    <span className={s.optionMeta}>
+                      <span className={s.optionMetaItem}>ID {space.id}</span>
+                      <span className={s.optionMetaItem}>{space.file_count} 个文件</span>
+                    </span>
+                  </span>
+                  <span className={s.optionSide}>
+                    <span className={s.optionCount}>{space.enabled ? '已启用' : '已停用'}</span>
+                    <span className={`${s.checkboxMark} ${checked ? s.checkboxMarkActive : ''}`}>{checked ? '已选' : '选择'}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppEditorDialog({
+  open,
+  draft,
+  saving,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  draft: AppDraft;
+  saving: boolean;
+  error: string;
+  onClose: () => void;
+  onChange: (patch: Partial<AppDraft>) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>{draft.name.trim() ? `编辑应用 · ${draft.name}` : '新增应用'}</h3>
+            <p className={s.modalNote}>统一在这里维护应用名称、图标、跳转地址和卡片颜色。</p>
+          </div>
+          <div className={s.modalHeaderActions}>
+            <button type="button" className={s.headerSwitch} onClick={() => onChange({ enabled: !draft.enabled })}>
+              <span>{draft.enabled ? '已启用' : '已停用'}</span>
+              <span className={`${s.switchTrack} ${draft.enabled ? s.switchTrackActive : ''}`}>
+                <span className={`${s.switchThumb} ${draft.enabled ? s.switchThumbActive : ''}`} />
+              </span>
+            </button>
+            <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          </div>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.modalScrollBody}>
+          <div className={s.formGrid}>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>应用 ID</span>
+              <input className={s.formInput} value={draft.id} onChange={(event) => onChange({ id: event.target.value })} placeholder="例如：7" />
+            </label>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>应用名称</span>
+              <input className={s.formInput} value={draft.name} onChange={(event) => onChange({ name: event.target.value })} placeholder="例如：智能问答" />
+            </label>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>跳转 URL</span>
+              <input className={s.formInput} value={draft.url} onChange={(event) => onChange({ url: event.target.value })} placeholder="例如：https://example.com/app" />
+              <span className={s.fieldHint}>只接受以 `http://` 或 `https://` 开头的外链地址。</span>
+            </label>
+            <div className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>图标</span>
+              <div className={s.optionPickerRow}>
+                {APP_ICON_OPTIONS.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    className={`${s.iconOptionBtn} ${draft.icon === icon ? s.iconOptionBtnActive : ''}`}
+                    onClick={() => onChange({ icon })}
+                  >
+                    <DomainIcon icon={icon} color={draft.color} bg={draft.bg} size={40} />
+                    <span className={s.optionLabel}>{icon}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>颜色</span>
+              <div className={s.optionPickerRow}>
+                {DOMAIN_COLOR_OPTIONS.map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    className={`${s.colorOptionBtn} ${isSelectedDomainColor(draft, option) ? s.colorOptionBtnActive : ''}`}
+                    onClick={() => onChange({ color: option.color, bg: option.bg })}
+                  >
+                    <span className={s.colorPairPreview}>
+                      <span className={s.colorSwatchMain} style={{ background: option.color }} />
+                      <span className={s.colorSwatchBg} style={{ background: option.bg }} />
+                    </span>
+                    <span className={s.optionLabel}>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>应用描述</span>
+              <textarea className={s.formTextarea} value={draft.desc} onChange={(event) => onChange({ desc: event.target.value })} placeholder="一句话描述应用用途" />
+            </label>
+          </div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppDeleteDialog({
+  open,
+  app,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  app: AppConfig;
+  saving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.confirmCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>删除应用</h3>
+            <p className={s.modalNote}>删除后应用市场和首页入口都会同步下线。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+        </div>
+        <div className={s.confirmBody}>
+          <div className={s.confirmLine}><strong>应用名称：</strong>{app.name}</div>
+          <div className={s.confirmLine}><strong>图标：</strong>{app.icon}</div>
+          <div className={s.confirmLine}><strong>跳转地址：</strong>{app.url || '未配置'}</div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          <button className={s.dangerBtn} onClick={onConfirm} disabled={saving}>确认删除</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getQaDialogTitle(mode: Exclude<QaDialogMode, 'spaces' | null>) {
+  switch (mode) {
+    case 'panel_title':
+      return '编辑问答入口标题';
+    case 'welcome_message':
+      return '编辑欢迎语';
+    case 'hot_questions':
+      return '编辑热门问题';
+    case 'ai_search_system_prompt':
+      return '编辑 AI Overview';
+    case 'qa_system_prompt':
+      return '编辑技术问答 Prompt';
+  }
+}
+
+function getQaDialogNote(mode: Exclude<QaDialogMode, 'spaces' | null>) {
+  switch (mode) {
+    case 'panel_title':
+      return '首页右侧 QA 卡片标题会直接读取这个字段。';
+    case 'welcome_message':
+      return '首页 QA 卡片和问答页新会话首条消息都会共用这句欢迎语。';
+    case 'hot_questions':
+      return '每行一条，首页问答模块会按当前展示配置截取显示。';
+    case 'ai_search_system_prompt':
+      return '搜索页里的 AI Overview 总结会使用这一段配置。';
+    case 'qa_system_prompt':
+      return '问答页里的技术问答聊天回复会使用这一段配置。';
+  }
+}
+
+function getQaDialogLabel(mode: Exclude<QaDialogMode, 'spaces' | null>) {
+  switch (mode) {
+    case 'panel_title':
+      return '问答入口标题';
+    case 'welcome_message':
+      return '欢迎语';
+    case 'hot_questions':
+      return '热门问题';
+    case 'ai_search_system_prompt':
+      return 'AI Overview';
+    case 'qa_system_prompt':
+      return '技术问答 Prompt';
+  }
+}
+
+function getQaDialogPlaceholder(mode: Exclude<QaDialogMode, 'spaces' | null>) {
+  switch (mode) {
+    case 'panel_title':
+      return '例如：技术问答·专家在线';
+    case 'welcome_message':
+      return '例如：你好，我是首钢知库智能助手，请问有什么可以帮您？';
+    case 'hot_questions':
+      return '每行输入一条热门问题';
+    default:
+      return '请输入内容';
+  }
+}
+
+function isQaDialogMultiline(mode: Exclude<QaDialogMode, 'spaces' | null>) {
+  return mode !== 'panel_title';
+}
+
+function createAppDraft(current?: AppConfig): AppDraft {
+  return {
+    id: current ? String(current.id) : '',
+    name: current?.name ?? '',
+    icon: current?.icon ?? 'Bot',
+    desc: current?.desc ?? '',
+    color: current?.color ?? '#2563eb',
+    bg: current?.bg ?? '#eff6ff',
+    url: current?.url ?? '',
+    enabled: current?.enabled ?? true,
+  };
+}
+
+function validateAppDraft(draft: AppDraft): { app?: AppConfig; error?: string } {
+  const id = Number(draft.id.trim());
+  if (!Number.isFinite(id) || id <= 0) return { error: '请输入有效的应用 ID' };
+
+  const name = draft.name.trim();
+  if (!name) return { error: '请输入应用名称' };
+
+  const icon = draft.icon.trim();
+  if (!icon) return { error: '请输入图标名' };
+
+  const desc = draft.desc.trim();
+  if (!desc) return { error: '请输入应用描述' };
+
+  const color = draft.color.trim();
+  if (!color) return { error: '请输入主色' };
+
+  const bg = draft.bg.trim();
+  if (!bg) return { error: '请输入背景色' };
+
+  const url = draft.url.trim();
+  if (url && !/^https?:\/\//i.test(url)) {
+    return { error: '跳转 URL 只接受以 http:// 或 https:// 开头的地址' };
+  }
+
+  return {
+    app: {
+      id,
+      name,
+      icon,
+      desc,
+      color,
+      bg,
+      url,
+      enabled: draft.enabled,
+    },
+  };
 }
 
 function getDisplayItems(display: DisplayConfig): DisplayItem[] {
@@ -1133,132 +2109,77 @@ async function handleDeleteDomain(
   });
 }
 
-async function handleAddSection(sections: SectionConfig[], runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptSection();
-  if (!next) return;
-  await runSave(() => persistSections([...sections, next], setConfig));
+async function handleMoveDomain(
+  domains: DomainConfig[],
+  index: number,
+  direction: -1 | 1,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+) {
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= domains.length) return;
+  const reordered = [...domains];
+  const [moved] = reordered.splice(index, 1);
+  reordered.splice(nextIndex, 0, moved);
+  await runSave(() => persistDomains(reordered, setConfig));
 }
 
-async function handleEditSection(sections: SectionConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptSection(sections[index]);
-  if (!next) return;
+async function handleAddSection(
+  sections: SectionConfig[],
+  next: SectionConfig,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { onSuccess?: () => void },
+) {
+  await runSave(async () => {
+    await persistSections([...sections, next], setConfig);
+    options?.onSuccess?.();
+  });
+}
+
+async function handleEditSection(
+  sections: SectionConfig[],
+  index: number,
+  next: SectionConfig,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { onSuccess?: () => void },
+) {
   const updated = [...sections];
   updated[index] = next;
-  await runSave(() => persistSections(updated, setConfig));
+  await runSave(async () => {
+    await persistSections(updated, setConfig);
+    options?.onSuccess?.();
+  });
 }
 
-async function handleDeleteSection(sections: SectionConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  if (!window.confirm(`确定删除分区“${sections[index].title}”吗？`)) return;
-  await runSave(() => persistSections(sections.filter((_, i) => i !== index), setConfig));
+async function handleDeleteSection(
+  sections: SectionConfig[],
+  index: number,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { confirm?: boolean; onSuccess?: () => void },
+) {
+  if (options?.confirm !== false && !window.confirm(`确定删除分区“${sections[index].title}”吗？`)) return;
+  await runSave(async () => {
+    await persistSections(sections.filter((_, i) => i !== index), setConfig);
+    options?.onSuccess?.();
+  });
 }
 
-async function handleEditQaSpaces(qa: QAConfig, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const raw = window.prompt('请输入知识空间 ID，多个用英文逗号分隔', qa.knowledge_space_ids.join(','));
-  if (raw === null) return;
-  const knowledge_space_ids = raw.split(',').map((item) => Number(item.trim())).filter((value) => Number.isFinite(value) && value > 0);
-  await runSave(() => persistQa({ ...qa, knowledge_space_ids }, setConfig));
-}
-
-async function handleEditQaQuestions(qa: QAConfig, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const raw = window.prompt('请输入热门问题，每行一条', qa.hot_questions.join('\n'));
-  if (raw === null) return;
-  const hot_questions = raw.split('\n').map((item) => item.trim()).filter(Boolean);
-  await runSave(() => persistQa({ ...qa, hot_questions }, setConfig));
-}
-
-async function handleEditQaPrompt(
-  qa: QAConfig,
-  key: 'ai_search_system_prompt' | 'qa_system_prompt',
+async function handleMoveSection(
+  sections: SectionConfig[],
+  index: number,
+  direction: -1 | 1,
   runSave: SaveRunner,
   setConfig: ConfigSetter,
 ) {
-  const raw = window.prompt('请输入 System Prompt', qa[key]);
-  if (raw === null) return;
-  await runSave(() => persistQa({ ...qa, [key]: raw.trim() }, setConfig));
-}
-
-async function handleEditRecommendation(
-  recommendation: RecommendationConfig,
-  key: 'home_strategy' | 'detail_strategy',
-  runSave: SaveRunner,
-  setConfig: ConfigSetter,
-) {
-  const raw = window.prompt('请输入推荐策略描述', recommendation[key]);
-  if (raw === null) return;
-  await runSave(() => persistRecommendation({ ...recommendation, [key]: raw.trim() || recommendation[key] }, setConfig));
-}
-
-async function handleEditDisplay(display: DisplayConfig, key: string, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const currentValue = getDisplayValue(display, key);
-  const raw = window.prompt(`请输入 ${key} 的数值`, String(currentValue));
-  if (raw === null) return;
-  const nextValue = Number(raw.trim());
-  if (!Number.isFinite(nextValue) || nextValue < 0) {
-    window.alert('请输入有效的非负数字');
-    return;
-  }
-  await runSave(() => persistDisplay(setDisplayValue(display, key, nextValue), setConfig));
-}
-
-async function handleAddApp(apps: AppConfig[], runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptApp();
-  if (!next) return;
-  await runSave(() => persistApps([...apps, next], setConfig));
-}
-
-async function handleEditApp(apps: AppConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptApp(apps[index]);
-  if (!next) return;
-  const updated = [...apps];
-  updated[index] = next;
-  await runSave(() => persistApps(updated, setConfig));
-}
-
-async function handleDeleteApp(apps: AppConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  if (!window.confirm(`确定删除应用“${apps[index].name}”吗？`)) return;
-  await runSave(() => persistApps(apps.filter((_, i) => i !== index), setConfig));
-}
-
-function promptSection(current?: SectionConfig): SectionConfig | null {
-  const title = promptText('分区标题', current?.title || '');
-  if (!title) return null;
-  const tag = promptText('关联标签', current?.tag || '');
-  if (!tag) return null;
-  const link = promptText('跳转链接', current?.link || '');
-  if (!link) return null;
-  const icon = promptText('图标名', current?.icon || 'Star');
-  if (!icon) return null;
-  return { title, tag, link, icon, enabled: current?.enabled ?? true };
-}
-
-function promptApp(current?: AppConfig): AppConfig | null {
-  const id = promptNumber('应用 ID', current?.id);
-  if (id === null) return null;
-  const name = promptText('应用名称', current?.name || '');
-  if (!name) return null;
-  const icon = promptText('图标名', current?.icon || 'FileText');
-  if (!icon) return null;
-  const desc = promptText('应用描述', current?.desc || '');
-  if (!desc) return null;
-  const color = promptText('图标背景色', current?.color || '#2563eb');
-  if (!color) return null;
-  const bg = promptText('卡片背景色', current?.bg || '#eff6ff');
-  if (!bg) return null;
-  const url = promptOptionalText('跳转 URL，可留空', current?.url || '');
-  return { id, name, icon, desc, color, bg, url, enabled: current?.enabled ?? true };
-}
-
-function promptText(label: string, current: string): string | null {
-  const value = window.prompt(label, current);
-  if (value === null) return null;
-  const trimmed = value.trim();
-  return trimmed || null;
-}
-
-function promptOptionalText(label: string, current: string): string {
-  const value = window.prompt(label, current);
-  if (value === null) return current;
-  return value.trim();
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= sections.length) return;
+  const reordered = [...sections];
+  const [moved] = reordered.splice(index, 1);
+  reordered.splice(nextIndex, 0, moved);
+  await runSave(() => persistSections(reordered, setConfig));
 }
 
 function truncateText(text: string, maxLength: number): string {
@@ -1266,15 +2187,17 @@ function truncateText(text: string, maxLength: number): string {
   return `${text.slice(0, maxLength)}...`;
 }
 
-function promptNumber(label: string, current?: number): number | null {
-  const value = window.prompt(label, current === undefined ? '' : String(current));
-  if (value === null) return null;
-  const parsed = Number(value.trim());
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    window.alert('请输入有效数字');
-    return null;
-  }
-  return parsed;
+async function handleAdjustDisplay(
+  display: DisplayConfig,
+  key: string,
+  delta: -1 | 1,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+) {
+  const currentValue = getDisplayValue(display, key);
+  const nextValue = Math.max(0, currentValue + delta);
+  if (nextValue === currentValue) return;
+  await runSave(() => persistDisplay(setDisplayValue(display, key, nextValue), setConfig));
 }
 
 function getDisplayValue(display: DisplayConfig, key: string): number {

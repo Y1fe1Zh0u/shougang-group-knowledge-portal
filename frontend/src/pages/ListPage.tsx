@@ -6,17 +6,17 @@ import FileListItem from '../components/FileListItem';
 import Pagination from '../components/Pagination';
 import {
   fetchAggregatedTags,
-  fetchPortalContentConfig,
   fetchSpaceFiles,
   fetchSpaceTags,
   searchFiles,
   type FileItem,
 } from '../api/content';
 import type { PortalConfig } from '../api/adminConfig';
-import { DISPLAY_CONFIG } from '../config/display';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
+import { usePortalConfig } from '../hooks/usePortalConfig';
 import { useListControls } from '../hooks/useListControls';
 import { getVisibleRange } from '../utils/listControls';
+import { getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './ListPage.module.css';
 
 function resolveListContext(config: PortalConfig, domainName?: string, spaceIdParam?: string, tagParam?: string) {
@@ -46,36 +46,30 @@ export default function ListPage() {
   const { params, page, resultsTopRef, setFilter } = useListControls();
   const navigate = useNavigate();
   const location = useLocation();
+  const { config, error: configError } = usePortalConfig();
   const tagParam = params.get('tag') || '';
   const fileExt = params.get('file_ext') || '';
-  const [config, setConfig] = useState<PortalConfig | null>(null);
   const [spaceId, setSpaceId] = useState<number | undefined>();
   const [pageTitle, setPageTitle] = useState('知识列表');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [pageSize, setPageSize] = useState<number>(DISPLAY_CONFIG.list.pageSize);
+  const displayConfig = toRuntimeDisplayConfig(config?.display);
+  const [pageSize, setPageSize] = useState<number>(displayConfig.list.pageSize);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const loadedConfig = await fetchPortalContentConfig();
-        if (!active) return;
-        setConfig(loadedConfig);
-        const context = resolveListContext(loadedConfig, domainName, spaceIdStr, tagParam);
-        setSpaceId(context.spaceId);
-        setPageTitle(context.pageTitle);
-      } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : '配置加载失败');
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [domainName, spaceIdStr, tagParam]);
+    if (!config) return;
+    const context = resolveListContext(config, domainName, spaceIdStr, tagParam);
+    setSpaceId(context.spaceId);
+    setPageTitle(context.pageTitle);
+  }, [config, domainName, spaceIdStr, tagParam]);
+
+  useEffect(() => {
+    if (!configError) return;
+    setError(configError);
+  }, [configError]);
 
   useEffect(() => {
     let active = true;
@@ -91,7 +85,7 @@ export default function ListPage() {
               fileExt: fileExt || undefined,
               tag: tagParam || undefined,
               page,
-              pageSize: DISPLAY_CONFIG.list.pageSize,
+              pageSize: displayConfig.list.pageSize,
             }),
             fetchSpaceTags(spaceId),
           ]);
@@ -106,9 +100,9 @@ export default function ListPage() {
               tag: tagParam || undefined,
               fileExt: fileExt || undefined,
               page,
-              pageSize: DISPLAY_CONFIG.list.pageSize,
+              pageSize: displayConfig.list.pageSize,
             }),
-            fetchAggregatedTags(config.spaces.filter((item) => item.enabled).map((item) => item.id)),
+            fetchAggregatedTags(getEnabledSpaces(config.spaces).map((item) => item.id)),
           ]);
           if (!active) return;
           setFiles(result.data);
@@ -126,7 +120,7 @@ export default function ListPage() {
     return () => {
       active = false;
     };
-  }, [config, fileExt, page, spaceId, tagParam]);
+  }, [config, displayConfig.list.pageSize, fileExt, page, spaceId, tagParam]);
 
   const visibleRange = getVisibleRange(total, page, pageSize, files.length);
 
@@ -164,7 +158,7 @@ export default function ListPage() {
           <FileListItem
             key={f.id}
             file={f}
-            visibleTagCount={DISPLAY_CONFIG.list.visibleTagCount}
+            visibleTagCount={displayConfig.list.visibleTagCount}
             onClick={() =>
               navigate(`/space/${f.spaceId}/file/${f.id}`, {
                 state: { returnTo: `${location.pathname}${location.search}` },

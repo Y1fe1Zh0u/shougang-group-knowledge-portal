@@ -44,8 +44,19 @@
       ],
       "color": "#2563eb",
       "bg": "#eff6ff",
-      "icon": "Settings",
+      "icon": "Snowflake",
       "background_image": "/rolling-domain-bg.jpg",
+      "enabled": true
+    },
+    {
+      "name": "域4",
+      "space_ids": [
+        4
+      ],
+      "color": "#6366f1",
+      "bg": "#ede9fe",
+      "icon": "Zap",
+      "background_image": "",
       "enabled": true
     },
     {
@@ -71,17 +82,6 @@
       "enabled": true
     },
     {
-      "name": "域4",
-      "space_ids": [
-        4
-      ],
-      "color": "#d97706",
-      "bg": "#fef3c7",
-      "icon": "Zap",
-      "background_image": "",
-      "enabled": true
-    },
-    {
       "name": "域5",
       "space_ids": [
         5
@@ -95,17 +95,21 @@
   ],
   "sections": [
     {
-      "title": "知识推荐 · 最新精选",
-      "tag": "最新精选",
-      "link": "/list?tag=最新精选",
-      "icon": "Star",
+      "title": "典型案例 · 事故分析",
+      "tag": "典型案例",
+      "link": "/list?tag=%E5%85%B8%E5%9E%8B%E6%A1%88%E4%BE%8B",
+      "icon": "AlertTriangle",
+      "color": "#dc2626",
+      "bg": "#fee2e2",
       "enabled": true
     },
     {
-      "title": "典型案例 · 事故分析",
-      "tag": "典型案例",
-      "link": "/list?tag=典型案例",
-      "icon": "AlertTriangle",
+      "title": "知识推荐 · 最新精选",
+      "tag": "最新精选",
+      "link": "/list?tag=%E6%9C%80%E6%96%B0%E7%B2%BE%E9%80%89",
+      "icon": "Star",
+      "color": "#2563eb",
+      "bg": "#eff6ff",
       "enabled": true
     }
   ],
@@ -117,6 +121,8 @@
       4,
       5
     ],
+    "panel_title": "技术问答·专家在线",
+    "welcome_message": "你好，我是首钢知库智能助手，请问有什么可以帮您？",
     "hot_questions": [
       "振动纹通常如何排查？",
       "热轧精轧机轴承维护周期是多久？",
