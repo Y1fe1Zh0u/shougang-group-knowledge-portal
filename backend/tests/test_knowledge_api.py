@@ -174,6 +174,28 @@ def test_chat_proxy_uses_portal_prompt_and_whitelisted_spaces(tmp_path: Path):
     assert fake_bisheng.chat_payload["json"]["use_knowledge_base"]["knowledge_space_ids"] == [12, 18]
 
 
+def test_chat_proxy_falls_back_to_selected_qa_model(tmp_path: Path):
+    for client, config_service, fake_bisheng in make_client(tmp_path):
+        qa_config = config_service.get_config().qa.model_copy(
+            update={"selected_model": "1"}
+        )
+        config_service.update_qa(qa_config)
+
+        response = client.post(
+            "/api/v1/workstation/chat/completions",
+            json={
+                "clientTimestamp": "2026-04-15T10:00:00",
+                "model": "",
+                "scene": "qa",
+                "text": "振动纹如何排查？",
+            },
+        )
+
+    assert response.status_code == 200
+    assert fake_bisheng.chat_payload is not None
+    assert fake_bisheng.chat_payload["json"]["model"] == "1"
+
+
 def test_get_tags_aggregates_enabled_spaces(tmp_path: Path):
     for client, _, _ in make_client(tmp_path):
         response = client.get("/api/v1/knowledge/tags?space_ids=12&space_ids=18&space_ids=999")

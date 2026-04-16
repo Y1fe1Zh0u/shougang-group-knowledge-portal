@@ -39,6 +39,41 @@ class QAConfig(BaseModel):
     hot_questions: list[str] = Field(default_factory=list)
     ai_search_system_prompt: str = ""
     qa_system_prompt: str = ""
+    selected_model: str = ""
+
+
+class QAModelOption(BaseModel):
+    key: str = ""
+    id: str
+    name: str = ""
+    display_name: str = ""
+    visual: bool = False
+
+
+class QAModelOptionsResponse(BaseModel):
+    selected_model: str = ""
+    models: list[QAModelOption] = Field(default_factory=list)
+
+
+class SpaceOption(BaseModel):
+    id: int
+    name: str
+    description: str = ""
+    file_count: int = 0
+
+
+class SpaceOptionsResponse(BaseModel):
+    options: list[SpaceOption] = Field(default_factory=list)
+
+
+class SpaceFileItem(BaseModel):
+    id: int
+    name: str
+
+
+class SpaceFilesResponse(BaseModel):
+    space_id: int
+    files: list[SpaceFileItem] = Field(default_factory=list)
 
 
 class RecommendationConfig(BaseModel):

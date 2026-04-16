@@ -1,6 +1,9 @@
+import asyncio
+
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_portal_config_service
+from app.api.dependencies import get_bisheng_client, get_portal_config_service
+from app.clients.bisheng import BishengClient
 from app.schemas.common import response_ok
 from app.schemas.portal_config import (
     AppsConfigUpdate,
@@ -20,8 +23,21 @@ router = APIRouter(prefix="/api/v1/admin/config", tags=["admin-config"])
 @router.get("")
 async def get_portal_config(
     service: PortalConfigService = Depends(get_portal_config_service),
+    bisheng_client: BishengClient = Depends(get_bisheng_client),
 ):
-    return response_ok(service.get_config())
+    config = service.get_config()
+
+    async def fetch_space_info(space_id: int):
+        try:
+            response = await bisheng_client.get_json(f"/api/v1/knowledge/space/{space_id}/info")
+        except Exception:
+            return space_id, {}
+        data = response.get("data") or {}
+        return space_id, data if isinstance(data, dict) else {}
+
+    results = await asyncio.gather(*(fetch_space_info(space.id) for space in config.spaces))
+    live_space_data = {space_id: data for space_id, data in results}
+    return response_ok(service.with_live_space_data(config, live_space_data))
 
 
 @router.put("")
@@ -45,6 +61,59 @@ async def update_spaces_config(
     service: PortalConfigService = Depends(get_portal_config_service),
 ):
     return response_ok({"spaces": service.update_spaces(payload).spaces})
+
+
+@router.get("/space-options")
+async def get_space_options(
+    service: PortalConfigService = Depends(get_portal_config_service),
+    bisheng_client: BishengClient = Depends(get_bisheng_client),
+):
+    response = await bisheng_client.get_json(
+        "/api/v1/knowledge",
+        params={"page_num": 1, "page_size": 100, "type": 3},
+    )
+    data = response.get("data") or {}
+    raw_spaces = data.get("data") if isinstance(data, dict) else []
+    if not isinstance(raw_spaces, list):
+        raw_spaces = []
+
+    async def enrich_space(item: dict):
+        space_id = item.get("id")
+        if space_id is None:
+            return item
+        try:
+            info_response = await bisheng_client.get_json(f"/api/v1/knowledge/space/{space_id}/info")
+        except Exception:
+            return item
+        info = info_response.get("data") or {}
+        if not isinstance(info, dict):
+            return item
+        return {
+            **item,
+            "name": info.get("name") or item.get("name"),
+            "description": info.get("description") or item.get("description"),
+            "file_num": info.get("file_num") or item.get("file_num") or 0,
+        }
+
+    enriched_spaces = await asyncio.gather(*(enrich_space(item) for item in raw_spaces))
+    return response_ok(service.build_space_options(enriched_spaces))
+
+
+@router.get("/spaces/{space_id}/files")
+async def get_space_files(
+    space_id: int,
+    service: PortalConfigService = Depends(get_portal_config_service),
+    bisheng_client: BishengClient = Depends(get_bisheng_client),
+):
+    response = await bisheng_client.get_json(
+        f"/api/v1/knowledge/file_list/{space_id}",
+        params={"page_num": 1, "page_size": 100},
+    )
+    data = response.get("data") or {}
+    raw_files = data.get("data") if isinstance(data, dict) else []
+    if not isinstance(raw_files, list):
+        raw_files = []
+    return response_ok(service.build_space_files(space_id, raw_files))
 
 
 @router.get("/domains")
@@ -90,6 +159,19 @@ async def update_qa_config(
     service: PortalConfigService = Depends(get_portal_config_service),
 ):
     return response_ok(service.update_qa(payload).qa)
+
+
+@router.get("/qa/model-options")
+async def get_qa_model_options(
+    service: PortalConfigService = Depends(get_portal_config_service),
+    bisheng_client: BishengClient = Depends(get_bisheng_client),
+):
+    response = await bisheng_client.get_json("/api/v1/workstation/config/daily")
+    data = response.get("data") or {}
+    raw_models = data.get("models") if isinstance(data, dict) else []
+    if not isinstance(raw_models, list):
+        raw_models = []
+    return response_ok(service.build_qa_model_options(raw_models))
 
 
 @router.get("/recommendation")

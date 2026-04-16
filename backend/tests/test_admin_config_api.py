@@ -6,11 +6,71 @@ from app.main import app
 from app.services.portal_config_service import PortalConfigService
 
 
+class FakeBishengClient:
+    async def get_json(self, path: str, params=None):
+        if path == "/api/v1/workstation/config/daily":
+            return {
+                "data": {
+                    "models": [
+                        {
+                            "key": "daily-1",
+                            "id": "1",
+                            "name": "",
+                            "displayName": "日常模型 1",
+                            "visual": False,
+                        }
+                    ]
+                }
+            }
+        if path.startswith("/api/v1/knowledge/space/") and path.endswith("/info"):
+            space_id = int(path.split("/")[5])
+            return {
+                "data": {
+                    "id": space_id,
+                    "name": f"空间{space_id}",
+                    "file_num": space_id + 1,
+                }
+            }
+        if path == "/api/v1/knowledge":
+            return {
+                "data": {
+                    "data": [
+                        {
+                            "id": 19,
+                            "name": "知识空间测试",
+                            "description": "测试空间",
+                            "type": 3,
+                        }
+                    ]
+                }
+            }
+        if path == "/api/v1/knowledge/file_list/19":
+            return {
+                "data": {
+                    "data": [
+                        {
+                            "id": 101,
+                            "file_name": "操作手册.pdf",
+                        },
+                        {
+                            "id": 102,
+                            "file_name": "点检标准.docx",
+                        },
+                    ]
+                }
+            }
+        raise AssertionError(f"Unexpected path: {path}")
+
+    async def aclose(self):
+        return None
+
+
 def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = FakeBishengClient()
         response = client.get("/api/v1/admin/config")
 
     assert response.status_code == 200
@@ -20,6 +80,9 @@ def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     assert "domains" in body["data"]
     assert "ai_search_system_prompt" in body["data"]["qa"]
     assert "qa_system_prompt" in body["data"]["qa"]
+    assert "selected_model" in body["data"]["qa"]
+    assert body["data"]["spaces"][0]["name"] == "空间12"
+    assert body["data"]["spaces"][0]["file_count"] == 13
 
 
 def test_put_admin_domains_updates_persisted_config(tmp_path: Path):
@@ -63,6 +126,7 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
                 "hot_questions": ["振动纹通常如何排查？"],
                 "ai_search_system_prompt": "搜索提示词",
                 "qa_system_prompt": "问答提示词",
+                "selected_model": "1",
             },
         )
 
@@ -70,5 +134,73 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
     body = response.json()
     assert body["data"]["ai_search_system_prompt"] == "搜索提示词"
     assert body["data"]["qa_system_prompt"] == "问答提示词"
+    assert body["data"]["selected_model"] == "1"
     assert service.get_config().qa.ai_search_system_prompt == "搜索提示词"
     assert service.get_config().qa.qa_system_prompt == "问答提示词"
+    assert service.get_config().qa.selected_model == "1"
+
+
+def test_get_admin_qa_model_options_uses_bisheng_daily_config(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    service.update_qa(
+        service.get_config().qa.model_copy(
+            update={"selected_model": "1"}
+        )
+    )
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = FakeBishengClient()
+        response = client.get("/api/v1/admin/config/qa/model-options")
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["selected_model"] == "1"
+    assert body["models"] == [
+        {
+            "key": "daily-1",
+            "id": "1",
+            "name": "",
+            "display_name": "日常模型 1",
+            "visual": False,
+        }
+    ]
+
+
+def test_get_admin_space_options_uses_bisheng_knowledge_list(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = FakeBishengClient()
+        response = client.get("/api/v1/admin/config/space-options")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {
+        "options": [
+            {
+                "id": 19,
+                "name": "空间19",
+                "description": "测试空间",
+                "file_count": 20,
+            }
+        ]
+    }
+
+
+def test_get_admin_space_files_uses_bisheng_file_list(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = FakeBishengClient()
+        response = client.get("/api/v1/admin/config/spaces/19/files")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {
+        "space_id": 19,
+        "files": [
+            {"id": 101, "name": "操作手册.pdf"},
+            {"id": 102, "name": "点检标准.docx"},
+        ],
+    }

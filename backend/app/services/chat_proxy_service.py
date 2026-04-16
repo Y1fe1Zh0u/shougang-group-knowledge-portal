@@ -30,9 +30,10 @@ class ChatProxyService:
             if scene == "search"
             else config.qa.qa_system_prompt
         )
+        selected_model = payload.model or config.qa.selected_model or self._default_model
         use_knowledge_base = payload.use_knowledge_base or UseKnowledgeBaseParam()
         request_body = payload.model_dump(exclude={"scene"}, mode="json")
-        request_body["model"] = payload.model or self._default_model
+        request_body["model"] = selected_model
         request_body["text"] = self._build_final_prompt(system_prompt, payload.text)
         request_body["use_knowledge_base"] = {
             "personal_knowledge_enabled": use_knowledge_base.personal_knowledge_enabled,
