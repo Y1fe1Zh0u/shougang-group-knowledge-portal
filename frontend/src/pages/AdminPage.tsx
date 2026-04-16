@@ -10,8 +10,10 @@ import {
   type DisplayConfig,
   type DomainConfig,
   fetchAdminConfig,
+  fetchQaModelOptions,
   fetchSpaceOptions,
   type PortalConfig,
+  type QAModelOption,
   type RecommendationConfig,
   type SectionConfig,
   type SpaceOption,
@@ -122,6 +124,11 @@ export default function AdminPage() {
   const [qaTextDraft, setQaTextDraft] = useState('');
   const [qaSpacesDraft, setQaSpacesDraft] = useState<number[]>([]);
   const [qaDialogError, setQaDialogError] = useState('');
+  const [qaModelDialogOpen, setQaModelDialogOpen] = useState(false);
+  const [qaModelOptions, setQaModelOptions] = useState<QAModelOption[]>([]);
+  const [qaModelDraft, setQaModelDraft] = useState('');
+  const [qaModelLoading, setQaModelLoading] = useState(false);
+  const [qaModelError, setQaModelError] = useState('');
   const [recommendDialogKey, setRecommendDialogKey] = useState<RecommendationDialogKey>(null);
   const [recommendDraft, setRecommendDraft] = useState('');
   const [appEditorOpen, setAppEditorOpen] = useState(false);
@@ -207,6 +214,45 @@ export default function AdminPage() {
     setQaSpacesDraft(qa.knowledge_space_ids);
     setQaDialogError('');
   }
+
+  async function openQaModelDialog(qa: QAConfig) {
+    setQaModelDialogOpen(true);
+    setQaModelDraft(qa.selected_model);
+    setQaModelLoading(true);
+    setQaModelError('');
+    try {
+      const data = await fetchQaModelOptions();
+      setQaModelOptions(data.models);
+      setQaModelDraft(qa.selected_model || data.selected_model || '');
+    } catch (err) {
+      setQaModelError(err instanceof Error ? err.message : '模型列表加载失败');
+    } finally {
+      setQaModelLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (active !== 'qa' || !config || qaModelOptions.length) return;
+    let cancelled = false;
+    setQaModelLoading(true);
+    setQaModelError('');
+    void (async () => {
+      try {
+        const data = await fetchQaModelOptions();
+        if (cancelled) return;
+        setQaModelOptions(data.models);
+      } catch (err) {
+        if (cancelled) return;
+        setQaModelError(err instanceof Error ? err.message : '模型列表加载失败');
+      } finally {
+        if (!cancelled) setQaModelLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active, config, qaModelOptions.length]);
 
   function openQaTextDialog(mode: Exclude<QaDialogMode, 'spaces' | null>, value: string) {
     setQaDialogMode(mode);
@@ -315,10 +361,14 @@ export default function AdminPage() {
               qa={config.qa}
               spaces={config.spaces}
               saving={saving}
+              modelOptions={qaModelOptions}
+              modelLoading={qaModelLoading}
+              modelError={qaModelError}
               onEditSpaces={() => openQaSpacesDialog(config.qa)}
               onEditPanelTitle={() => openQaTextDialog('panel_title', config.qa.panel_title)}
               onEditWelcomeMessage={() => openQaTextDialog('welcome_message', config.qa.welcome_message)}
               onEditQuestions={() => openQaTextDialog('hot_questions', config.qa.hot_questions.join('\n'))}
+              onEditModel={() => void openQaModelDialog(config.qa)}
               onEditSearchPrompt={() => openQaTextDialog('ai_search_system_prompt', config.qa.ai_search_system_prompt)}
               onEditQaPrompt={() => openQaTextDialog('qa_system_prompt', config.qa.qa_system_prompt)}
             />
@@ -529,6 +579,28 @@ export default function AdminPage() {
             void runSave(async () => {
               await persistQa(nextQa, setConfig);
               setQaDialogMode(null);
+            });
+          }}
+        />
+      ) : null}
+      {config && qaModelDialogOpen ? (
+        <QaModelDialog
+          open
+          models={qaModelOptions}
+          selectedModel={qaModelDraft}
+          loading={qaModelLoading}
+          saving={saving}
+          error={qaModelError}
+          onClose={() => setQaModelDialogOpen(false)}
+          onSelect={setQaModelDraft}
+          onSubmit={() => {
+            if (!qaModelDraft) {
+              setQaModelError('请选择一个模型');
+              return;
+            }
+            void runSave(async () => {
+              await persistQa({ ...config.qa, selected_model: qaModelDraft }, setConfig);
+              setQaModelDialogOpen(false);
             });
           }}
         />
@@ -1306,23 +1378,36 @@ function QAConfigTable({
   qa,
   spaces,
   saving,
+  modelOptions,
+  modelLoading,
+  modelError,
   onEditSpaces,
   onEditPanelTitle,
   onEditWelcomeMessage,
   onEditQuestions,
+  onEditModel,
   onEditSearchPrompt,
   onEditQaPrompt,
 }: {
   qa: QAConfig;
   spaces: SpaceConfig[];
   saving: boolean;
+  modelOptions: QAModelOption[];
+  modelLoading: boolean;
+  modelError: string;
   onEditSpaces: () => void;
   onEditPanelTitle: () => void;
   onEditWelcomeMessage: () => void;
   onEditQuestions: () => void;
+  onEditModel: () => void;
   onEditSearchPrompt: () => void;
   onEditQaPrompt: () => void;
 }) {
+  const selectedModel = modelOptions.find((model) => model.id === qa.selected_model);
+  const selectedModelLabel = selectedModel
+    ? (selectedModel.display_name || selectedModel.name || selectedModel.id)
+    : qa.selected_model || '未配置';
+
   return (
     <>
       <div className={s.titleBar}>
@@ -1375,6 +1460,22 @@ function QAConfigTable({
               </div>
             </td>
             <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditQuestions} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>问答模型</td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{selectedModelLabel}</span>
+                <span className={s.valueMeta}>
+                  {modelLoading
+                    ? '正在从 BiSheng 日常模式加载模型列表...'
+                    : modelError
+                      ? '模型列表加载失败，当前显示的是已保存配置。'
+                      : '来自 BiSheng 日常模式，用于问答页和 AI Overview 的默认模型选择。'}
+                </span>
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditModel} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
           <tr>
             <td>AI Overview</td>
@@ -1712,6 +1813,78 @@ function QaSpacesDialog({
         <div className={s.confirmActions}>
           <button className={s.subtleBtn} onClick={onClose}>取消</button>
           <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QaModelDialog({
+  open,
+  models,
+  selectedModel,
+  loading,
+  saving,
+  error,
+  onClose,
+  onSelect,
+  onSubmit,
+}: {
+  open: boolean;
+  models: QAModelOption[];
+  selectedModel: string;
+  loading: boolean;
+  saving: boolean;
+  error?: string;
+  onClose: () => void;
+  onSelect: (modelId: string) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>编辑问答模型</h3>
+            <p className={s.modalNote}>候选项直接来自 BiSheng 的日常模式配置。问答页回复和 AI Overview 都会优先走这一项。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.modalHint}>当前候选数：{models.length}</div>
+        <div className={s.optionList}>
+          {loading ? <div className={s.emptyState}>正在加载模型列表...</div> : null}
+          {!loading && !models.length ? <div className={s.emptyState}>暂未获取到模型候选项</div> : null}
+          {!loading && models.map((model) => {
+            const checked = selectedModel === model.id;
+            const label = model.display_name || model.name || model.id;
+            return (
+              <button
+                key={model.id}
+                type="button"
+                className={`${s.optionRow} ${checked ? s.optionRowActive : ''}`}
+                onClick={() => onSelect(model.id)}
+              >
+                <span className={s.optionMain}>
+                  <span className={s.optionName}>{label}</span>
+                  <span className={s.optionMeta}>
+                    <span className={s.optionMetaItem}>ID {model.id}</span>
+                    {model.key ? <span className={s.optionMetaItem}>Key {model.key}</span> : null}
+                    <span className={s.optionMetaItem}>{model.visual ? '支持视觉' : '文本模型'}</span>
+                  </span>
+                </span>
+                <span className={s.optionSide}>
+                  <span className={`${s.checkboxMark} ${checked ? s.checkboxMarkActive : ''}`}>{checked ? '已选' : '选择'}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving || loading}>保存</button>
         </div>
       </div>
     </div>

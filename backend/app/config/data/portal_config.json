@@ -166,10 +166,10 @@
       "id": 1,
       "name": "写作助手",
       "icon": "PenLine",
-      "desc": "智能写作辅助工具，快速生成技术文档",
+      "desc": "智能写作辅助工具，快速生成技术文档 测试测试测试测试",
       "color": "#2563eb",
       "bg": "#eff6ff",
-      "url": "",
+      "url": "http://192.168.106.114:4001/chat/flow/1404f72de9ec46dda2b824452ac82eb4",
       "enabled": true
     },
     {
