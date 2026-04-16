@@ -1,9 +1,13 @@
-import { Building, CheckCircle, Factory, Settings, Shield, Snowflake, Zap, type LucideIcon } from 'lucide-react';
+import {
+  Building, CheckCircle, Factory, Settings, Shield, Snowflake, Zap, Leaf, Truck, Network, Wrench, GraduationCap, type LucideIcon,
+} from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCallback } from 'react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
-import { CFG, SPACES } from '../data/mock';
+import { getDomainVisualPreset } from '../utils/domainVisualPresets';
+import { usePortalConfig } from '../hooks/usePortalConfig';
+import { getEnabledDomains, getEnabledSpaces, getPrimarySpaceId } from '../utils/portalConfig';
 import s from './DomainsPage.module.css';
 
 const DOMAIN_ICONS: Record<string, LucideIcon> = {
@@ -13,17 +17,16 @@ const DOMAIN_ICONS: Record<string, LucideIcon> = {
   Zap,
   Shield,
   CheckCircle,
-};
-
-const DOMAIN_CARD_BACKGROUNDS: Record<string, string> = {
-  设备: '/device-domain-bg.png',
-  轧线: '/rolling-domain-bg.jpg',
-  冷轧: '/cold-domain-bg.jpg',
-  能源: '/energy-domain-bg.jpg',
+  Leaf,
+  Truck,
+  Network,
+  Wrench,
+  GraduationCap,
 };
 
 export default function DomainsPage() {
   const navigate = useNavigate();
+  const { config } = usePortalConfig();
   const navigateToTop = useCallback((path: string) => {
     const root = document.documentElement;
     const previousScrollBehavior = root.style.scrollBehavior;
@@ -34,6 +37,8 @@ export default function DomainsPage() {
       root.style.scrollBehavior = previousScrollBehavior;
     });
   }, [navigate]);
+  const spaces = config ? getEnabledSpaces(config.spaces) : [];
+  const domains = config ? getEnabledDomains(config.domains, config.spaces) : [];
 
   return (
     <PageShell>
@@ -44,10 +49,11 @@ export default function DomainsPage() {
           汇总首页业务域入口，点击后进入对应业务域的知识列表页。
         </p>
         <div className={s.grid}>
-          {CFG.domains.map((domain) => {
+          {domains.map((domain) => {
             const Icon = DOMAIN_ICONS[domain.icon] || Settings;
-            const space = SPACES.find((item) => item.id === domain.spaceId);
-            const domainBackground = DOMAIN_CARD_BACKGROUNDS[domain.name];
+            const space = spaces.find((item) => item.id === getPrimarySpaceId(domain.space_ids));
+            const visualPreset = getDomainVisualPreset(domain);
+            const domainBackground = visualPreset.backgroundImage;
             const usesBannerThumb = Boolean(domainBackground);
 
             return (
@@ -60,12 +66,16 @@ export default function DomainsPage() {
               >
                 {usesBannerThumb ? null : (
                   <div className={s.iconWrap} style={{ background: domain.bg, color: domain.color }}>
-                    <Icon size={24} />
+                    {visualPreset.logoImage ? (
+                      <img src={visualPreset.logoImage} alt={`${domain.name} logo`} className={s.domainLogoImage} />
+                    ) : (
+                      <Icon size={24} />
+                    )}
                   </div>
                 )}
                 <div className={s.cardBody}>
                   <div className={s.name}>{domain.name}</div>
-                  <div className={s.meta}>{space?.name || `空间 ${domain.spaceId}`}</div>
+                  <div className={s.meta}>{space?.name || `空间 ${domain.space_ids.join(', ')}`}</div>
                 </div>
               </button>
             );

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw,
 } from 'lucide-react';
+import DomainIcon from '../components/DomainIcon';
 import Header from '../components/Header';
 import {
   type AppConfig,
@@ -24,6 +25,15 @@ import {
   updateSectionsConfig,
   updateSpacesConfig,
 } from '../api/adminConfig';
+import {
+  createDomainDraft,
+  DOMAIN_COLOR_OPTIONS,
+  DOMAIN_ICON_OPTIONS,
+  isSelectedDomainColor,
+  validateDomainDraft,
+  type DomainDraft,
+} from '../utils/adminDomains';
+import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { canDeleteSpace, getSpaceBindingState, getSpaceUsage, getSpaceUsageSummary, setSpaceEnabled, upsertSpace } from '../utils/adminSpaces';
 import s from './AdminPage.module.css';
 
@@ -58,6 +68,11 @@ export default function AdminPage() {
   const [spaceOptionsError, setSpaceOptionsError] = useState('');
   const [spaceQuery, setSpaceQuery] = useState('');
   const [spaceDeleteIndex, setSpaceDeleteIndex] = useState<number | null>(null);
+  const [domainEditorOpen, setDomainEditorOpen] = useState(false);
+  const [domainEditorIndex, setDomainEditorIndex] = useState<number | null>(null);
+  const [domainDraft, setDomainDraft] = useState<DomainDraft>(createDomainDraft());
+  const [domainFormError, setDomainFormError] = useState('');
+  const [domainDeleteIndex, setDomainDeleteIndex] = useState<number | null>(null);
 
   async function loadConfig() {
     setLoading(true);
@@ -101,6 +116,20 @@ export default function AdminPage() {
     } finally {
       setSpaceOptionsLoading(false);
     }
+  }
+
+  function openCreateDomainDialog() {
+    setDomainEditorOpen(true);
+    setDomainEditorIndex(null);
+    setDomainDraft(createDomainDraft());
+    setDomainFormError('');
+  }
+
+  function openEditDomainDialog(domain: DomainConfig, index: number) {
+    setDomainEditorOpen(true);
+    setDomainEditorIndex(index);
+    setDomainDraft(createDomainDraft(domain));
+    setDomainFormError('');
   }
 
   const displayItems = config ? getDisplayItems(config.display) : [];
@@ -158,9 +187,9 @@ export default function AdminPage() {
               domains={config.domains}
               spaces={config.spaces}
               saving={saving}
-              onAdd={() => void handleAddDomain(config.domains, config.spaces, runSave, setConfig)}
-              onEdit={(index) => void handleEditDomain(config.domains, config.spaces, index, runSave, setConfig)}
-              onDelete={(index) => void handleDeleteDomain(config.domains, index, runSave, setConfig)}
+              onAdd={openCreateDomainDialog}
+              onEdit={(index) => openEditDomainDialog(config.domains[index], index)}
+              onDelete={(index) => setDomainDeleteIndex(index)}
             />
           )}
           {config && active === 'sections' && (
@@ -236,6 +265,51 @@ export default function AdminPage() {
             void handleDeleteSpace(config.spaces, spaceDeleteIndex, runSave, setConfig, {
               confirm: false,
               onSuccess: () => setSpaceDeleteIndex(null),
+            });
+          }}
+        />
+      ) : null}
+      {config && domainEditorOpen ? (
+        <DomainEditorDialog
+          open
+          spaces={config.spaces}
+          draft={domainDraft}
+          saving={saving}
+          error={domainFormError}
+          onClose={() => setDomainEditorOpen(false)}
+          onChange={(patch) => {
+            setDomainDraft((current) => ({ ...current, ...patch }));
+            setDomainFormError('');
+          }}
+          onSubmit={() => {
+            const result = validateDomainDraft(domainDraft, config.spaces);
+            if (!result.domain) {
+              setDomainFormError(result.error || '业务域配置无效');
+              return;
+            }
+            if (domainEditorIndex === null) {
+              void handleAddDomain(config.domains, result.domain, runSave, setConfig, {
+                onSuccess: () => setDomainEditorOpen(false),
+              });
+              return;
+            }
+            void handleEditDomain(config.domains, domainEditorIndex, result.domain, runSave, setConfig, {
+              onSuccess: () => setDomainEditorOpen(false),
+            });
+          }}
+        />
+      ) : null}
+      {config && domainDeleteIndex !== null ? (
+        <DomainDeleteDialog
+          open
+          domain={config.domains[domainDeleteIndex]}
+          spaceName={config.spaces.find((space) => space.id === config.domains[domainDeleteIndex].space_ids[0])?.name}
+          saving={saving}
+          onClose={() => setDomainDeleteIndex(null)}
+          onConfirm={() => {
+            void handleDeleteDomain(config.domains, domainDeleteIndex, runSave, setConfig, {
+              confirm: false,
+              onSuccess: () => setDomainDeleteIndex(null),
             });
           }}
         />
@@ -488,7 +562,7 @@ function DomainsTable({
       </div>
       {/* TODO: Confirm with product whether domain cards should use photo backgrounds, logo/icon cards, or support both as a configurable strategy. */}
       <p className={s.pageNote}>
-        待与产品确认最终卡片策略：业务域卡片是采用“图片背景卡”还是“Logo/图标卡”，后台当前同时预留背景图和 Logo/图标 配置位。首页业务域导航当前按前端数组顺序取前 N 个展示。
+        待与产品确认最终卡片策略：业务域卡片是采用“图片背景卡”还是“Logo/图标卡”，后台当前同时预留背景图和 Logo/图标 配置位。首页业务域导航当前按前端数组顺序取前 N 个展示，业务域通过新增和删除管理，不单独做停用。
       </p>
       <table className={s.table}>
         <thead>
@@ -503,16 +577,31 @@ function DomainsTable({
         <tbody>
           {domains.map((d, index) => {
             const sp = spaces.find((ss) => ss.id === d.space_ids[0]);
-            const backgroundImage = d.background_image;
+            const visualPreset = getDomainVisualPreset(d);
+            const backgroundImage = visualPreset.backgroundImage;
             return (
               <tr key={d.name}>
                 <td>{d.name}</td>
-                <td>{d.icon}</td>
-                <td>{backgroundImage || '未配置'}</td>
+                <td>
+                  {visualPreset.logoImage ? (
+                    <img src={visualPreset.logoImage} alt={`${d.name} logo`} className={s.logoPreview} />
+                  ) : (
+                    d.icon
+                  )}
+                </td>
+                <td>
+                  {backgroundImage ? (
+                    <img src={backgroundImage} alt={`${d.name} 背景`} className={s.backgroundPreview} />
+                  ) : (
+                    '未配置'
+                  )}
+                </td>
                 <td>{sp?.name || d.space_ids.join(', ')}</td>
                 <td>
-                  <span className={s.editBtn} onClick={() => onEdit(index)}>编辑</span>
-                  <span className={s.deleteBtn} onClick={() => onDelete(index)}>删除</span>
+                  <div className={s.actionGroup}>
+                    <button className={s.inlineBtn} onClick={() => onEdit(index)} disabled={saving}>编辑</button>
+                    <button className={s.inlineDangerBtn} onClick={() => onDelete(index)} disabled={saving}>删除</button>
+                  </div>
                 </td>
               </tr>
             );
@@ -520,6 +609,157 @@ function DomainsTable({
         </tbody>
       </table>
     </>
+  );
+}
+
+function DomainEditorDialog({
+  open,
+  spaces,
+  draft,
+  saving,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  spaces: SpaceConfig[];
+  draft: DomainDraft;
+  saving: boolean;
+  error: string;
+  onClose: () => void;
+  onChange: (patch: Partial<DomainDraft>) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>{draft.name.trim() ? `编辑业务域 · ${draft.name}` : '新增业务域'}</h3>
+            <p className={s.modalNote}>一个业务域绑定一个知识空间，前台按数组顺序展示。需要下线时直接删除该业务域。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.formGrid}>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>业务域名称</span>
+            <input
+              className={s.formInput}
+              value={draft.name}
+              onChange={(event) => onChange({ name: event.target.value })}
+              placeholder="例如：轧线"
+            />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>绑定空间</span>
+            <select
+              className={s.formInput}
+              value={draft.spaceId}
+              onChange={(event) => onChange({ spaceId: event.target.value })}
+            >
+              <option value="">请选择知识空间</option>
+              {spaces.map((space) => (
+                <option key={space.id} value={space.id}>
+                  {space.name}{space.enabled ? '' : '（已停用）'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>背景图</span>
+            <input
+              className={s.formInput}
+              value={draft.backgroundImage}
+              onChange={(event) => onChange({ backgroundImage: event.target.value })}
+              placeholder="/rolling-domain-bg.jpg"
+            />
+          </label>
+          <div className={`${s.formField} ${s.formFieldWide}`}>
+            <span className={s.fieldLabel}>图标</span>
+            <div className={s.optionPickerRow}>
+              {DOMAIN_ICON_OPTIONS.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  className={`${s.iconOptionBtn} ${draft.icon === icon ? s.iconOptionBtnActive : ''}`}
+                  onClick={() => onChange({ icon })}
+                >
+                  <DomainIcon icon={icon} color={draft.color} bg={draft.bg} size={40} />
+                  <span className={s.optionLabel}>{icon}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={`${s.formField} ${s.formFieldWide}`}>
+            <span className={s.fieldLabel}>颜色</span>
+            <div className={s.optionPickerRow}>
+              {DOMAIN_COLOR_OPTIONS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  className={`${s.colorOptionBtn} ${isSelectedDomainColor(draft, option) ? s.colorOptionBtnActive : ''}`}
+                  onClick={() => onChange({ color: option.color, bg: option.bg })}
+                >
+                  <span className={s.colorPairPreview}>
+                    <span className={s.colorSwatchMain} style={{ background: option.color }} />
+                    <span className={s.colorSwatchBg} style={{ background: option.bg }} />
+                  </span>
+                  <span className={s.optionLabel}>{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DomainDeleteDialog({
+  open,
+  domain,
+  spaceName,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  domain: DomainConfig;
+  spaceName?: string;
+  saving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.confirmCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>删除业务域</h3>
+            <p className={s.modalNote}>删除后该业务域入口会从首页和业务域页消失，但不会影响原知识空间。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+        </div>
+        <div className={s.confirmBody}>
+          <div className={s.confirmLine}><strong>业务域名称：</strong>{domain.name}</div>
+          <div className={s.confirmLine}><strong>绑定空间：</strong>{spaceName || domain.space_ids.join(', ')}</div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          <button className={s.dangerBtn} onClick={onConfirm} disabled={saving}>确认删除</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -848,23 +1088,47 @@ async function handleDeleteSpace(
   });
 }
 
-async function handleAddDomain(domains: DomainConfig[], spaces: SpaceConfig[], runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptDomain(spaces);
-  if (!next) return;
-  await runSave(() => persistDomains([...domains, next], setConfig));
+async function handleAddDomain(
+  domains: DomainConfig[],
+  next: DomainConfig,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { onSuccess?: () => void },
+) {
+  await runSave(async () => {
+    await persistDomains([...domains, next], setConfig);
+    options?.onSuccess?.();
+  });
 }
 
-async function handleEditDomain(domains: DomainConfig[], spaces: SpaceConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptDomain(spaces, domains[index]);
-  if (!next) return;
+async function handleEditDomain(
+  domains: DomainConfig[],
+  index: number,
+  next: DomainConfig,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { onSuccess?: () => void },
+) {
   const updated = [...domains];
   updated[index] = next;
-  await runSave(() => persistDomains(updated, setConfig));
+  await runSave(async () => {
+    await persistDomains(updated, setConfig);
+    options?.onSuccess?.();
+  });
 }
 
-async function handleDeleteDomain(domains: DomainConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  if (!window.confirm(`确定删除业务域“${domains[index].name}”吗？`)) return;
-  await runSave(() => persistDomains(domains.filter((_, i) => i !== index), setConfig));
+async function handleDeleteDomain(
+  domains: DomainConfig[],
+  index: number,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { confirm?: boolean; onSuccess?: () => void },
+) {
+  if (options?.confirm !== false && !window.confirm(`确定删除业务域“${domains[index].name}”吗？`)) return;
+  await runSave(async () => {
+    await persistDomains(domains.filter((_, i) => i !== index), setConfig);
+    options?.onSuccess?.();
+  });
 }
 
 async function handleAddSection(sections: SectionConfig[], runSave: SaveRunner, setConfig: ConfigSetter) {
@@ -951,32 +1215,6 @@ async function handleEditApp(apps: AppConfig[], index: number, runSave: SaveRunn
 async function handleDeleteApp(apps: AppConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
   if (!window.confirm(`确定删除应用“${apps[index].name}”吗？`)) return;
   await runSave(() => persistApps(apps.filter((_, i) => i !== index), setConfig));
-}
-
-function promptDomain(spaces: SpaceConfig[], current?: DomainConfig): DomainConfig | null {
-  const name = promptText('业务域名称', current?.name || '');
-  if (!name) return null;
-  const spaceId = promptNumber(
-    `绑定空间 ID（可选：${spaces.map((space) => `${space.id}:${space.name}`).join(' / ')}）`,
-    current?.space_ids[0],
-  );
-  if (spaceId === null) return null;
-  const icon = promptText('图标名', current?.icon || 'Factory');
-  if (!icon) return null;
-  const background_image = promptOptionalText('背景图路径，可留空', current?.background_image || '');
-  const color = promptText('主色值', current?.color || '#2563eb');
-  if (!color) return null;
-  const bg = promptText('背景色值', current?.bg || '#eff6ff');
-  if (!bg) return null;
-  return {
-    name,
-    space_ids: [spaceId],
-    icon,
-    background_image,
-    color,
-    bg,
-    enabled: current?.enabled ?? true,
-  };
 }
 
 function promptSection(current?: SectionConfig): SectionConfig | null {

@@ -1,21 +1,23 @@
-import { useState, useEffect, useCallback, type KeyboardEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, type KeyboardEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Search, Building, Star, AlertTriangle, FolderOpen, LayoutGrid,
   BarChart3, Bot, ChevronRight, FileText, Tag,
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
-  PenLine, MessageSquare, Globe, Network, User,
+  PenLine, MessageSquare, Globe, Network, User, Leaf, Truck, Wrench, GraduationCap,
 } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
-import { CFG, SPACES, FILES, queryFiles } from '../data/mock';
-import { DISPLAY_CONFIG } from '../config/display';
-import type { FileItem } from '../data/mock';
+import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content';
+import { CFG } from '../data/mock';
+import { usePortalConfig } from '../hooks/usePortalConfig';
+import { getDomainVisualPreset } from '../utils/domainVisualPresets';
+import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './HomePage.module.css';
 
 const DOMAIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
-  Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
+  Settings, Factory, Snowflake, Zap, Shield, CheckCircle, Leaf, Truck, Network, Wrench, GraduationCap,
 };
 
 const APP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -24,13 +26,6 @@ const APP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 
 const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Star, AlertTriangle,
-};
-
-const DOMAIN_CARD_BACKGROUNDS: Record<string, string> = {
-  设备: '/device-domain-bg.png',
-  轧线: '/rolling-domain-bg.jpg',
-  冷轧: '/cold-domain-bg.jpg',
-  能源: '/energy-domain-bg.jpg',
 };
 
 const HERO_IMAGE_URLS = [
@@ -49,12 +44,16 @@ function getPrimaryTag(file: FileItem) {
   return file.tags.find((t) => t !== '最新精选' && t !== '典型案例');
 }
 
-const META_TAGS = new Set(['最新精选', '典型案例']);
-
 export default function HomePage() {
   const navigate = useNavigate();
+  const { config, error } = usePortalConfig();
+  const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [query, setQuery] = useState('');
   const [bannerIdx, setBannerIdx] = useState(0);
+  const [sectionData, setSectionData] = useState<Record<string, FileItem[]>>({});
+  const [hotTags, setHotTags] = useState<string[]>([]);
+  const [caseCount, setCaseCount] = useState(0);
+  const [loadError, setLoadError] = useState('');
 
   const navigateToTop = useCallback((path: string) => {
     const root = document.documentElement;
@@ -83,30 +82,64 @@ export default function HomePage() {
     if (e.key === 'Enter') handleSearch();
   };
 
-  /* Data for sections */
-  const sectionData: Record<string, FileItem[]> = {};
-  for (const sec of CFG.sections) {
-    sectionData[sec.tag] = queryFiles({ tag: sec.tag, pageSize: DISPLAY_CONFIG.home.sectionPageSize }).data;
-  }
+  const enabledSpaces = useMemo(() => (config ? getEnabledSpaces(config.spaces) : []), [config]);
+  const enabledDomains = useMemo(() => (config ? getEnabledDomains(config.domains, config.spaces) : []), [config]);
+  const enabledSections = useMemo(() => (config ? getEnabledSections(config.sections) : []), [config]);
+  const enabledApps = useMemo(() => (config ? getEnabledApps(config.apps) : []), [config]);
+  const enabledSpaceIds = useMemo(() => enabledSpaces.map((space) => space.id), [enabledSpaces]);
+
+  useEffect(() => {
+    let active = true;
+    if (!config) return () => {
+      active = false;
+    };
+
+    void (async () => {
+      try {
+        const [sectionResults, tagResults, caseResult] = await Promise.all([
+          Promise.all(
+            enabledSections.map(async (section) => [
+              section.tag,
+              await searchFiles({
+                tag: section.tag,
+                spaceIds: enabledSpaceIds,
+                pageSize: displayConfig.home.sectionPageSize,
+              }),
+            ] as const),
+          ),
+          fetchAggregatedTags(enabledSpaceIds),
+          searchFiles({
+            tag: '典型案例',
+            spaceIds: enabledSpaceIds,
+            pageSize: 1,
+          }),
+        ]);
+        if (!active) return;
+        setSectionData(
+          Object.fromEntries(sectionResults.map(([tag, result]) => [tag, result.data])),
+        );
+        setHotTags(tagResults);
+        setCaseCount(caseResult.total);
+        setLoadError('');
+      } catch (err) {
+        if (!active) return;
+        setLoadError(err instanceof Error ? err.message : '首页数据加载失败');
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [config, displayConfig.home.sectionPageSize, enabledSections, enabledSpaceIds]);
 
   /* Stats */
-  const totalFiles = SPACES.reduce((a, sp) => a + sp.fileCount, 0);
-  const caseCount = FILES.filter((f) => f.tags.includes('典型案例')).length;
-  const tagCount = new Set(FILES.flatMap((f) => f.tags)).size;
-  const spaceCount = SPACES.length;
+  const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
+  const tagCount = hotTags.length;
+  const spaceCount = enabledSpaces.length;
   const activeBanner = CFG.banners[bannerIdx];
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
-  // Homepage domain order follows CFG.domains order; the homepage only renders the first N items.
-  const homeDomains = CFG.domains.slice(0, DISPLAY_CONFIG.home.domainCount);
-  const hotTags = [...FILES.reduce((acc, file) => {
-    file.tags.forEach((tag) => {
-      if (META_TAGS.has(tag)) return;
-      acc.set(tag, (acc.get(tag) ?? 0) + 1);
-    });
-    return acc;
-  }, new Map<string, number>()).entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'))
-    .slice(0, DISPLAY_CONFIG.home.hotTagsCount);
+  const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
+  const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
 
   return (
     <PageShell>
@@ -141,7 +174,7 @@ export default function HomePage() {
             </div>
             <div className={s.hotTags}>
               <span className={s.hotLabel}>热门搜索：</span>
-              {CFG.hot.map((t) => (
+              {rankedHotTags.map((t) => (
                 <button key={t} className={s.hotTag} onClick={() => navigate(`/search?q=${encodeURIComponent(t)}`)}>
                   {t}
                 </button>
@@ -197,7 +230,8 @@ export default function HomePage() {
           <div className={s.domainGrid}>
             {homeDomains.map((d) => {
               const Icon = DOMAIN_ICONS[d.icon] || Settings;
-              const domainBackground = DOMAIN_CARD_BACKGROUNDS[d.name];
+              const visualPreset = getDomainVisualPreset(d);
+              const domainBackground = visualPreset.backgroundImage;
               const usesBannerThumb = Boolean(domainBackground);
               return (
                 <div
@@ -208,7 +242,11 @@ export default function HomePage() {
                 >
                   {usesBannerThumb ? null : (
                     <div className={s.domainIcon} style={{ background: d.bg, color: d.color }}>
-                      <Icon size={24} />
+                      {visualPreset.logoImage ? (
+                        <img src={visualPreset.logoImage} alt={`${d.name} logo`} className={s.domainLogoImage} />
+                      ) : (
+                        <Icon size={24} />
+                      )}
                     </div>
                   )}
                   <div className={s.domainName}>{d.name}</div>
@@ -222,7 +260,7 @@ export default function HomePage() {
         <div className={s.columns}>
           {/* Left: knowledge list panels */}
           <div>
-            {CFG.sections.map((sec) => {
+            {enabledSections.map((sec) => {
               const Icon = SECTION_ICONS[sec.icon] || Star;
               const items = sectionData[sec.tag] || [];
               const showSummary = sec.tag === '最新精选' || sec.tag === '典型案例';
@@ -323,7 +361,7 @@ export default function HomePage() {
                   进入智能问答
                 </button>
               </div>
-              {CFG.qaHot.slice(0, DISPLAY_CONFIG.home.qaHotCount).map((q, i) => (
+              {(config?.qa.hot_questions || []).slice(0, displayConfig.home.qaHotCount).map((q, i) => (
                 <div
                   key={i}
                   className={s.qaItem}
@@ -344,7 +382,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={s.tagRankGrid}>
-                {hotTags.map(([tagName, count], index) => (
+                {rankedHotTags.map((tagName, index) => (
                   <button
                     key={tagName}
                     type="button"
@@ -353,7 +391,7 @@ export default function HomePage() {
                   >
                     <span className={s.tagRankIndex}>#{index + 1}</span>
                     <span className={s.tagRankName}>{tagName}</span>
-                    <span className={s.tagRankCount}>{count} 篇</span>
+                    <span className={s.tagRankCount}>标签</span>
                   </button>
                 ))}
               </div>
@@ -367,7 +405,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={s.squareGrid}>
-                {SPACES.slice(0, DISPLAY_CONFIG.home.spacesCount).map((sp) => (
+                {enabledSpaces.slice(0, displayConfig.home.spacesCount).map((sp) => (
                   <div
                     key={sp.id}
                     className={s.squareCard}
@@ -375,7 +413,7 @@ export default function HomePage() {
                   >
                     <span className={s.squareName}>{sp.name}</span>
                     <span className={s.squareCount}>
-                      <span className={s.squareNum}>{sp.fileCount}</span>
+                      <span className={s.squareNum}>{sp.file_count}</span>
                       <span className={s.squareUnit}>篇</span>
                     </span>
                   </div>
@@ -386,11 +424,13 @@ export default function HomePage() {
           </div>
         </div>
 
+        {error || loadError ? <div className={s.bottomPad}>{error || loadError}</div> : null}
+
         {/* App market */}
         <div className={s.section}>
           <SectionHeader icon={LayoutGrid} title="应用市场" moreLink="/apps" moreText="全部应用" size="large" />
           <div className={s.appGrid}>
-            {CFG.apps.slice(0, DISPLAY_CONFIG.home.appsCount).map((app) => {
+            {enabledApps.slice(0, displayConfig.home.appsCount).map((app) => {
               const Icon = APP_ICONS[app.icon] || FileText;
               return (
                 <div key={app.id} className={s.appCard}>
@@ -399,7 +439,9 @@ export default function HomePage() {
                   </div>
                   <div className={s.appName}>{app.name}</div>
                   <div className={s.appDesc}>{app.desc}</div>
-                  <button className={s.appBtn}>打开</button>
+                  <button className={s.appBtn} onClick={() => app.url && window.open(app.url, '_blank', 'noopener,noreferrer')} disabled={!app.url}>
+                    {app.url ? '打开' : '未配置地址'}
+                  </button>
                 </div>
               );
             })}

@@ -76,6 +76,12 @@
   margin: 0 auto 16px;
 }
 
+.domainLogoImage {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
 .cardBody {
   position: relative;
   z-index: 1;
