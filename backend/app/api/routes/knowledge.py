@@ -101,6 +101,16 @@ async def get_file_preview(
     return response_ok(preview)
 
 
+@router.get("/space/{space_id}/files/{file_id}/chunks")
+async def get_file_chunks(
+    space_id: int,
+    file_id: int,
+    service: KnowledgeService = Depends(get_knowledge_service),
+):
+    chunks = await service.get_file_chunks(space_id=space_id, file_id=file_id)
+    return response_ok(chunks)
+
+
 @router.get("/space/{space_id}/files/{file_id}/related")
 async def get_related_files(
     space_id: int,

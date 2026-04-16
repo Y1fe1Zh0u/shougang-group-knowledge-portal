@@ -10,6 +10,9 @@ class FakeBishengClient:
     def __init__(self):
         self.chat_payload = None
 
+    def resolve_url(self, path_or_url: str) -> str:
+        return path_or_url
+
     async def get_json(self, path: str, params=None):
         params = params or {}
         if path == "/api/v1/knowledge/space/12/search":
@@ -98,6 +101,23 @@ class FakeBishengClient:
                     "preview_url": "https://example.com/preview/1580.pdf",
                 }
             }
+        if path == "/api/v1/knowledge/chunk":
+            assert params == {"knowledge_id": 12, "file_ids": [1580], "page": 1, "limit": 100}
+            return {
+                "data": {
+                    "data": [
+                        {
+                            "text": "第一段内容",
+                            "metadata": {"chunk_index": 1},
+                        },
+                        {
+                            "text": "第二段内容",
+                            "metadata": {"chunk_index": 2},
+                        },
+                    ],
+                    "total": 2,
+                }
+            }
         raise AssertionError(f"Unexpected path: {path}")
 
     async def stream_post(self, path: str, json=None):
@@ -143,6 +163,46 @@ def test_get_file_detail_and_preview(tmp_path: Path):
     assert preview_response.status_code == 200
     preview = preview_response.json()["data"]
     assert preview["preview_url"] == "https://example.com/preview/1580.pdf"
+
+
+def test_get_file_preview_normalizes_relative_urls(tmp_path: Path):
+    class RelativePreviewBishengClient(FakeBishengClient):
+        async def get_json(self, path: str, params=None):
+            if path == "/api/v1/knowledge/space/12/files/1580/preview":
+                return {
+                    "data": {
+                        "original_url": "/bisheng/original/1580.pdf?signature=demo",
+                        "preview_url": "",
+                    }
+                }
+            return await super().get_json(path, params=params)
+
+        def resolve_url(self, path_or_url: str) -> str:
+            return f"https://bisheng.example.com{path_or_url}" if path_or_url.startswith("/") else path_or_url
+
+    config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    fake_bisheng = RelativePreviewBishengClient()
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = config_service
+        client.app.state.bisheng_client = fake_bisheng
+        preview_response = client.get("/api/v1/knowledge/space/12/files/1580/preview")
+
+    assert preview_response.status_code == 200
+    preview = preview_response.json()["data"]
+    assert preview["original_url"] == "https://bisheng.example.com/bisheng/original/1580.pdf?signature=demo"
+    assert preview["preview_url"] == ""
+
+
+def test_get_file_chunks_returns_sorted_chunk_text(tmp_path: Path):
+    for client, _, _ in make_client(tmp_path):
+        response = client.get("/api/v1/knowledge/space/12/files/1580/chunks")
+
+    assert response.status_code == 200
+    chunks = response.json()["data"]
+    assert chunks == [
+        {"chunk_index": 1, "text": "第一段内容"},
+        {"chunk_index": 2, "text": "第二段内容"},
+    ]
 
 
 def test_chat_proxy_uses_portal_prompt_and_whitelisted_spaces(tmp_path: Path):

@@ -36,3 +36,8 @@ class RelatedKnowledgeFileData(BaseModel):
 class FilePreviewData(BaseModel):
     original_url: str
     preview_url: str
+
+
+class FileChunkItem(BaseModel):
+    chunk_index: int
+    text: str

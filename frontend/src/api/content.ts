@@ -20,6 +20,11 @@ export interface FilePreviewData {
   previewUrl: string;
 }
 
+export interface FileChunkItem {
+  chunkIndex: number;
+  text: string;
+}
+
 interface ApiEnvelope<T> {
   status_code: number;
   status_message: string;
@@ -56,6 +61,11 @@ interface RelatedKnowledgeFileDataDto {
 interface FilePreviewDataDto {
   original_url: string;
   preview_url: string;
+}
+
+interface FileChunkItemDto {
+  chunk_index: number;
+  text: string;
 }
 
 export function mapKnowledgeFileItem(dto: KnowledgeFileItemDto): FileItem {
@@ -169,6 +179,14 @@ export async function fetchFilePreview(spaceId: number, fileId: number): Promise
     originalUrl: data.original_url,
     previewUrl: data.preview_url,
   };
+}
+
+export async function fetchFileChunks(spaceId: number, fileId: number): Promise<FileChunkItem[]> {
+  const data = await request<FileChunkItemDto[]>(`/api/v1/knowledge/space/${spaceId}/files/${fileId}/chunks`);
+  return data.map((item) => ({
+    chunkIndex: item.chunk_index,
+    text: item.text,
+  }));
 }
 
 export async function fetchRelatedFiles(spaceId: number, fileId: number, limit: number): Promise<FileItem[]> {

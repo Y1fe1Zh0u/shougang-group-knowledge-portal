@@ -1,11 +1,13 @@
 from collections.abc import AsyncIterator
 from typing import Optional
+from urllib.parse import urljoin
 
 import httpx
 
 
 class BishengClient:
     def __init__(self, base_url: str, timeout_seconds: float, api_token: Optional[str] = None):
+        self._base_url = base_url.rstrip("/") + "/"
         headers: dict[str, str] = {}
         if api_token:
             headers["Authorization"] = f"Bearer {api_token}"
@@ -34,6 +36,11 @@ class BishengClient:
     async def post_json(self, path: str, json: Optional[dict] = None) -> dict:
         response = await self.post(path, json=json)
         return response.json()
+
+    def resolve_url(self, path_or_url: str) -> str:
+        if not path_or_url:
+            return ""
+        return urljoin(self._base_url, path_or_url)
 
     async def stream_post(self, path: str, json: Optional[dict] = None) -> AsyncIterator[bytes]:
         async with self._client.stream("POST", path, json=json) as response:

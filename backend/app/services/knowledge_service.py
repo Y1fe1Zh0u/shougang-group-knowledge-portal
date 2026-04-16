@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from app.clients.bisheng import BishengClient
 from app.schemas.knowledge import (
+    FileChunkItem,
     FilePreviewData,
     KnowledgeFileDetail,
     KnowledgeFileItem,
@@ -149,7 +150,50 @@ class KnowledgeService:
         data = preview_resp.get("data") or {}
         if not data:
             return None
-        return FilePreviewData.model_validate(data)
+        normalized = {
+            **data,
+            "original_url": self._bisheng.resolve_url(str(data.get("original_url") or "")),
+            "preview_url": self._bisheng.resolve_url(str(data.get("preview_url") or "")),
+        }
+        return FilePreviewData.model_validate(normalized)
+
+    async def get_file_chunks(self, space_id: int, file_id: int) -> list[FileChunkItem]:
+        detail = await self.get_file_detail(space_id=space_id, file_id=file_id)
+        if detail is None:
+            return []
+
+        page = 1
+        chunks: list[FileChunkItem] = []
+        total = 0
+        while True:
+            response = await self._bisheng.get_json(
+                "/api/v1/knowledge/chunk",
+                params={
+                    "knowledge_id": space_id,
+                    "file_ids": [file_id],
+                    "page": page,
+                    "limit": self._page_size_limit,
+                },
+            )
+            data = response.get("data") or {}
+            raw_items = data.get("data") or []
+            total = int(data.get("total") or 0)
+            if not raw_items:
+                break
+            for index, item in enumerate(raw_items):
+                metadata = item.get("metadata") or {}
+                chunks.append(
+                    FileChunkItem(
+                        chunk_index=int(metadata.get("chunk_index") or index),
+                        text=str(item.get("text") or ""),
+                    )
+                )
+            if len(chunks) >= total:
+                break
+            page += 1
+
+        chunks.sort(key=lambda item: item.chunk_index)
+        return chunks
 
     async def get_related_files(
         self,
