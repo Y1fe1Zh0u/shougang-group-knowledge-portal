@@ -198,3 +198,257 @@
   border: 1px dashed var(--neutral-200);
   border-radius: var(--radius-md);
 }
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.36);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  z-index: 40;
+}
+
+.modalCard {
+  width: min(860px, 100%);
+  max-height: min(calc(100vh - 48px), 760px);
+  margin: auto 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 20px 0;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.modalNote {
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--neutral-500);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px 0;
+}
+
+.optionSearch {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--neutral-900);
+  font-size: 0.84rem;
+}
+
+.optionSearch:focus {
+  outline: none;
+  border-color: var(--primary-500);
+}
+
+.modalHint {
+  padding: 12px 20px 0;
+  font-size: 0.8rem;
+  color: var(--neutral-500);
+}
+
+.optionList {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+}
+
+.optionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.optionRow:last-child {
+  border-bottom: none;
+}
+
+.optionMain {
+  min-width: 0;
+}
+
+.optionName {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+
+.optionMeta {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--neutral-500);
+}
+
+.optionSide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.optionCount {
+  font-size: 0.78rem;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+.spaceNameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inlineHint {
+  font-size: 0.76rem;
+  color: var(--neutral-500);
+}
+
+.stateEnabled,
+.stateDisabled {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.stateEnabled {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.stateDisabled {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inlineBtn,
+.inlineDangerBtn,
+.inlineMutedBtn,
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.inlineBtn {
+  color: var(--primary-700);
+  border-color: var(--primary-200);
+  background: var(--primary-50);
+}
+
+.inlineDangerBtn,
+.dangerBtn {
+  color: #fff;
+  background: #dc2626;
+}
+
+.inlineMutedBtn {
+  color: var(--neutral-400);
+  background: var(--neutral-100);
+}
+
+.confirmCard {
+  width: min(520px, 100%);
+  margin: auto 0;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.confirmBody {
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.confirmLine {
+  font-size: 0.84rem;
+  color: var(--neutral-700);
+  line-height: 1.6;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+@media (max-width: 900px) {
+  .modalBackdrop {
+    padding: 12px;
+  }
+
+  .modalCard {
+    max-height: calc(100vh - 24px);
+  }
+}
+
+@media (max-width: 640px) {
+  .modalActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .optionRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .optionSide {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .actionGroup,
+  .confirmActions {
+    flex-wrap: wrap;
+  }
+}

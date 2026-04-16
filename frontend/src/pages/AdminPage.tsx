@@ -9,9 +9,11 @@ import {
   type DisplayConfig,
   type DomainConfig,
   fetchAdminConfig,
+  fetchSpaceOptions,
   type PortalConfig,
   type RecommendationConfig,
   type SectionConfig,
+  type SpaceOption,
   type SpaceConfig,
   type QAConfig,
   updateAppsConfig,
@@ -22,6 +24,7 @@ import {
   updateSectionsConfig,
   updateSpacesConfig,
 } from '../api/adminConfig';
+import { canDeleteSpace, getSpaceBindingState, getSpaceUsage, getSpaceUsageSummary, setSpaceEnabled, upsertSpace } from '../utils/adminSpaces';
 import s from './AdminPage.module.css';
 
 const NAV_ITEMS = [
@@ -49,6 +52,12 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [spacePickerOpen, setSpacePickerOpen] = useState(false);
+  const [spaceOptions, setSpaceOptions] = useState<SpaceOption[]>([]);
+  const [spaceOptionsLoading, setSpaceOptionsLoading] = useState(false);
+  const [spaceOptionsError, setSpaceOptionsError] = useState('');
+  const [spaceQuery, setSpaceQuery] = useState('');
+  const [spaceDeleteIndex, setSpaceDeleteIndex] = useState<number | null>(null);
 
   async function loadConfig() {
     setLoading(true);
@@ -79,7 +88,23 @@ export default function AdminPage() {
     }
   }
 
+  async function openSpacePicker() {
+    setSpacePickerOpen(true);
+    setSpaceQuery('');
+    setSpaceOptionsLoading(true);
+    setSpaceOptionsError('');
+    try {
+      const data = await fetchSpaceOptions();
+      setSpaceOptions(data.options);
+    } catch (err) {
+      setSpaceOptionsError(err instanceof Error ? err.message : '候选空间加载失败');
+    } finally {
+      setSpaceOptionsLoading(false);
+    }
+  }
+
   const displayItems = config ? getDisplayItems(config.display) : [];
+  const deletingSpace = config && spaceDeleteIndex !== null ? config.spaces[spaceDeleteIndex] : null;
 
   return (
     <>
@@ -120,10 +145,12 @@ export default function AdminPage() {
           {config && active === 'spaces' && (
             <SpacesTable
               spaces={config.spaces}
+              domains={config.domains}
+              qa={config.qa}
               saving={saving}
-              onAdd={() => void handleAddSpace(config.spaces, runSave, setConfig)}
-              onEdit={(index) => void handleEditSpace(config.spaces, index, runSave, setConfig)}
-              onDelete={(index) => void handleDeleteSpace(config.spaces, index, runSave, setConfig)}
+              onAdd={() => void openSpacePicker()}
+              onToggleEnabled={(index, enabled) => void handleToggleSpaceEnabled(config.spaces, index, enabled, runSave, setConfig)}
+              onDelete={(index) => setSpaceDeleteIndex(index)}
             />
           )}
           {config && active === 'domains' && (
@@ -182,21 +209,56 @@ export default function AdminPage() {
           )}
         </main>
       </div>
+      {config ? (
+        <SpacePickerDialog
+          open={spacePickerOpen}
+          saving={saving}
+          loading={spaceOptionsLoading}
+          error={spaceOptionsError}
+          options={spaceOptions}
+          query={spaceQuery}
+          onClose={() => setSpacePickerOpen(false)}
+          onRefresh={() => void openSpacePicker()}
+          onQueryChange={setSpaceQuery}
+          spaces={config.spaces}
+          onToggle={(option) => void handleAddSpace(config.spaces, option, runSave, setConfig)}
+        />
+      ) : null}
+      {config && deletingSpace ? (
+        <SpaceDeleteDialog
+          open
+          space={deletingSpace}
+          usage={getSpaceUsage(deletingSpace.id, config.domains, config.qa)}
+          saving={saving}
+          onClose={() => setSpaceDeleteIndex(null)}
+          onConfirm={() => {
+            if (spaceDeleteIndex === null) return;
+            void handleDeleteSpace(config.spaces, spaceDeleteIndex, runSave, setConfig, {
+              confirm: false,
+              onSuccess: () => setSpaceDeleteIndex(null),
+            });
+          }}
+        />
+      ) : null}
     </>
   );
 }
 
 function SpacesTable({
   spaces,
+  domains,
+  qa,
   saving,
   onAdd,
-  onEdit,
+  onToggleEnabled,
   onDelete,
 }: {
   spaces: SpaceConfig[];
+  domains: DomainConfig[];
+  qa: QAConfig;
   saving: boolean;
   onAdd: () => void;
-  onEdit: (index: number) => void;
+  onToggleEnabled: (index: number, enabled: boolean) => void;
   onDelete: (index: number) => void;
 }) {
   return (
@@ -205,32 +267,201 @@ function SpacesTable({
         <h2 className={s.pageTitle}>知识空间管理</h2>
         <button className={s.addBtn} onClick={onAdd} disabled={saving}><Plus size={14} /> 添加</button>
       </div>
+      <p className={s.pageNote}>
+        已绑定的空间决定门户可见范围。停用会立即从前台隐藏，删除前需要先解除业务域和问答范围里的引用。
+      </p>
       <table className={s.table}>
         <thead>
           <tr>
-            <th>ID</th>
             <th>空间名称</th>
-            <th>标签数</th>
+            <th>状态</th>
             <th>文件数</th>
+            <th>关联配置</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          {spaces.map((sp, index) => (
-            <tr key={sp.id}>
-              <td>{sp.id}</td>
-              <td>{sp.name}</td>
-              <td>{sp.tag_count}</td>
-              <td>{sp.file_count}</td>
-              <td>
-                <span className={s.editBtn} onClick={() => onEdit(index)}>编辑</span>
-                <span className={s.deleteBtn} onClick={() => onDelete(index)}>删除</span>
-              </td>
-            </tr>
-          ))}
+          {spaces.map((sp, index) => {
+            const usage = getSpaceUsage(sp.id, domains, qa);
+            const deletable = canDeleteSpace(usage);
+            return (
+              <tr key={sp.id}>
+                <td>
+                  <div className={s.spaceNameCell}>
+                    <span>{sp.name}</span>
+                    <span className={s.inlineHint}>ID {sp.id}</span>
+                  </div>
+                </td>
+                <td>
+                  <span className={sp.enabled ? s.stateEnabled : s.stateDisabled}>
+                    {sp.enabled ? '已启用' : '已停用'}
+                  </span>
+                </td>
+                <td>{sp.file_count}</td>
+                <td>{getSpaceUsageSummary(usage)}</td>
+                <td>
+                  <div className={s.actionGroup}>
+                    <button
+                      className={s.inlineBtn}
+                      onClick={() => onToggleEnabled(index, !sp.enabled)}
+                      disabled={saving}
+                    >
+                      {sp.enabled ? '停用' : '启用'}
+                    </button>
+                    <button
+                      className={deletable ? s.inlineDangerBtn : s.inlineMutedBtn}
+                      onClick={() => onDelete(index)}
+                      disabled={saving || !deletable}
+                      title={deletable ? '删除该知识空间绑定' : '请先解除业务域和问答范围里的引用'}
+                    >
+                      删除
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </>
+  );
+}
+
+function SpacePickerDialog({
+  open,
+  spaces,
+  options,
+  query,
+  saving,
+  loading,
+  error,
+  onClose,
+  onRefresh,
+  onQueryChange,
+  onToggle,
+}: {
+  open: boolean;
+  spaces: SpaceConfig[];
+  options: SpaceOption[];
+  query: string;
+  saving: boolean;
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+  onRefresh: () => void;
+  onQueryChange: (value: string) => void;
+  onToggle: (option: SpaceOption) => void;
+}) {
+  if (!open) return null;
+
+  const filteredOptions = options.filter((option) => {
+    const keyword = query.trim().toLowerCase();
+    if (!keyword) return true;
+    return (
+      option.name.toLowerCase().includes(keyword)
+      || option.description.toLowerCase().includes(keyword)
+    );
+  });
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>添加知识空间</h3>
+            <p className={s.modalNote}>从 BiSheng 现有知识空间里选择，不向用户展示空间 ID。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        <div className={s.modalActions}>
+          <input
+            className={s.optionSearch}
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="搜索知识空间名称或描述"
+          />
+          <button className={s.subtleBtn} onClick={onRefresh} disabled={loading || saving}>
+            <RefreshCw size={14} />
+            刷新候选项
+          </button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        {!error && !loading ? (
+          <div className={s.modalHint}>
+            当前候选数：{options.length}，筛选后：{filteredOptions.length}
+          </div>
+        ) : null}
+        <div className={s.optionList}>
+          {loading ? <div className={s.emptyState}>正在加载候选空间...</div> : null}
+          {!loading && !options.length ? <div className={s.emptyState}>暂未获取到候选空间</div> : null}
+          {!loading && !!options.length && !filteredOptions.length ? <div className={s.emptyState}>没有匹配的知识空间</div> : null}
+          {!loading && filteredOptions.map((option) => {
+            const bindingState = getSpaceBindingState(spaces, option);
+            return (
+              <div key={option.id} className={s.optionRow}>
+                <div className={s.optionMain}>
+                  <div className={s.optionName}>{option.name}</div>
+                  <div className={s.optionMeta}>
+                    {option.description || '未配置描述'}
+                  </div>
+                </div>
+                <div className={s.optionSide}>
+                  <span className={s.optionCount}>{option.file_count} 个文件</span>
+                  <button
+                    className={bindingState === 'new' ? s.addBtn : s.subtleBtn}
+                    onClick={() => onToggle(option)}
+                    disabled={saving || bindingState === 'enabled'}
+                  >
+                    {bindingState === 'new' ? '添加' : bindingState === 'disabled' ? '重新启用' : '已绑定'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpaceDeleteDialog({
+  open,
+  space,
+  usage,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  space: SpaceConfig;
+  usage: ReturnType<typeof getSpaceUsage>;
+  saving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.confirmCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>删除知识空间</h3>
+            <p className={s.modalNote}>这只会移除门户绑定，不会删除 BiSheng 里的原始知识空间。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+        </div>
+        <div className={s.confirmBody}>
+          <div className={s.confirmLine}><strong>空间名称：</strong>{space.name}</div>
+          <div className={s.confirmLine}><strong>文件数：</strong>{space.file_count}</div>
+          <div className={s.confirmLine}><strong>关联配置：</strong>{getSpaceUsageSummary(usage)}</div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          <button className={s.dangerBtn} onClick={onConfirm} disabled={saving}>确认删除</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -579,23 +810,42 @@ async function persistApps(apps: AppConfig[], setConfig: Dispatch<SetStateAction
 type SaveRunner = (task: () => Promise<void>) => Promise<void>;
 type ConfigSetter = Dispatch<SetStateAction<PortalConfig | null>>;
 
-async function handleAddSpace(spaces: SpaceConfig[], runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptSpace();
-  if (!next) return;
-  await runSave(() => persistSpaces([...spaces, next], setConfig));
+async function handleAddSpace(
+  spaces: SpaceConfig[],
+  option: SpaceOption,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  onSuccess?: () => void,
+) {
+  await runSave(async () => {
+    await persistSpaces(upsertSpace(spaces, option), setConfig);
+    onSuccess?.();
+  });
 }
 
-async function handleEditSpace(spaces: SpaceConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  const next = promptSpace(spaces[index]);
-  if (!next) return;
-  const updated = [...spaces];
-  updated[index] = next;
-  await runSave(() => persistSpaces(updated, setConfig));
+async function handleToggleSpaceEnabled(
+  spaces: SpaceConfig[],
+  index: number,
+  enabled: boolean,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+) {
+  if (spaces[index]?.enabled === enabled) return;
+  await runSave(() => persistSpaces(setSpaceEnabled(spaces, index, enabled), setConfig));
 }
 
-async function handleDeleteSpace(spaces: SpaceConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
-  if (!window.confirm(`确定删除知识空间“${spaces[index].name}”吗？`)) return;
-  await runSave(() => persistSpaces(spaces.filter((_, i) => i !== index), setConfig));
+async function handleDeleteSpace(
+  spaces: SpaceConfig[],
+  index: number,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+  options?: { confirm?: boolean; onSuccess?: () => void },
+) {
+  if (options?.confirm !== false && !window.confirm(`确定删除知识空间“${spaces[index].name}”吗？`)) return;
+  await runSave(async () => {
+    await persistSpaces(spaces.filter((_, i) => i !== index), setConfig);
+    options?.onSuccess?.();
+  });
 }
 
 async function handleAddDomain(domains: DomainConfig[], spaces: SpaceConfig[], runSave: SaveRunner, setConfig: ConfigSetter) {
@@ -701,18 +951,6 @@ async function handleEditApp(apps: AppConfig[], index: number, runSave: SaveRunn
 async function handleDeleteApp(apps: AppConfig[], index: number, runSave: SaveRunner, setConfig: ConfigSetter) {
   if (!window.confirm(`确定删除应用“${apps[index].name}”吗？`)) return;
   await runSave(() => persistApps(apps.filter((_, i) => i !== index), setConfig));
-}
-
-function promptSpace(current?: SpaceConfig): SpaceConfig | null {
-  const id = promptNumber('知识空间 ID', current?.id);
-  if (id === null) return null;
-  const name = promptText('空间名称', current?.name || '');
-  if (!name) return null;
-  const tag_count = promptNumber('标签数', current?.tag_count ?? 0);
-  if (tag_count === null) return null;
-  const file_count = promptNumber('文件数', current?.file_count ?? 0);
-  if (file_count === null) return null;
-  return { id, name, tag_count, file_count, enabled: current?.enabled ?? true };
 }
 
 function promptDomain(spaces: SpaceConfig[], current?: DomainConfig): DomainConfig | null {

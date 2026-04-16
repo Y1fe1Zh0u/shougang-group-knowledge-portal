@@ -29,6 +29,32 @@ export interface QAConfig {
   hot_questions: string[];
   ai_search_system_prompt: string;
   qa_system_prompt: string;
+  selected_model: string;
+}
+
+export interface QAModelOption {
+  key: string;
+  id: string;
+  name: string;
+  display_name: string;
+  visual: boolean;
+}
+
+export interface QAModelOptionsResponse {
+  selected_model: string;
+  models: QAModelOption[];
+}
+
+export interface SpaceOption {
+  id: number;
+  name: string;
+  description: string;
+  file_count: number;
+}
+
+export interface SpaceFileItem {
+  id: number;
+  name: string;
 }
 
 export interface RecommendationConfig {
@@ -125,6 +151,14 @@ export function updateSpacesConfig(spaces: SpaceConfig[]) {
   });
 }
 
+export function fetchSpaceOptions() {
+  return request<{ options: SpaceOption[] }>('/api/v1/admin/config/space-options');
+}
+
+export function fetchAdminSpaceFiles(spaceId: number) {
+  return request<{ space_id: number; files: SpaceFileItem[] }>(`/api/v1/admin/config/spaces/${spaceId}/files`);
+}
+
 export function updateDomainsConfig(domains: DomainConfig[]) {
   return request<{ domains: DomainConfig[] }>('/api/v1/admin/config/domains', {
     method: 'PUT',
@@ -144,6 +178,10 @@ export function updateQaConfig(qa: QAConfig) {
     method: 'PUT',
     body: JSON.stringify(qa),
   });
+}
+
+export function fetchQaModelOptions() {
+  return request<QAModelOptionsResponse>('/api/v1/admin/config/qa/model-options');
 }
 
 export function updateRecommendationConfig(recommendation: RecommendationConfig) {
