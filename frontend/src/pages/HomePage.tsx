@@ -10,7 +10,6 @@ import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content';
-import { CFG } from '../data/mock';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveSectionVisual } from '../utils/adminSections';
 import { formatDisplayDateTime } from '../utils/dateTime';
@@ -29,6 +28,29 @@ const APP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Star, AlertTriangle,
 };
+
+const HOME_BANNERS: Array<{
+  label: string;
+  title: string;
+  desc: string;
+  link?: string;
+}> = [
+  {
+    label: '平台概览',
+    title: '首钢知库 — 钢铁行业知识共享平台',
+    desc: '汇聚设备、轧线、冷轧、能源全域知识，助力技术传承与创新',
+  },
+  {
+    label: '专题推荐',
+    title: '典型案例·事故分析专题上线',
+    desc: '从实践中学习，从案例中成长，构建安全生产知识体系',
+  },
+  {
+    label: '能力升级',
+    title: '技术问答全新升级',
+    desc: 'AI 驱动的智能问答系统，快速定位知识、精准解答技术难题',
+  },
+];
 
 const HERO_IMAGE_URLS = [
   '/banner-hero-1.jpg',
@@ -75,7 +97,7 @@ export default function HomePage() {
   /* Banner auto-play */
   useEffect(() => {
     const timer = setInterval(() => {
-      setBannerIdx((i) => (i + 1) % CFG.banners.length);
+      setBannerIdx((i) => (i + 1) % HOME_BANNERS.length);
     }, 4000);
     return () => clearInterval(timer);
   }, []);
@@ -142,7 +164,7 @@ export default function HomePage() {
   const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
   const tagCount = hotTags.length;
   const spaceCount = enabledSpaces.length;
-  const activeBanner = CFG.banners[bannerIdx];
+  const activeBanner = HOME_BANNERS[bannerIdx];
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
   const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
   const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
@@ -217,7 +239,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className={s.bannerDots}>
-            {CFG.banners.map((_, i) => (
+            {HOME_BANNERS.map((_, i) => (
               <button
                 key={i}
                 className={`${s.dot} ${i === bannerIdx ? s.dotActive : ''}`}
