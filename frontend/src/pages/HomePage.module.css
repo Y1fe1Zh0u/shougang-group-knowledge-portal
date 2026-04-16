@@ -218,11 +218,6 @@
   letter-spacing: 0.01em;
 }
 
-.domainLogoImage {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-}
 
 .domainSection :global(.iconBox) {
   width: 26px;

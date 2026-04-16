@@ -242,11 +242,7 @@ export default function HomePage() {
                 >
                   {usesBannerThumb ? null : (
                     <div className={s.domainIcon} style={{ background: d.bg, color: d.color }}>
-                      {visualPreset.logoImage ? (
-                        <img src={visualPreset.logoImage} alt={`${d.name} logo`} className={s.domainLogoImage} />
-                      ) : (
-                        <Icon size={24} />
-                      )}
+                      <Icon size={24} />
                     </div>
                   )}
                   <div className={s.domainName}>{d.name}</div>

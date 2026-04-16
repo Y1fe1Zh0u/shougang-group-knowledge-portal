@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getDomainVisualPreset } from '../src/utils/domainVisualPresets';
 
-test('configured background image overrides demo presets', () => {
+test('configured background image is returned directly', () => {
   assert.deepEqual(
     getDomainVisualPreset({
       name: '库1',
@@ -12,36 +12,22 @@ test('configured background image overrides demo presets', () => {
   );
 });
 
-test('库1 and 库2 fall back to demo background images', () => {
+test('local static path without leading slash is normalized to a site path', () => {
   assert.deepEqual(
     getDomainVisualPreset({
-      name: '库1',
-      background_image: '',
+      name: '库2',
+      background_image: 'rolling-domain-bg.jpg',
     }),
     { backgroundImage: '/rolling-domain-bg.jpg' },
   );
+});
+
+test('empty background image means no hardcoded fallback', () => {
   assert.deepEqual(
     getDomainVisualPreset({
       name: '库2',
       background_image: '',
     }),
-    { backgroundImage: '/cold-domain-bg.jpg' },
-  );
-});
-
-test('other demo domains can fall back to logo images', () => {
-  assert.deepEqual(
-    getDomainVisualPreset({
-      name: '库3',
-      background_image: '',
-    }),
-    { logoImage: '/site-logo.png' },
-  );
-  assert.deepEqual(
-    getDomainVisualPreset({
-      name: '库4',
-      background_image: '',
-    }),
-    { logoImage: '/shougang-stock-logo.png' },
+    {},
   );
 });

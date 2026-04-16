@@ -583,11 +583,10 @@ function DomainsTable({
               <tr key={d.name}>
                 <td>{d.name}</td>
                 <td>
-                  {visualPreset.logoImage ? (
-                    <img src={visualPreset.logoImage} alt={`${d.name} logo`} className={s.logoPreview} />
-                  ) : (
-                    d.icon
-                  )}
+                  <div className={s.logoCell}>
+                    <DomainIcon icon={d.icon} color={d.color} bg={d.bg} size={36} />
+                    <span>{d.icon}</span>
+                  </div>
                 </td>
                 <td>
                   {backgroundImage ? (
@@ -675,8 +674,11 @@ function DomainEditorDialog({
               className={s.formInput}
               value={draft.backgroundImage}
               onChange={(event) => onChange({ backgroundImage: event.target.value })}
-              placeholder="/rolling-domain-bg.jpg"
+              placeholder="https://example.com/domain.jpg 或 /rolling-domain-bg.jpg"
             />
+            <span className={s.fieldHint}>
+              支持两种格式：网络图片 URL（例如 `https://example.com/domain.jpg`）或站点本地静态路径（例如 `/rolling-domain-bg.jpg`，也兼容 `rolling-domain-bg.jpg`）。
+            </span>
           </label>
           <div className={`${s.formField} ${s.formFieldWide}`}>
             <span className={s.fieldLabel}>图标</span>

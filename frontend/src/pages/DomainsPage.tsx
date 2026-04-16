@@ -66,11 +66,7 @@ export default function DomainsPage() {
               >
                 {usesBannerThumb ? null : (
                   <div className={s.iconWrap} style={{ background: domain.bg, color: domain.color }}>
-                    {visualPreset.logoImage ? (
-                      <img src={visualPreset.logoImage} alt={`${domain.name} logo`} className={s.domainLogoImage} />
-                    ) : (
-                      <Icon size={24} />
-                    )}
+                    <Icon size={24} />
                   </div>
                 )}
                 <div className={s.cardBody}>

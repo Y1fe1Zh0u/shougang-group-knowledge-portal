@@ -326,22 +326,18 @@
   white-space: nowrap;
 }
 
-.logoPreview {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--neutral-200);
-  padding: 6px;
-}
-
 .backgroundPreview {
   width: 92px;
   height: 48px;
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid var(--neutral-200);
+}
+
+.logoCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .spaceNameCell {
@@ -460,6 +456,12 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--neutral-700);
+}
+
+.fieldHint {
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--neutral-500);
 }
 
 .formInput {
