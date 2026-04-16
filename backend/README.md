@@ -15,20 +15,22 @@ This service is the BFF layer between the portal frontend and BiSheng.
 2. Install dependencies:
 
 ```bash
-pip install -e ".[dev]"
+./.venv/bin/pip install -e ".[dev]"
 ```
 
 3. Run the app:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
+./.venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 ```
 
 4. Run tests:
 
 ```bash
-pytest
+./.venv/bin/python -m pytest
 ```
+
+The current workspace has been verified with Python 3.13. Running tests with the macOS system Python 3.9 will fail because the project uses Python 3.11+ features.
 
 ## Environment Variables
 
@@ -37,6 +39,17 @@ pytest
 - `PORTAL_BISHENG_BASE_URL`
 - `PORTAL_BISHENG_TIMEOUT_SECONDS`
 - `PORTAL_BISHENG_API_TOKEN`
+- `PORTAL_BISHENG_DEFAULT_MODEL`
+- `PORTAL_BISHENG_PAGE_SIZE_LIMIT`
+
+The app loads `backend/.env` automatically when present.
+
+## Local Persistence
+
+Portal-side runtime data is stored in:
+
+- `app/config/data/portal_config.json`
+- `app/config/data/bisheng_runtime.json`
 
 ## BiSheng Auth
 

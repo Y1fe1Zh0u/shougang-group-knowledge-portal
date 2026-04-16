@@ -1,0 +1,26 @@
+.omx/
+
+# macOS
+.DS_Store
+
+# Editor metadata
+.claude/
+.idea/
+.vscode/
+
+# Root-level local captures
+screenshots/
+
+# Backend
+backend/.env
+backend/.pytest_cache/
+backend/.venv/
+backend/app/config/data/bisheng_runtime.json
+backend/**/__pycache__/
+backend/**/*.py[cod]
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.test-dist/
+frontend/*.local
