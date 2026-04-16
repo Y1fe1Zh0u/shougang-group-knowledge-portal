@@ -1,15 +1,17 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 import {
-  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown,
+  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server,
 } from 'lucide-react';
 import DomainIcon from '../components/DomainIcon';
 import Header from '../components/Header';
 import {
   type AppConfig,
+  type BishengRuntimeConfig,
   type DisplayConfig,
   type DomainConfig,
   fetchAdminConfig,
+  fetchBishengRuntimeConfig,
   fetchQaModelOptions,
   fetchSpaceOptions,
   type PortalConfig,
@@ -20,6 +22,7 @@ import {
   type SpaceConfig,
   type QAConfig,
   updateAppsConfig,
+  updateBishengRuntimeConfig,
   updateDisplayConfig,
   updateDomainsConfig,
   updateQaConfig,
@@ -42,6 +45,7 @@ import {
   validateSectionDraft,
   type SectionDraft,
 } from '../utils/adminSections';
+import { formatDisplayDateTime } from '../utils/dateTime';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { canDeleteSpace, getSpaceBindingState, getSpaceUsage, getSpaceUsageSummary, setSpaceEnabled, upsertSpace } from '../utils/adminSpaces';
 import s from './AdminPage.module.css';
@@ -65,6 +69,7 @@ const NAV_ITEMS = [
   { key: 'recommend', label: '推荐策略', icon: Star, disabled: true },
   { key: 'display', label: '展示配置', icon: SlidersHorizontal },
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
+  { key: 'bisheng', label: '数据源配置', icon: Server },
 ];
 
 type NavKey = typeof NAV_ITEMS[number]['key'];
@@ -98,6 +103,13 @@ interface AppDraft {
   enabled: boolean;
 }
 
+interface BishengDraft {
+  base_url: string;
+  username: string;
+  password: string;
+  timeout_seconds: string;
+}
+
 export default function AdminPage() {
   const [active, setActive] = useState<NavKey>('spaces');
   const [config, setConfig] = useState<PortalConfig | null>(null);
@@ -120,6 +132,10 @@ export default function AdminPage() {
   const [sectionDraft, setSectionDraft] = useState<SectionDraft>(createSectionDraft());
   const [sectionFormError, setSectionFormError] = useState('');
   const [sectionDeleteIndex, setSectionDeleteIndex] = useState<number | null>(null);
+  const [bishengConfig, setBishengConfig] = useState<BishengRuntimeConfig | null>(null);
+  const [bishengEditorOpen, setBishengEditorOpen] = useState(false);
+  const [bishengDraft, setBishengDraft] = useState<BishengDraft>(createBishengDraft());
+  const [bishengFormError, setBishengFormError] = useState('');
   const [qaDialogMode, setQaDialogMode] = useState<QaDialogMode>(null);
   const [qaTextDraft, setQaTextDraft] = useState('');
   const [qaSpacesDraft, setQaSpacesDraft] = useState<number[]>([]);
@@ -141,8 +157,27 @@ export default function AdminPage() {
     setLoading(true);
     setError('');
     try {
-      const next = await fetchAdminConfig();
-      setConfig(next);
+      const [portalResult, bishengResult] = await Promise.allSettled([
+        fetchAdminConfig(),
+        fetchBishengRuntimeConfig(),
+      ]);
+
+      const errors: string[] = [];
+      if (portalResult.status === 'fulfilled') {
+        setConfig(portalResult.value);
+      } else {
+        errors.push(portalResult.reason instanceof Error ? portalResult.reason.message : '门户配置加载失败');
+      }
+
+      if (bishengResult.status === 'fulfilled') {
+        setBishengConfig(bishengResult.value);
+      } else {
+        errors.push(bishengResult.reason instanceof Error ? bishengResult.reason.message : 'BISHENG 配置加载失败');
+      }
+
+      if (errors.length) {
+        setError(errors.join('；'));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '配置加载失败');
     } finally {
@@ -207,6 +242,12 @@ export default function AdminPage() {
     setSectionEditorIndex(index);
     setSectionDraft(createSectionDraft(section));
     setSectionFormError('');
+  }
+
+  function openBishengDialog(current?: BishengRuntimeConfig | null) {
+    setBishengEditorOpen(true);
+    setBishengDraft(createBishengDraft(current ?? undefined));
+    setBishengFormError('');
   }
 
   function openQaSpacesDialog(qa: QAConfig) {
@@ -373,6 +414,13 @@ export default function AdminPage() {
               onEditQaPrompt={() => openQaTextDialog('qa_system_prompt', config.qa.qa_system_prompt)}
             />
           )}
+          {active === 'bisheng' && (
+            <BishengConfigTable
+              config={bishengConfig}
+              saving={saving}
+              onEdit={() => openBishengDialog(bishengConfig)}
+            />
+          )}
           {config && active === 'recommend' && (
             <RecommendConfigTable
               recommendation={config.recommendation}
@@ -515,6 +563,41 @@ export default function AdminPage() {
               confirm: false,
               onSuccess: () => setSectionDeleteIndex(null),
             });
+          }}
+        />
+      ) : null}
+      {bishengEditorOpen ? (
+        <BishengEditorDialog
+          open
+          draft={bishengDraft}
+          saving={saving}
+          error={bishengFormError}
+          hasToken={Boolean(bishengConfig?.has_token)}
+          onClose={() => setBishengEditorOpen(false)}
+          onChange={(patch) => {
+            setBishengDraft((current) => ({ ...current, ...patch }));
+            setBishengFormError('');
+          }}
+          onSubmit={() => {
+            const result = validateBishengDraft(bishengDraft);
+            if (!result.payload) {
+              setBishengFormError(result.error || 'BISHENG 配置无效');
+              return;
+            }
+            const nextPayload = result.payload;
+            setSaving(true);
+            setError('');
+            void updateBishengRuntimeConfig(nextPayload)
+              .then((updated) => {
+                setBishengConfig(updated);
+                setBishengEditorOpen(false);
+              })
+              .catch((err) => {
+                const message = err instanceof Error ? err.message : '保存失败';
+                setError(message);
+                setBishengFormError(message);
+              })
+              .finally(() => setSaving(false));
           }}
         />
       ) : null}
@@ -806,7 +889,7 @@ function SpacePickerDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>添加知识空间</h3>
-            <p className={s.modalNote}>从 BiSheng 现有知识空间里选择，不向用户展示空间 ID。</p>
+            <p className={s.modalNote}>从 BISHENG 现有知识空间里选择，不向用户展示空间 ID。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>关闭</button>
         </div>
@@ -884,7 +967,7 @@ function SpaceDeleteDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>删除知识空间</h3>
-            <p className={s.modalNote}>这只会移除门户绑定，不会删除 BiSheng 里的原始知识空间。</p>
+            <p className={s.modalNote}>这只会移除门户绑定，不会删除 BISHENG 里的原始知识空间。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>取消</button>
         </div>
@@ -1374,6 +1457,120 @@ function SectionDeleteDialog({
   );
 }
 
+function BishengConfigTable({
+  config,
+  saving,
+  onEdit,
+}: {
+  config: BishengRuntimeConfig | null;
+  saving: boolean;
+  onEdit: () => void;
+}) {
+  return (
+    <>
+      <div className={s.titleBar}>
+        <h2 className={s.pageTitle}>数据源配置</h2>
+      </div>
+      <p className={s.pageNote}>
+        这里维护门户后端使用的 BISHENG 数据源环境。密码不会回显到前端；保存成功后会立即更新运行中的连接配置。
+      </p>
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>配置项</th>
+            <th>当前值</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BISHENG 地址</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.base_url || '未配置'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
+          </tr>
+          <tr>
+            <td>登录账号</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.username || '未配置'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
+          </tr>
+          <tr>
+            <td>请求超时</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{config ? `${config.timeout_seconds} 秒` : '未配置'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
+          </tr>
+          <tr>
+            <td>最近验证时间</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.last_auth_at ? formatDisplayDateTime(config.last_auth_at) : '未验证'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function BishengEditorDialog({
+  open,
+  draft,
+  saving,
+  error,
+  hasToken,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  draft: BishengDraft;
+  saving: boolean;
+  error: string;
+  hasToken: boolean;
+  onClose: () => void;
+  onChange: (patch: Partial<BishengDraft>) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>编辑数据源配置</h3>
+            <p className={s.modalNote}>保存时后端会直接调用 BISHENG 登录接口验证账号密码。密码不会回显；如果只改超时，可以留空继续沿用当前登录态。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.modalScrollBody}>
+          <div className={s.formGrid}>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>BISHENG 地址</span>
+              <input className={s.formInput} value={draft.base_url} onChange={(event) => onChange({ base_url: event.target.value })} placeholder="例如：http://192.168.106.114:4001" />
+            </label>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>登录账号</span>
+              <input className={s.formInput} value={draft.username} onChange={(event) => onChange({ username: event.target.value })} placeholder="请输入服务账号用户名" />
+            </label>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>请求超时（秒）</span>
+              <input className={s.formInput} value={draft.timeout_seconds} onChange={(event) => onChange({ timeout_seconds: event.target.value })} placeholder="例如：30" />
+            </label>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>登录密码</span>
+              <input type="password" className={s.formInput} value={draft.password} onChange={(event) => onChange({ password: event.target.value })} placeholder={hasToken ? '留空则沿用当前登录态' : '首次保存必须输入密码'} />
+              <span className={s.fieldHint}>为了安全，当前密码不会回显；修改地址或账号时必须重新输入密码。</span>
+            </label>
+          </div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存并验证</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QAConfigTable({
   qa,
   spaces,
@@ -1468,10 +1665,10 @@ function QAConfigTable({
                 <span className={s.valueTitle}>{selectedModelLabel}</span>
                 <span className={s.valueMeta}>
                   {modelLoading
-                    ? '正在从 BiSheng 日常模式加载模型列表...'
+                    ? '正在从 BISHENG 日常模式加载模型列表...'
                     : modelError
                       ? '模型列表加载失败，当前显示的是已保存配置。'
-                      : '来自 BiSheng 日常模式，用于问答页和 AI Overview 的默认模型选择。'}
+                      : '来自 BISHENG 日常模式，用于问答页和 AI Overview 的模型选择。'}
                 </span>
               </div>
             </td>
@@ -1848,7 +2045,7 @@ function QaModelDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>编辑问答模型</h3>
-            <p className={s.modalNote}>候选项直接来自 BiSheng 的日常模式配置。问答页回复和 AI Overview 都会优先走这一项。</p>
+            <p className={s.modalNote}>候选项直接来自 BISHENG 的日常模式配置。问答页回复和 AI Overview 都会优先走这一项。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>关闭</button>
         </div>
@@ -2360,6 +2557,7 @@ function truncateText(text: string, maxLength: number): string {
   return `${text.slice(0, maxLength)}...`;
 }
 
+
 async function handleAdjustDisplay(
   display: DisplayConfig,
   key: string,
@@ -2396,6 +2594,42 @@ function setDisplayValue(display: DisplayConfig, key: string, value: number): Di
     [group]: {
       ...display[group as keyof DisplayConfig],
       [field]: value,
+    },
+  };
+}
+
+function createBishengDraft(current?: BishengRuntimeConfig): BishengDraft {
+  return {
+    base_url: current?.base_url ?? '',
+    username: current?.username ?? '',
+    password: '',
+    timeout_seconds: current ? String(current.timeout_seconds) : '30',
+  };
+}
+
+function validateBishengDraft(draft: BishengDraft): {
+  payload?: {
+    base_url: string;
+    username: string;
+    password: string;
+    timeout_seconds: number;
+  };
+  error?: string;
+} {
+  const base_url = draft.base_url.trim();
+  if (!/^https?:\/\//i.test(base_url)) return { error: '请输入有效的 BISHENG 地址，必须以 http:// 或 https:// 开头' };
+
+  const timeout_seconds = Number(draft.timeout_seconds.trim());
+  if (!Number.isFinite(timeout_seconds) || timeout_seconds <= 0) {
+    return { error: '请输入有效的超时时间（秒）' };
+  }
+
+  return {
+    payload: {
+      base_url,
+      username: draft.username.trim(),
+      password: draft.password,
+      timeout_seconds,
     },
   };
 }

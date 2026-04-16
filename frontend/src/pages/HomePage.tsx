@@ -13,6 +13,7 @@ import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content'
 import { CFG } from '../data/mock';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveSectionVisual } from '../utils/adminSections';
+import { formatDisplayDateTime } from '../utils/dateTime';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './HomePage.module.css';
@@ -146,6 +147,8 @@ export default function HomePage() {
   const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
   const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
   const assistantGreeting = getWelcomeMessage(config?.qa.welcome_message);
+  const qaHotQuestions = (config?.qa.hot_questions || []).map((question) => question.trim()).filter(Boolean);
+  const primaryQaQuestion = qaHotQuestions[0] || '振动纹通常如何排查？';
 
   return (
     <PageShell>
@@ -294,7 +297,7 @@ export default function HomePage() {
                         {getPrimaryTag(featuredItem) ? (
                           <TagPill name={getPrimaryTag(featuredItem)!} neutral />
                         ) : null}
-                        <span className={s.featuredDate}>{featuredItem.date}</span>
+                        <span className={s.featuredDate}>{formatDisplayDateTime(featuredItem.date)}</span>
                       </div>
                     </div>
                   ) : null}
@@ -316,7 +319,7 @@ export default function HomePage() {
                           {getPrimaryTag(f) ? (
                             <TagPill name={getPrimaryTag(f)!} neutral />
                           ) : null}
-                          <span className={s.itemDate}>{f.date}</span>
+                          <span className={s.itemDate}>{formatDisplayDateTime(f.date)}</span>
                         </div>
                       </div>
                     </div>
@@ -350,7 +353,7 @@ export default function HomePage() {
                     </div>
                   </div>
                     <div className={`${s.qaPreviewRow} ${s.qaPreviewRowUser}`}>
-                      <div className={s.qaUserBubble}>振动纹通常如何排查？</div>
+                      <div className={s.qaUserBubble}>{primaryQaQuestion}</div>
                       <div className={`${s.qaComposerAvatar} ${s.qaComposerAvatarUser}`}>
                         <User size={16} />
                       </div>
@@ -364,7 +367,7 @@ export default function HomePage() {
                   进入智能问答
                 </button>
               </div>
-              {(config?.qa.hot_questions || []).slice(0, displayConfig.home.qaHotCount).map((q, i) => (
+              {qaHotQuestions.slice(0, displayConfig.home.qaHotCount).map((q, i) => (
                 <div
                   key={i}
                   className={s.qaItem}

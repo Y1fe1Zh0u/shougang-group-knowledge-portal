@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     bisheng_api_token: Optional[str] = None
     bisheng_default_model: Optional[str] = None
     bisheng_page_size_limit: int = 100
+    bisheng_runtime_config_path: Path = Field(
+        default=Path(__file__).resolve().parent / "config" / "data" / "bisheng_runtime.json"
+    )
     portal_config_path: Path = Field(
         default=Path(__file__).resolve().parent / "config" / "data" / "portal_config.json"
     )

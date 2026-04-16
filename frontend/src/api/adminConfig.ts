@@ -49,6 +49,14 @@ export interface QAModelOptionsResponse {
   models: QAModelOption[];
 }
 
+export interface BishengRuntimeConfig {
+  base_url: string;
+  username: string;
+  timeout_seconds: number;
+  has_token: boolean;
+  last_auth_at: string;
+}
+
 export interface SpaceOption {
   id: number;
   name: string;
@@ -186,6 +194,22 @@ export function updateQaConfig(qa: QAConfig) {
 
 export function fetchQaModelOptions() {
   return request<QAModelOptionsResponse>('/api/v1/admin/config/qa/model-options');
+}
+
+export function fetchBishengRuntimeConfig() {
+  return request<BishengRuntimeConfig>('/api/v1/admin/config/bisheng');
+}
+
+export function updateBishengRuntimeConfig(payload: {
+  base_url: string;
+  username: string;
+  password: string;
+  timeout_seconds: number;
+}) {
+  return request<BishengRuntimeConfig>('/api/v1/admin/config/bisheng', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateRecommendationConfig(recommendation: RecommendationConfig) {

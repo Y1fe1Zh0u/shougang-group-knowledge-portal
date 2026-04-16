@@ -7,6 +7,7 @@ import TagPill from '../components/TagPill';
 import { fetchFileChunks, fetchFileDetail, fetchFilePreview, fetchRelatedFiles, type FileChunkItem, type FileDetail, type FileItem, type FilePreviewData } from '../api/content';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveDetailBackTarget } from '../utils/detailPage';
+import { formatDisplayDateTime } from '../utils/dateTime';
 import { resolveFilePreview } from '../utils/filePreview';
 import { toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './DetailPage.module.css';
@@ -105,7 +106,7 @@ export default function DetailPage() {
             <div className={s.tags}>
               {displayTags.map((t) => <TagPill key={t} name={t} neutral />)}
             </div>
-            <span className={s.updateDate}>更新于 {detail.date}</span>
+            <span className={s.updateDate}>更新于 {formatDisplayDateTime(detail.date)}</span>
           </div>
           <div className={s.divider} />
           <div className={s.summaryBlock}>
@@ -185,7 +186,7 @@ export default function DetailPage() {
                     </div>
                     <div className={s.relatedMeta}>
                       <span className={s.relatedSource}>{f.source}</span>
-                      <span className={s.relatedDate}>{f.date}</span>
+                      <span className={s.relatedDate}>{formatDisplayDateTime(f.date)}</span>
                     </div>
                   </div>
                 );

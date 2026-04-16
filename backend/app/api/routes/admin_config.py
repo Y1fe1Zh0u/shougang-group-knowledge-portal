@@ -2,9 +2,10 @@ import asyncio
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_bisheng_client, get_portal_config_service
+from app.api.dependencies import get_bisheng_client, get_bisheng_runtime_service, get_portal_config_service
 from app.clients.bisheng import BishengClient
-from app.schemas.common import response_ok
+from app.schemas.bisheng_runtime import BishengRuntimeConfigUpdate
+from app.schemas.common import response_error, response_ok
 from app.schemas.portal_config import (
     AppsConfigUpdate,
     DomainsConfigUpdate,
@@ -16,6 +17,7 @@ from app.schemas.portal_config import (
     DisplayConfig,
 )
 from app.services.portal_config_service import PortalConfigService
+from app.services.bisheng_runtime_service import BishengRuntimeService
 
 router = APIRouter(prefix="/api/v1/admin/config", tags=["admin-config"])
 
@@ -217,3 +219,22 @@ async def update_apps_config(
     service: PortalConfigService = Depends(get_portal_config_service),
 ):
     return response_ok({"apps": service.update_apps(payload).apps})
+
+
+@router.get("/bisheng")
+async def get_bisheng_runtime_config(
+    service: BishengRuntimeService = Depends(get_bisheng_runtime_service),
+):
+    return response_ok(service.get_public_config())
+
+
+@router.put("/bisheng")
+async def update_bisheng_runtime_config(
+    payload: BishengRuntimeConfigUpdate,
+    service: BishengRuntimeService = Depends(get_bisheng_runtime_service),
+):
+    try:
+        config = await service.update_config(payload)
+    except ValueError as err:
+        return response_error(str(err), status_code=400)
+    return response_ok(config)

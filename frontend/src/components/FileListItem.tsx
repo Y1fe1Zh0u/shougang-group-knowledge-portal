@@ -1,5 +1,6 @@
 import type { FileItem } from '../api/content';
 import TagPill from './TagPill';
+import { formatDisplayDateTime } from '../utils/dateTime';
 import s from './FileListItem.module.css';
 
 interface Props {
@@ -23,7 +24,7 @@ export default function FileListItem({ file, onClick, visibleTagCount = 2 }: Pro
           {displayTags.slice(0, visibleTagCount).map((tag) => (
             <TagPill key={tag} name={tag} neutral />
           ))}
-          <span className={s.date}>{file.date}</span>
+          <span className={s.date}>{formatDisplayDateTime(file.date)}</span>
         </div>
       </div>
     </div>

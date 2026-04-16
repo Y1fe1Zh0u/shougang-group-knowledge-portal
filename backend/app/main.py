@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.router import api_router
-from app.clients.bisheng import BishengClient
+from app.services.bisheng_runtime_service import BishengRuntimeService
 from app.services.portal_config_service import PortalConfigService
 from app.settings import get_settings
 
@@ -12,16 +12,18 @@ from app.settings import get_settings
 async def lifespan(app: FastAPI):
     settings = get_settings()
     app.state.settings = settings
-    app.state.bisheng_client = BishengClient(
-        base_url=str(settings.bisheng_base_url),
-        timeout_seconds=settings.bisheng_timeout_seconds,
-        api_token=settings.bisheng_api_token,
+    app.state.bisheng_runtime_service = BishengRuntimeService(
+        config_path=settings.bisheng_runtime_config_path,
+        default_base_url=str(settings.bisheng_base_url),
+        default_timeout_seconds=settings.bisheng_timeout_seconds,
+        default_api_token=settings.bisheng_api_token,
     )
+    await app.state.bisheng_runtime_service.initialize()
     app.state.portal_config_service = PortalConfigService(
         config_path=settings.portal_config_path,
     )
     yield
-    await app.state.bisheng_client.aclose()
+    await app.state.bisheng_runtime_service.aclose()
 
 
 def create_app() -> FastAPI:

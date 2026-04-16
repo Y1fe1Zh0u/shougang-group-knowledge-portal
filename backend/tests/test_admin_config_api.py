@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.bisheng_runtime_service import BishengRuntimeService
 from app.services.portal_config_service import PortalConfigService
 
 
@@ -65,12 +66,59 @@ class FakeBishengClient:
         return None
 
 
+class FakeRuntimeBishengClient:
+    def __init__(self, base_url: str, timeout_seconds: float, api_token: str | None = None):
+        self.base_url = base_url
+        self.timeout_seconds = timeout_seconds
+        self.api_token = api_token
+
+    async def get_json(self, path: str, params=None):
+        if path == "/api/v1/user/get_captcha":
+            return {
+                "status_code": 200,
+                "status_message": "SUCCESS",
+                "data": {"captcha_key": "cap", "user_capthca": False, "captcha": ""},
+            }
+        if path == "/api/v1/user/public_key":
+            return {
+                "status_code": 200,
+                "status_message": "SUCCESS",
+                "data": {"public_key": "fake-public-key"},
+            }
+        raise AssertionError(f"Unexpected runtime path: {path}")
+
+    async def post_json(self, path: str, json=None):
+        if path == "/api/v1/user/login":
+            return {
+                "status_code": 200,
+                "status_message": "SUCCESS",
+                "data": {"access_token": "runtime-token"},
+            }
+        raise AssertionError(f"Unexpected runtime path: {path}")
+
+    async def aclose(self):
+        return None
+
+
+def create_runtime_service(tmp_path: Path) -> BishengRuntimeService:
+    return BishengRuntimeService(
+        config_path=tmp_path / "bisheng_runtime.json",
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_api_token="",
+        client_factory=FakeRuntimeBishengClient,
+        password_encryptor=lambda _public_key, _password: "encrypted-password",
+    )
+
+
 def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_client = FakeBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.get("/api/v1/admin/config")
 
     assert response.status_code == 200
@@ -89,9 +137,11 @@ def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
 
 def test_put_admin_domains_updates_persisted_config(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.put(
             "/api/v1/admin/config/domains",
             json={
@@ -118,9 +168,11 @@ def test_put_admin_domains_updates_persisted_config(tmp_path: Path):
 
 def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.put(
             "/api/v1/admin/config/qa",
             json={
@@ -150,9 +202,11 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
 
 def test_put_admin_sections_persists_icon_and_color_fields(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.put(
             "/api/v1/admin/config/sections",
             json={
@@ -181,6 +235,7 @@ def test_put_admin_sections_persists_icon_and_color_fields(tmp_path: Path):
 
 def test_get_admin_qa_model_options_uses_bisheng_daily_config(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
     service.update_qa(
         service.get_config().qa.model_copy(
             update={"selected_model": "1"}
@@ -190,6 +245,7 @@ def test_get_admin_qa_model_options_uses_bisheng_daily_config(tmp_path: Path):
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_client = FakeBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.get("/api/v1/admin/config/qa/model-options")
 
     assert response.status_code == 200
@@ -208,10 +264,12 @@ def test_get_admin_qa_model_options_uses_bisheng_daily_config(tmp_path: Path):
 
 def test_get_admin_space_options_uses_bisheng_knowledge_list(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_client = FakeBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.get("/api/v1/admin/config/space-options")
 
     assert response.status_code == 200
@@ -229,10 +287,12 @@ def test_get_admin_space_options_uses_bisheng_knowledge_list(tmp_path: Path):
 
 def test_get_admin_space_files_uses_bisheng_file_list(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_client = FakeBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
         response = client.get("/api/v1/admin/config/spaces/19/files")
 
     assert response.status_code == 200
@@ -243,3 +303,26 @@ def test_get_admin_space_files_uses_bisheng_file_list(tmp_path: Path):
             {"id": 102, "name": "点检标准.docx"},
         ],
     }
+
+
+def test_put_admin_bisheng_config_updates_runtime_without_echoing_secret(tmp_path: Path):
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.put(
+            "/api/v1/admin/config/bisheng",
+            json={
+                "base_url": "http://example.com",
+                "username": "portal-admin",
+                "password": "super-secret",
+                "timeout_seconds": 45,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["base_url"] == "http://example.com/"
+    assert body["username"] == "portal-admin"
+    assert body["has_token"] is True
+    assert "password" not in body
