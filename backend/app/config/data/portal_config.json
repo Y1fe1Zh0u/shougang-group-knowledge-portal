@@ -1,181 +1,95 @@
 {
   "spaces": [
     {
-      "id": 12,
-      "name": "轧线技术案例库",
-      "file_count": 156,
-      "tag_count": 8,
+      "id": 1,
+      "name": "111",
+      "file_count": 3,
+      "tag_count": 0,
       "enabled": true
     },
     {
-      "id": 18,
-      "name": "冷轧技术手册",
-      "file_count": 89,
-      "tag_count": 5,
+      "id": 3,
+      "name": "333",
+      "file_count": 0,
+      "tag_count": 0,
       "enabled": true
     },
     {
-      "id": 25,
-      "name": "设备维修规范",
-      "file_count": 234,
-      "tag_count": 12,
+      "id": 4,
+      "name": "444",
+      "file_count": 0,
+      "tag_count": 0,
       "enabled": true
     },
     {
-      "id": 30,
-      "name": "能源管理文档",
-      "file_count": 67,
-      "tag_count": 6,
+      "id": 5,
+      "name": "555",
+      "file_count": 0,
+      "tag_count": 0,
       "enabled": true
     },
     {
-      "id": 35,
-      "name": "安全培训资料",
-      "file_count": 112,
-      "tag_count": 9,
-      "enabled": true
-    },
-    {
-      "id": 40,
-      "name": "质量管理体系",
-      "file_count": 78,
-      "tag_count": 7,
-      "enabled": true
-    },
-    {
-      "id": 45,
-      "name": "生产调度手册",
-      "file_count": 45,
-      "tag_count": 4,
-      "enabled": true
-    },
-    {
-      "id": 50,
-      "name": "环保合规文档",
-      "file_count": 33,
-      "tag_count": 3,
+      "id": 2,
+      "name": "222",
+      "file_count": 2,
+      "tag_count": 0,
       "enabled": true
     }
   ],
   "domains": [
     {
-      "name": "设备",
+      "name": "域1",
       "space_ids": [
-        25
+        5
       ],
       "color": "#2563eb",
       "bg": "#eff6ff",
       "icon": "Settings",
+      "background_image": "/rolling-domain-bg.jpg",
       "enabled": true
     },
     {
-      "name": "轧线",
+      "name": "域2",
       "space_ids": [
-        12
+        2
       ],
       "color": "#059669",
       "bg": "#d1fae5",
       "icon": "Factory",
+      "background_image": "/rolling-domain-bg.jpg",
       "enabled": true
     },
     {
-      "name": "冷轧",
+      "name": "域3",
       "space_ids": [
-        18
+        3
       ],
-      "color": "#6366f1",
-      "bg": "#ede9fe",
-      "icon": "Snowflake",
+      "color": "#475569",
+      "bg": "#e2e8f0",
+      "icon": "Factory",
+      "background_image": "",
       "enabled": true
     },
     {
-      "name": "能源",
+      "name": "域4",
       "space_ids": [
-        30
+        4
       ],
       "color": "#d97706",
       "bg": "#fef3c7",
       "icon": "Zap",
+      "background_image": "",
       "enabled": true
     },
     {
-      "name": "安全",
+      "name": "域5",
       "space_ids": [
-        35
+        5
       ],
       "color": "#dc2626",
       "bg": "#fee2e2",
       "icon": "Shield",
-      "enabled": true
-    },
-    {
-      "name": "质量",
-      "space_ids": [
-        40
-      ],
-      "color": "#7c3aed",
-      "bg": "#f5f3ff",
-      "icon": "CheckCircle",
-      "enabled": true
-    },
-    {
-      "name": "生产",
-      "space_ids": [
-        45
-      ],
-      "color": "#0f766e",
-      "bg": "#ccfbf1",
-      "icon": "Factory",
-      "enabled": true
-    },
-    {
-      "name": "环保",
-      "space_ids": [
-        50
-      ],
-      "color": "#16a34a",
-      "bg": "#dcfce7",
-      "icon": "Leaf",
-      "enabled": true
-    },
-    {
-      "name": "物流",
-      "space_ids": [
-        45
-      ],
-      "color": "#1d4ed8",
-      "bg": "#dbeafe",
-      "icon": "Truck",
-      "enabled": true
-    },
-    {
-      "name": "调度",
-      "space_ids": [
-        45
-      ],
-      "color": "#ea580c",
-      "bg": "#ffedd5",
-      "icon": "Network",
-      "enabled": true
-    },
-    {
-      "name": "检修",
-      "space_ids": [
-        25
-      ],
-      "color": "#475569",
-      "bg": "#e2e8f0",
-      "icon": "Wrench",
-      "enabled": true
-    },
-    {
-      "name": "培训",
-      "space_ids": [
-        35
-      ],
-      "color": "#be185d",
-      "bg": "#fce7f3",
-      "icon": "GraduationCap",
+      "background_image": "",
       "enabled": true
     }
   ],
@@ -197,14 +111,11 @@
   ],
   "qa": {
     "knowledge_space_ids": [
-      12,
-      18,
-      25,
-      30,
-      35,
-      40,
-      45,
-      50
+      1,
+      2,
+      3,
+      4,
+      5
     ],
     "hot_questions": [
       "振动纹通常如何排查？",
@@ -212,7 +123,10 @@
       "冷轧板面缺陷有哪些常见类型？",
       "高炉煤气利用率如何提升？",
       "安全巡检标准操作流程是什么？"
-    ]
+    ],
+    "ai_search_system_prompt": "",
+    "qa_system_prompt": "",
+    "selected_model": "1"
   },
   "recommendation": {
     "provider": "tag_feed",
@@ -224,8 +138,8 @@
       "section_page_size": 6,
       "hot_tags_count": 8,
       "qa_hot_count": 4,
-      "domain_count": 6,
-      "spaces_count": 6,
+      "domain_count": 5,
+      "spaces_count": 5,
       "apps_count": 6
     },
     "list": {
