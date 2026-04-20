@@ -1,9 +1,11 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from app.api.dependencies import get_bisheng_client, get_portal_config_service
 from app.schemas.common import response_ok
+from app.schemas.knowledge import FilePreviewSourceKind
 from app.services.knowledge_service import KnowledgeService
 from app.services.portal_config_service import PortalConfigService
 from app.clients.bisheng import BishengClient
@@ -98,7 +100,41 @@ async def get_file_preview(
     service: KnowledgeService = Depends(get_knowledge_service),
 ):
     preview = await service.get_file_preview(space_id=space_id, file_id=file_id)
+    if preview and preview.source_kind != "none" and preview.mode not in {"unsupported", "chunks"}:
+        preview.viewer_url = (
+            f"/api/v1/knowledge/space/{space_id}/files/{file_id}/preview/content"
+            f"?source_kind={preview.source_kind}"
+        )
     return response_ok(preview)
+
+
+@router.get("/space/{space_id}/files/{file_id}/preview/content")
+async def get_file_preview_content(
+    space_id: int,
+    file_id: int,
+    source_kind: Optional[FilePreviewSourceKind] = Query(default=None),
+    service: KnowledgeService = Depends(get_knowledge_service),
+    bisheng_client: BishengClient = Depends(get_bisheng_client),
+):
+    source = await service.resolve_preview_content_source(
+        space_id=space_id,
+        file_id=file_id,
+        requested_source_kind=source_kind,
+    )
+    if source is None or not source.url:
+        raise HTTPException(status_code=404, detail="PREVIEW_CONTENT_NOT_FOUND")
+
+    upstream = await bisheng_client.get_preview_asset(source.url)
+    headers = {"Cache-Control": "no-store"}
+    content_type = upstream.headers.get("content-type")
+    content_length = upstream.headers.get("content-length")
+    if content_length:
+        headers["Content-Length"] = content_length
+    return Response(
+        content=upstream.content,
+        media_type=content_type,
+        headers=headers,
+    )
 
 
 @router.get("/space/{space_id}/files/{file_id}/chunks")

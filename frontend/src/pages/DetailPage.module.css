@@ -123,6 +123,15 @@
   overflow: hidden;
 }
 
+.previewLoading {
+  width: 100%;
+  min-height: 72vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-500);
+}
+
 .previewFrame {
   width: 100%;
   min-height: 72vh;

@@ -1,0 +1,197 @@
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 320px;
+  padding: 28px 32px;
+  color: var(--neutral-500);
+  font-size: 0.96rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.state strong {
+  color: var(--neutral-700);
+  font-size: 1rem;
+}
+
+.scrollSurface {
+  width: 100%;
+  min-height: 72vh;
+  overflow: auto;
+  background: #fff;
+}
+
+.imageSurface {
+  width: 100%;
+  min-height: 72vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  background: #fff;
+}
+
+.pdfDocument {
+  width: 100%;
+  padding: 24px 0 32px;
+}
+
+.pdfPage {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 20px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--neutral-200);
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.pdfPage canvas {
+  display: block;
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+.pageLabel {
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-align: right;
+}
+
+.richContent {
+  min-height: 72vh;
+  padding: 28px 34px 36px;
+  background: #fff;
+  color: var(--neutral-800);
+  line-height: 1.8;
+}
+
+.richContent :global(h1),
+.richContent :global(h2),
+.richContent :global(h3),
+.richContent :global(h4) {
+  color: var(--neutral-900);
+  line-height: 1.35;
+  margin: 1.4em 0 0.6em;
+}
+
+.richContent :global(p),
+.richContent :global(ul),
+.richContent :global(ol),
+.richContent :global(blockquote),
+.richContent :global(table) {
+  margin: 0 0 1rem;
+}
+
+.richContent :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.richContent :global(th),
+.richContent :global(td) {
+  border: 1px solid var(--neutral-200);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+
+.sheetTabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  padding: 14px 18px 0;
+  background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.96) 100%);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.sheetTab {
+  padding: 8px 14px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--neutral-600);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.sheetTabActive {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.sheetContent {
+  min-height: calc(72vh - 56px);
+  padding: 18px;
+  background: #fff;
+}
+
+.sheetContent :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.sheetContent :global(th),
+.sheetContent :global(td) {
+  border: 1px solid var(--neutral-200);
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  vertical-align: top;
+}
+
+.sheetContent :global(th) {
+  position: sticky;
+  top: 52px;
+  background: var(--neutral-50);
+}
+
+.textContent {
+  width: 100%;
+  padding: 24px 28px 32px;
+  background: #fff;
+}
+
+.textBlock + .textBlock {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--neutral-200);
+}
+
+.textTitle {
+  margin: 0 0 12px;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--neutral-700);
+}
+
+.textBody {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--neutral-800);
+}

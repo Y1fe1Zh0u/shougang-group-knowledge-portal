@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -36,6 +38,19 @@ class RelatedKnowledgeFileData(BaseModel):
 class FilePreviewData(BaseModel):
     original_url: str
     preview_url: str
+
+
+FilePreviewMode = Literal["pdf", "docx", "spreadsheet", "markdown", "html", "text", "image", "unsupported", "chunks"]
+FilePreviewSourceKind = Literal["preview_url", "original_url", "preview_task", "none"]
+
+
+class FilePreviewManifest(BaseModel):
+    mode: FilePreviewMode
+    download_url: str = ""
+    viewer_url: str = ""
+    source_kind: FilePreviewSourceKind = "none"
+    reason: str = ""
+    supports_chunks_fallback: bool = False
 
 
 class FileChunkItem(BaseModel):

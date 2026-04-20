@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Download, Sparkles, Star } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
-import { fetchFileChunks, fetchFileDetail, fetchFilePreview, fetchRelatedFiles, type FileChunkItem, type FileDetail, type FileItem, type FilePreviewData } from '../api/content';
+import { fetchFileChunks, fetchFileDetail, fetchFilePreview, fetchRelatedFiles, type FileChunkItem, type FileDetail, type FileItem, type FilePreviewManifest } from '../api/content';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveDetailBackTarget } from '../utils/detailPage';
 import { formatDisplayDateTime } from '../utils/dateTime';
 import { resolveFilePreview } from '../utils/filePreview';
 import { toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './DetailPage.module.css';
+
+const DocumentPreview = lazy(() => import('../components/DocumentPreview'));
 
 export default function DetailPage() {
   const { spaceId: spaceIdStr = '', fileId: fileIdStr = '' } = useParams<{ spaceId: string; fileId: string }>();
@@ -19,11 +21,12 @@ export default function DetailPage() {
   const { config } = usePortalConfig();
   const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [detail, setDetail] = useState<FileDetail | null>(null);
-  const [preview, setPreview] = useState<FilePreviewData | null>(null);
+  const [preview, setPreview] = useState<FilePreviewManifest | null>(null);
   const [chunks, setChunks] = useState<FileChunkItem[]>([]);
   const [related, setRelated] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [clientFallbackActive, setClientFallbackActive] = useState(false);
 
   const fileId = Number(fileIdStr);
   const spaceId = Number(spaceIdStr);
@@ -33,6 +36,7 @@ export default function DetailPage() {
     let active = true;
     setLoading(true);
     setError('');
+    setClientFallbackActive(false);
     void (async () => {
       try {
         const [detailResult, previewResult, relatedResult] = await Promise.all([
@@ -41,7 +45,7 @@ export default function DetailPage() {
           fetchRelatedFiles(spaceId, fileId, displayConfig.detail.relatedFilesCount),
         ]);
         if (!active) return;
-        const chunkResult = (!previewResult?.previewUrl && detailResult)
+        const chunkResult = (previewResult?.mode === 'chunks' && detailResult)
           ? await fetchFileChunks(spaceId, fileId)
           : [];
         if (!active) return;
@@ -87,7 +91,27 @@ export default function DetailPage() {
 
   const META_TAGS = ['最新精选', '典型案例'];
   const displayTags = detail.tags.filter((t) => !META_TAGS.includes(t));
-  const resolvedPreview = resolveFilePreview(detail.ext, preview);
+  const resolvedPreview = resolveFilePreview(preview);
+  const effectivePreview = clientFallbackActive
+    ? {
+      ...resolvedPreview,
+      mode: 'chunks' as const,
+      prefersChunks: true,
+      reason: '当前文件预览失败，已回退到正文分段内容。',
+      viewerUrl: '',
+    }
+    : resolvedPreview;
+
+  async function handlePreviewFailure() {
+    if (!clientFallbackActive) setClientFallbackActive(true);
+    if (chunks.length > 0) return;
+    try {
+      const fallbackChunks = await fetchFileChunks(spaceId, fileId);
+      setChunks(fallbackChunks);
+    } catch {
+      setError((current) => current || '文档预览失败，且无法加载正文分段内容');
+    }
+  }
 
   return (
     <PageShell>
@@ -119,44 +143,23 @@ export default function DetailPage() {
             <div className={s.summaryText}>{detail.summary}</div>
           </div>
           <div className={s.previewArea}>
-            {resolvedPreview.mode === 'image' ? (
-              <img
-                className={s.previewImage}
-                src={resolvedPreview.src}
-                alt={`${detail.title} 预览`}
+            <Suspense fallback={<div className={s.previewLoading}>正在加载阅读器...</div>}>
+              <DocumentPreview
+                chunks={chunks}
+                onPreviewFailure={() => void handlePreviewFailure()}
+                preview={effectivePreview}
+                title={detail.title}
               />
-            ) : resolvedPreview.mode === 'frame' ? (
-              <iframe
-                className={s.previewFrame}
-                title={`${detail.title} 预览`}
-                src={resolvedPreview.src}
-              />
-            ) : (
-              chunks.length > 0 ? (
-                <div className={s.previewTextContent}>
-                  {chunks.map((chunk) => (
-                    <section key={chunk.chunkIndex} className={s.previewTextBlock}>
-                      <h3 className={s.previewTextTitle}>第 {chunk.chunkIndex + 1} 段</h3>
-                      <pre className={s.previewTextBody}>{chunk.text}</pre>
-                    </section>
-                  ))}
-                </div>
-              ) : (
-                <div className={s.previewFallback}>
-                  <strong>暂不支持在线预览</strong>
-                  <span>{resolvedPreview.reason}</span>
-                </div>
-              )
-            )}
+            </Suspense>
           </div>
           <div className={s.downloadBar}>
             <a
               className={s.downloadBtn}
-              href={resolvedPreview.downloadUrl}
-              download={resolvedPreview.downloadUrl ? `${detail.title}.${detail.ext}` : undefined}
-              target={resolvedPreview.downloadUrl ? '_blank' : undefined}
-              rel={resolvedPreview.downloadUrl ? 'noreferrer' : undefined}
-              aria-disabled={!resolvedPreview.downloadUrl}
+              href={effectivePreview.downloadUrl}
+              download={effectivePreview.downloadUrl ? `${detail.title}.${detail.ext}` : undefined}
+              target={effectivePreview.downloadUrl ? '_blank' : undefined}
+              rel={effectivePreview.downloadUrl ? 'noreferrer' : undefined}
+              aria-disabled={!effectivePreview.downloadUrl}
             >
               <Download size={16} />
               下载原文件

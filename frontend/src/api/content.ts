@@ -15,9 +15,16 @@ export interface FileDetail extends FileItem {
   space: { id: number; name: string };
 }
 
-export interface FilePreviewData {
-  originalUrl: string;
-  previewUrl: string;
+export type FilePreviewMode = 'pdf' | 'docx' | 'spreadsheet' | 'markdown' | 'html' | 'text' | 'image' | 'unsupported' | 'chunks';
+export type FilePreviewSourceKind = 'preview_url' | 'original_url' | 'preview_task' | 'none';
+
+export interface FilePreviewManifest {
+  downloadUrl: string;
+  mode: FilePreviewMode;
+  reason: string;
+  sourceKind: FilePreviewSourceKind;
+  supportsChunksFallback: boolean;
+  viewerUrl: string;
 }
 
 export interface FileChunkItem {
@@ -58,9 +65,13 @@ interface RelatedKnowledgeFileDataDto {
   total: number;
 }
 
-interface FilePreviewDataDto {
-  original_url: string;
-  preview_url: string;
+interface FilePreviewManifestDto {
+  download_url: string;
+  mode: FilePreviewMode;
+  reason: string;
+  source_kind: FilePreviewSourceKind;
+  supports_chunks_fallback: boolean;
+  viewer_url: string;
 }
 
 interface FileChunkItemDto {
@@ -172,12 +183,16 @@ export async function fetchFileDetail(spaceId: number, fileId: number): Promise<
   return data ? mapKnowledgeFileDetail(data) : null;
 }
 
-export async function fetchFilePreview(spaceId: number, fileId: number): Promise<FilePreviewData | null> {
-  const data = await request<FilePreviewDataDto | null>(`/api/v1/knowledge/space/${spaceId}/files/${fileId}/preview`);
+export async function fetchFilePreview(spaceId: number, fileId: number): Promise<FilePreviewManifest | null> {
+  const data = await request<FilePreviewManifestDto | null>(`/api/v1/knowledge/space/${spaceId}/files/${fileId}/preview`);
   if (!data) return null;
   return {
-    originalUrl: data.original_url,
-    previewUrl: data.preview_url,
+    downloadUrl: data.download_url,
+    mode: data.mode,
+    reason: data.reason,
+    sourceKind: data.source_kind,
+    supportsChunksFallback: data.supports_chunks_fallback,
+    viewerUrl: data.viewer_url,
   };
 }
 

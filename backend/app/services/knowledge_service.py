@@ -1,13 +1,19 @@
 import asyncio
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
+import httpx
 from app.clients.bisheng import BishengClient
 from app.schemas.knowledge import (
     FileChunkItem,
     FilePreviewData,
+    FilePreviewManifest,
+    FilePreviewMode,
+    FilePreviewSourceKind,
     KnowledgeFileDetail,
     KnowledgeFileItem,
     KnowledgeFileSpace,
@@ -18,12 +24,37 @@ from app.services.portal_config_service import PortalConfigService
 
 SUCCESS_STATUS = 2
 FILE_TYPE = 1
+IMAGE_EXTENSIONS = {"bmp", "gif", "jpeg", "jpg", "png", "svg", "webp"}
+SPREADSHEET_EXTENSIONS = {"csv", "xls", "xlsx"}
+MARKDOWN_EXTENSIONS = {"markdown", "md"}
+HTML_EXTENSIONS = {"htm", "html"}
+TEXT_EXTENSIONS = {"txt"}
+UNSUPPORTED_PREVIEW_EXTENSIONS = {"doc", "ppt", "pptx"}
+PREVIEW_TASK_CACHE_TTL_SECONDS = 900.0
+PREVIEW_TASK_POLL_ATTEMPTS = 6
+PREVIEW_TASK_POLL_DELAY_SECONDS = 0.4
+PREVIEW_TASK_FAILURE_STATUSES = {"cancelled", "canceled", "error", "failed", "failure", "timeout"}
 
 
 @dataclass
 class SpaceSearchResult:
     items: list[dict[str, Any]]
     total: int
+
+
+@dataclass
+class CachedPreviewTaskResult:
+    file_url: str
+    expires_at: float
+
+
+@dataclass
+class ResolvedPreviewSource:
+    source_kind: FilePreviewSourceKind
+    url: str
+
+
+PREVIEW_TASK_CACHE: dict[tuple[int, int], CachedPreviewTaskResult] = {}
 
 
 class KnowledgeService:
@@ -142,7 +173,89 @@ class KnowledgeService:
             space=KnowledgeFileSpace(id=space_id, name=source),
         )
 
-    async def get_file_preview(self, space_id: int, file_id: int) -> Optional[FilePreviewData]:
+    async def get_file_preview(self, space_id: int, file_id: int) -> Optional[FilePreviewManifest]:
+        detail = await self.get_file_detail(space_id=space_id, file_id=file_id)
+        if detail is None:
+            return None
+
+        normalized_ext = self._normalize_ext(detail.file_ext)
+        raw_preview = await self._get_raw_file_preview(space_id=space_id, file_id=file_id)
+        download_url = raw_preview.original_url if raw_preview else ""
+
+        if normalized_ext in UNSUPPORTED_PREVIEW_EXTENSIONS:
+            return FilePreviewManifest(
+                mode="unsupported",
+                download_url=download_url,
+                reason="当前文件类型暂不支持在线预览，请下载原文件查看。",
+                supports_chunks_fallback=False,
+            )
+
+        source = await self.resolve_preview_content_source(
+            space_id=space_id,
+            file_id=file_id,
+            raw_preview=raw_preview,
+            file_ext=normalized_ext,
+        )
+        if source is None:
+            return FilePreviewManifest(
+                mode="chunks",
+                download_url=download_url,
+                reason="当前文件暂未生成可直接预览的资源，已回退到正文分段内容。",
+                supports_chunks_fallback=True,
+            )
+
+        mode = self._infer_preview_mode(source.url, normalized_ext)
+        if mode in {"unsupported", "chunks"}:
+            return FilePreviewManifest(
+                mode="chunks",
+                download_url=download_url or source.url,
+                reason="当前文件缺少可直接解析的预览资源，已回退到正文分段内容。",
+                supports_chunks_fallback=True,
+            )
+
+        return FilePreviewManifest(
+            mode=mode,
+            download_url=download_url or source.url,
+            source_kind=source.source_kind,
+            supports_chunks_fallback=True,
+        )
+
+    async def resolve_preview_content_source(
+        self,
+        space_id: int,
+        file_id: int,
+        requested_source_kind: Optional[FilePreviewSourceKind] = None,
+        raw_preview: Optional[FilePreviewData] = None,
+        file_ext: Optional[str] = None,
+    ) -> Optional[ResolvedPreviewSource]:
+        normalized_ext = self._normalize_ext(file_ext or "")
+        if normalized_ext in UNSUPPORTED_PREVIEW_EXTENSIONS:
+            return None
+
+        preview_data = raw_preview or await self._get_raw_file_preview(space_id=space_id, file_id=file_id)
+        if requested_source_kind:
+            url = await self._get_preview_source_url(
+                source_kind=requested_source_kind,
+                raw_preview=preview_data,
+                space_id=space_id,
+                file_id=file_id,
+            )
+            if url:
+                return ResolvedPreviewSource(source_kind=requested_source_kind, url=url)
+            return None
+
+        for source_kind in self._get_preview_source_priority(normalized_ext):
+            url = await self._get_preview_source_url(
+                source_kind=source_kind,
+                raw_preview=preview_data,
+                space_id=space_id,
+                file_id=file_id,
+            )
+            if url:
+                return ResolvedPreviewSource(source_kind=source_kind, url=url)
+        return None
+
+    async def _get_raw_file_preview(self, space_id: int, file_id: int) -> Optional[FilePreviewData]:
         detail = await self.get_file_detail(space_id=space_id, file_id=file_id)
         if detail is None:
             return None
@@ -156,6 +269,168 @@ class KnowledgeService:
             "preview_url": self._bisheng.resolve_url(str(data.get("preview_url") or "")),
         }
         return FilePreviewData.model_validate(normalized)
+
+    async def _get_preview_source_url(
+        self,
+        source_kind: FilePreviewSourceKind,
+        raw_preview: Optional[FilePreviewData],
+        space_id: int,
+        file_id: int,
+    ) -> str:
+        if source_kind == "preview_url":
+            return raw_preview.preview_url if raw_preview else ""
+        if source_kind == "original_url":
+            return raw_preview.original_url if raw_preview else ""
+        if source_kind == "preview_task":
+            return await self._resolve_preview_task_url(space_id=space_id, file_id=file_id)
+        return ""
+
+    def _get_preview_source_priority(self, file_ext: str) -> tuple[FilePreviewSourceKind, ...]:
+        if file_ext == "pdf" or file_ext in IMAGE_EXTENSIONS:
+            return ("preview_url", "original_url", "preview_task")
+        if (
+            file_ext == "docx"
+            or file_ext in SPREADSHEET_EXTENSIONS
+            or file_ext in MARKDOWN_EXTENSIONS
+            or file_ext in HTML_EXTENSIONS
+            or file_ext in TEXT_EXTENSIONS
+        ):
+            return ("original_url", "preview_url", "preview_task")
+        return ("preview_url", "original_url", "preview_task")
+
+    async def _resolve_preview_task_url(self, space_id: int, file_id: int) -> str:
+        cache_key = (space_id, file_id)
+        cached = PREVIEW_TASK_CACHE.get(cache_key)
+        if cached and cached.expires_at > time.monotonic():
+            return cached.file_url
+
+        trigger_response = await self._trigger_preview_task(space_id=space_id, file_id=file_id)
+        if not trigger_response:
+            return ""
+
+        direct_file_url = self._extract_preview_task_file_url(trigger_response)
+        if direct_file_url:
+            PREVIEW_TASK_CACHE[cache_key] = CachedPreviewTaskResult(
+                file_url=direct_file_url,
+                expires_at=time.monotonic() + PREVIEW_TASK_CACHE_TTL_SECONDS,
+            )
+            return direct_file_url
+
+        task_id = self._extract_preview_task_id(trigger_response)
+        if not task_id:
+            return ""
+
+        for _ in range(PREVIEW_TASK_POLL_ATTEMPTS):
+            status_response = await self._poll_preview_task(task_id)
+            if not status_response:
+                return ""
+            file_url = self._extract_preview_task_file_url(status_response)
+            if file_url:
+                PREVIEW_TASK_CACHE[cache_key] = CachedPreviewTaskResult(
+                    file_url=file_url,
+                    expires_at=time.monotonic() + PREVIEW_TASK_CACHE_TTL_SECONDS,
+                )
+                return file_url
+            if self._is_preview_task_failed(status_response):
+                return ""
+            await asyncio.sleep(PREVIEW_TASK_POLL_DELAY_SECONDS)
+
+        return ""
+
+    async def _trigger_preview_task(self, space_id: int, file_id: int) -> Optional[dict[str, Any]]:
+        payload_candidates = (
+            {"knowledge_id": space_id, "file_id": file_id},
+            {"space_id": space_id, "file_id": file_id},
+            {"knowledge_id": space_id, "file_ids": [file_id]},
+        )
+        for payload in payload_candidates:
+            try:
+                return await self._bisheng.post_json("/api/v1/knowledge/preview", json=payload)
+            except Exception:
+                continue
+        return None
+
+    async def _poll_preview_task(self, task_id: str) -> Optional[dict[str, Any]]:
+        params_candidates = ({"task_id": task_id}, {"id": task_id})
+        for params in params_candidates:
+            try:
+                return await self._bisheng.get_json("/api/v1/knowledge/preview/status", params=params)
+            except Exception:
+                continue
+        return None
+
+    def _extract_preview_task_id(self, payload: dict[str, Any]) -> str:
+        data = payload.get("data") or {}
+        for key in ("task_id", "preview_task_id"):
+            value = data.get(key)
+            if value not in (None, ""):
+                return str(value)
+
+        for container_key in ("task", "preview_task", "result"):
+            container = data.get(container_key)
+            if isinstance(container, dict):
+                for key in ("task_id", "preview_task_id", "id"):
+                    value = container.get(key)
+                    if value not in (None, ""):
+                        return str(value)
+        return ""
+
+    def _extract_preview_task_file_url(self, payload: dict[str, Any]) -> str:
+        values = self._collect_nested_values(payload.get("data") or {}, {"file_url", "preview_url", "url"})
+        for value in values:
+            if isinstance(value, str) and value.strip():
+                return self._bisheng.resolve_url(value.strip())
+        return ""
+
+    def _is_preview_task_failed(self, payload: dict[str, Any]) -> bool:
+        statuses = self._collect_nested_values(payload.get("data") or {}, {"status", "state", "task_status"})
+        for status in statuses:
+            normalized_status = self._normalize_ext(str(status))
+            if normalized_status in PREVIEW_TASK_FAILURE_STATUSES:
+                return True
+        return False
+
+    def _infer_preview_mode(self, source_url: str, fallback_ext: str) -> FilePreviewMode:
+        parsed_path = urlparse(source_url).path
+        source_ext = self._get_file_ext(parsed_path)
+        normalized_ext = self._normalize_ext(source_ext or fallback_ext)
+        if normalized_ext == "pdf":
+            return "pdf"
+        if normalized_ext == "docx":
+            return "docx"
+        if normalized_ext in SPREADSHEET_EXTENSIONS:
+            return "spreadsheet"
+        if normalized_ext in MARKDOWN_EXTENSIONS:
+            return "markdown"
+        if normalized_ext in HTML_EXTENSIONS:
+            return "html"
+        if normalized_ext in TEXT_EXTENSIONS:
+            return "text"
+        if normalized_ext in IMAGE_EXTENSIONS:
+            return "image"
+        if normalized_ext in UNSUPPORTED_PREVIEW_EXTENSIONS:
+            return "unsupported"
+        return "chunks"
+
+    def _collect_nested_values(self, node: Any, keys: set[str]) -> list[Any]:
+        values: list[Any] = []
+
+        def walk(current: Any):
+            if isinstance(current, dict):
+                for key, value in current.items():
+                    if key in keys and value not in (None, "", [], {}):
+                        values.append(value)
+                    if isinstance(value, (dict, list)):
+                        walk(value)
+            elif isinstance(current, list):
+                for item in current:
+                    walk(item)
+
+        walk(node)
+        return values
+
+    def _normalize_ext(self, ext: str) -> str:
+        return ext.strip().lower()
 
     async def get_file_chunks(self, space_id: int, file_id: int) -> list[FileChunkItem]:
         detail = await self.get_file_detail(space_id=space_id, file_id=file_id)
@@ -263,7 +538,10 @@ class KnowledgeService:
                 params["keyword"] = keyword
             if tag_ids:
                 params["tag_ids"] = tag_ids
-            response = await self._bisheng.get_json(f"/api/v1/knowledge/space/{space_id}/search", params=params)
+            try:
+                response = await self._bisheng.get_json(f"/api/v1/knowledge/space/{space_id}/search", params=params)
+            except httpx.HTTPError:
+                return SpaceSearchResult(items=[], total=0)
             data = response.get("data") or {}
             batch = data.get("data") or []
             total = int(data.get("total") or 0)
@@ -274,7 +552,10 @@ class KnowledgeService:
         return SpaceSearchResult(items=all_items, total=total)
 
     async def _get_space_tag_lookup(self, space_id: int) -> dict[str, int]:
-        response = await self._bisheng.get_json(f"/api/v1/knowledge/space/{space_id}/tag")
+        try:
+            response = await self._bisheng.get_json(f"/api/v1/knowledge/space/{space_id}/tag")
+        except httpx.HTTPError:
+            return {}
         tags = response.get("data") or []
         return {tag["name"]: int(tag["id"]) for tag in tags if "name" in tag and "id" in tag}
 

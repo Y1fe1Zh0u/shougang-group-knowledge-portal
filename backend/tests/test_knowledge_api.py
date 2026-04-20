@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -9,9 +10,29 @@ from app.services.portal_config_service import PortalConfigService
 class FakeBishengClient:
     def __init__(self):
         self.chat_payload = None
+        self.preview_asset_requests = []
 
     def resolve_url(self, path_or_url: str) -> str:
         return path_or_url
+
+    async def get(self, path: str, params=None):
+        if path == "https://example.com/preview/1580.pdf":
+            return httpx.Response(
+                200,
+                headers={"content-type": "application/pdf"},
+                content=b"%PDF-preview-1580",
+            )
+        if path == "https://example.com/original/1580.pdf":
+            return httpx.Response(
+                200,
+                headers={"content-type": "application/pdf"},
+                content=b"%PDF-original-1580",
+            )
+        raise AssertionError(f"Unexpected download path: {path}")
+
+    async def get_preview_asset(self, path: str, params=None):
+        self.preview_asset_requests.append({"path": path, "params": params})
+        return await self.get(path, params=params)
 
     async def get_json(self, path: str, params=None):
         params = params or {}
@@ -120,6 +141,9 @@ class FakeBishengClient:
             }
         raise AssertionError(f"Unexpected path: {path}")
 
+    async def post_json(self, path: str, json=None):
+        raise AssertionError(f"Unexpected post path: {path}")
+
     async def stream_post(self, path: str, json=None):
         self.chat_payload = {"path": path, "json": json}
         yield b"event: message\n"
@@ -162,7 +186,10 @@ def test_get_file_detail_and_preview(tmp_path: Path):
 
     assert preview_response.status_code == 200
     preview = preview_response.json()["data"]
-    assert preview["preview_url"] == "https://example.com/preview/1580.pdf"
+    assert preview["mode"] == "pdf"
+    assert preview["source_kind"] == "preview_url"
+    assert preview["download_url"] == "https://example.com/original/1580.pdf"
+    assert preview["viewer_url"].endswith("source_kind=preview_url")
 
 
 def test_get_file_preview_normalizes_relative_urls(tmp_path: Path):
@@ -180,6 +207,15 @@ def test_get_file_preview_normalizes_relative_urls(tmp_path: Path):
         def resolve_url(self, path_or_url: str) -> str:
             return f"https://bisheng.example.com{path_or_url}" if path_or_url.startswith("/") else path_or_url
 
+        async def get(self, path: str, params=None):
+            if path == "https://bisheng.example.com/bisheng/original/1580.pdf?signature=demo":
+                return httpx.Response(
+                    200,
+                    headers={"content-type": "application/pdf"},
+                    content=b"%PDF-relative-1580",
+                )
+            return await super().get(path, params=params)
+
     config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     fake_bisheng = RelativePreviewBishengClient()
     with TestClient(app) as client:
@@ -189,8 +225,123 @@ def test_get_file_preview_normalizes_relative_urls(tmp_path: Path):
 
     assert preview_response.status_code == 200
     preview = preview_response.json()["data"]
-    assert preview["original_url"] == "https://bisheng.example.com/bisheng/original/1580.pdf?signature=demo"
-    assert preview["preview_url"] == ""
+    assert preview["mode"] == "pdf"
+    assert preview["download_url"] == "https://bisheng.example.com/bisheng/original/1580.pdf?signature=demo"
+    assert preview["source_kind"] == "original_url"
+    assert preview["viewer_url"].endswith("source_kind=original_url")
+
+
+def test_get_file_preview_uses_preview_task_when_direct_urls_missing(tmp_path: Path):
+    class PreviewTaskBishengClient(FakeBishengClient):
+        async def get_json(self, path: str, params=None):
+            if path == "/api/v1/knowledge/space/12/files/1580/preview":
+                return {"data": {"original_url": "", "preview_url": ""}}
+            if path == "/api/v1/knowledge/preview/status":
+                assert params == {"task_id": "task-1580"}
+                return {
+                    "data": {
+                        "status": "success",
+                        "file_url": "https://example.com/task/1580.pdf",
+                    }
+                }
+            return await super().get_json(path, params=params)
+
+        async def post_json(self, path: str, json=None):
+            assert path == "/api/v1/knowledge/preview"
+            assert json == {"knowledge_id": 12, "file_id": 1580}
+            return {"data": {"task_id": "task-1580"}}
+
+        async def get(self, path: str, params=None):
+            if path == "https://example.com/task/1580.pdf":
+                return httpx.Response(
+                    200,
+                    headers={"content-type": "application/pdf"},
+                    content=b"%PDF-task-1580",
+                )
+            return await super().get(path, params=params)
+
+    config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    fake_bisheng = PreviewTaskBishengClient()
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = config_service
+        client.app.state.bisheng_client = fake_bisheng
+        preview_response = client.get("/api/v1/knowledge/space/12/files/1580/preview")
+        content_response = client.get(
+            "/api/v1/knowledge/space/12/files/1580/preview/content?source_kind=preview_task"
+        )
+
+    assert preview_response.status_code == 200
+    preview = preview_response.json()["data"]
+    assert preview["mode"] == "pdf"
+    assert preview["source_kind"] == "preview_task"
+    assert preview["viewer_url"].endswith("source_kind=preview_task")
+
+    assert content_response.status_code == 200
+    assert content_response.headers["content-type"] == "application/pdf"
+    assert content_response.content == b"%PDF-task-1580"
+
+
+def test_get_file_preview_content_proxies_selected_source(tmp_path: Path):
+    for client, _, fake_bisheng in make_client(tmp_path):
+        response = client.get("/api/v1/knowledge/space/12/files/1580/preview/content?source_kind=preview_url")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content == b"%PDF-preview-1580"
+    assert fake_bisheng.preview_asset_requests == [
+        {"path": "https://example.com/preview/1580.pdf", "params": None}
+    ]
+
+
+def test_get_file_preview_content_uses_preview_asset_fetcher_for_original_urls(tmp_path: Path):
+    class PreviewAssetOnlyBishengClient(FakeBishengClient):
+        async def get(self, path: str, params=None):
+            raise AssertionError("preview content should not use authenticated get() for preview assets")
+
+        async def get_preview_asset(self, path: str, params=None):
+            self.preview_asset_requests.append({"path": path, "params": params})
+            return httpx.Response(
+                200,
+                request=httpx.Request("GET", path),
+                headers={"content-type": "application/octet-stream"},
+                content=b"markdown body",
+            )
+
+        async def get_json(self, path: str, params=None):
+            if path == "/api/v1/knowledge/space/12/files/1580/preview":
+                return {
+                    "data": {
+                        "original_url": "https://example.com/original/1580.md?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=demo",
+                        "preview_url": "",
+                    }
+                }
+            if path == "/api/v1/knowledge/file/info/1580":
+                return {
+                    "data": {
+                        "id": 1580,
+                        "knowledge_id": 12,
+                        "file_name": "热轧1580产线精轧机振动纹治理实践.md",
+                        "abstract": "振动纹治理实践摘要",
+                        "update_time": "2026-04-13T10:30:00",
+                    }
+                }
+            return await super().get_json(path, params=params)
+
+    config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    fake_bisheng = PreviewAssetOnlyBishengClient()
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = config_service
+        client.app.state.bisheng_client = fake_bisheng
+        response = client.get("/api/v1/knowledge/space/12/files/1580/preview/content?source_kind=original_url")
+
+    assert response.status_code == 200
+    assert response.content == b"markdown body"
+    assert fake_bisheng.preview_asset_requests == [
+        {
+            "path": "https://example.com/original/1580.md?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=demo",
+            "params": None,
+        }
+    ]
 
 
 def test_get_file_chunks_returns_sorted_chunk_text(tmp_path: Path):
@@ -262,3 +413,29 @@ def test_get_tags_aggregates_enabled_spaces(tmp_path: Path):
 
     assert response.status_code == 200
     assert response.json()["data"] == ["振动纹", "板面缺陷", "热轧"]
+
+
+def test_search_and_tags_skip_unauthorized_spaces_instead_of_500(tmp_path: Path):
+    class PartialUnauthorizedBishengClient(FakeBishengClient):
+        async def get_json(self, path: str, params=None):
+            if path in {"/api/v1/knowledge/space/18/tag", "/api/v1/knowledge/space/18/search"}:
+                request = httpx.Request("GET", f"https://example.com{path}")
+                response = httpx.Response(401, request=request)
+                raise httpx.HTTPStatusError("unauthorized", request=request, response=response)
+            return await super().get_json(path, params=params)
+
+    config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    fake_bisheng = PartialUnauthorizedBishengClient()
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = config_service
+        client.app.state.bisheng_client = fake_bisheng
+        tags_response = client.get("/api/v1/knowledge/tags?space_ids=12&space_ids=18")
+        search_response = client.get("/api/v1/knowledge/files?tag=%E7%83%AD%E8%BD%A7&space_ids=12&space_ids=18")
+
+    assert tags_response.status_code == 200
+    assert tags_response.json()["data"] == ["振动纹", "热轧"]
+
+    assert search_response.status_code == 200
+    search_data = search_response.json()["data"]
+    assert search_data["total"] == 2
+    assert all(item["space_id"] == 12 for item in search_data["data"])

@@ -1,8 +1,20 @@
+from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from typing import Optional
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urljoin, urlparse
 
 import httpx
+
+PRESIGNED_QUERY_KEYS = frozenset(
+    {
+        "x-amz-algorithm",
+        "x-amz-credential",
+        "x-amz-signature",
+        "x-amz-date",
+        "x-amz-signedheaders",
+        "x-amz-expires",
+    }
+)
 
 
 class BishengClient:
@@ -15,12 +27,24 @@ class BishengClient:
             base_url=base_url.rstrip("/"),
             timeout=timeout_seconds,
             headers=headers,
+            follow_redirects=True,
+        )
+        self._plain_client = httpx.AsyncClient(
+            timeout=timeout_seconds,
+            follow_redirects=True,
         )
         if api_token:
             self._client.cookies.set("access_token_cookie", api_token)
 
     async def get(self, path: str, params: Optional[dict] = None) -> httpx.Response:
         response = await self._client.get(path, params=params)
+        response.raise_for_status()
+        return response
+
+    async def get_preview_asset(self, path_or_url: str, params: Optional[dict] = None) -> httpx.Response:
+        url = self.resolve_url(path_or_url)
+        client = self._plain_client if self._should_bypass_auth(url) else self._client
+        response = await client.get(url, params=params)
         response.raise_for_status()
         return response
 
@@ -42,6 +66,21 @@ class BishengClient:
             return ""
         return urljoin(self._base_url, path_or_url)
 
+    @asynccontextmanager
+    async def stream_get(self, path_or_url: str, params: Optional[dict] = None):
+        url = self.resolve_url(path_or_url)
+        async with self._client.stream("GET", url, params=params) as response:
+            response.raise_for_status()
+            yield response
+
+    @staticmethod
+    def _should_bypass_auth(url: str) -> bool:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return False
+        query_keys = {key.lower() for key, _ in parse_qsl(parsed.query, keep_blank_values=True)}
+        return not PRESIGNED_QUERY_KEYS.isdisjoint(query_keys)
+
     async def stream_post(self, path: str, json: Optional[dict] = None) -> AsyncIterator[bytes]:
         async with self._client.stream("POST", path, json=json) as response:
             response.raise_for_status()
@@ -51,3 +90,4 @@ class BishengClient:
 
     async def aclose(self) -> None:
         await self._client.aclose()
+        await self._plain_client.aclose()
