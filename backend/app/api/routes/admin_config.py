@@ -70,10 +70,13 @@ async def get_space_options(
     service: PortalConfigService = Depends(get_portal_config_service),
     bisheng_client: BishengClient = Depends(get_bisheng_client),
 ):
-    response = await bisheng_client.get_json(
-        "/api/v1/knowledge",
-        params={"page_num": 1, "page_size": 100, "type": 3},
-    )
+    try:
+        response = await bisheng_client.get_json(
+            "/api/v1/knowledge",
+            params={"page_num": 1, "page_size": 100, "type": 3},
+        )
+    except Exception:
+        return response_ok(service.build_space_options([]))
     data = response.get("data") or {}
     raw_spaces = data.get("data") if isinstance(data, dict) else []
     if not isinstance(raw_spaces, list):
@@ -107,10 +110,13 @@ async def get_space_files(
     service: PortalConfigService = Depends(get_portal_config_service),
     bisheng_client: BishengClient = Depends(get_bisheng_client),
 ):
-    response = await bisheng_client.get_json(
-        f"/api/v1/knowledge/file_list/{space_id}",
-        params={"page_num": 1, "page_size": 100},
-    )
+    try:
+        response = await bisheng_client.get_json(
+            f"/api/v1/knowledge/file_list/{space_id}",
+            params={"page_num": 1, "page_size": 100},
+        )
+    except Exception:
+        return response_ok(service.build_space_files(space_id, []))
     data = response.get("data") or {}
     raw_files = data.get("data") if isinstance(data, dict) else []
     if not isinstance(raw_files, list):
@@ -168,7 +174,10 @@ async def get_qa_model_options(
     service: PortalConfigService = Depends(get_portal_config_service),
     bisheng_client: BishengClient = Depends(get_bisheng_client),
 ):
-    response = await bisheng_client.get_json("/api/v1/workstation/config/daily")
+    try:
+        response = await bisheng_client.get_json("/api/v1/workstation/config/daily")
+    except Exception:
+        return response_ok(service.build_qa_model_options([]))
     data = response.get("data") or {}
     raw_models = data.get("models") if isinstance(data, dict) else []
     if not isinstance(raw_models, list):

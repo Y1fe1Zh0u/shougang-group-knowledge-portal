@@ -34,17 +34,31 @@
       "file_count": 2,
       "tag_count": 0,
       "enabled": true
+    },
+    {
+      "id": 20,
+      "name": "test",
+      "file_count": 1,
+      "tag_count": 0,
+      "enabled": true
+    },
+    {
+      "id": 7,
+      "name": "e2e-del-test",
+      "file_count": 0,
+      "tag_count": 0,
+      "enabled": true
     }
   ],
   "domains": [
     {
-      "name": "域1",
+      "name": "域2",
       "space_ids": [
-        5
+        2
       ],
-      "color": "#2563eb",
-      "bg": "#eff6ff",
-      "icon": "Snowflake",
+      "color": "#059669",
+      "bg": "#d1fae5",
+      "icon": "Factory",
       "background_image": "/rolling-domain-bg.jpg",
       "enabled": true
     },
@@ -60,13 +74,13 @@
       "enabled": true
     },
     {
-      "name": "域2",
+      "name": "域1",
       "space_ids": [
-        2
+        1
       ],
-      "color": "#059669",
-      "bg": "#d1fae5",
-      "icon": "Factory",
+      "color": "#2563eb",
+      "bg": "#eff6ff",
+      "icon": "Snowflake",
       "background_image": "/rolling-domain-bg.jpg",
       "enabled": true
     },
@@ -115,11 +129,12 @@
   ],
   "qa": {
     "knowledge_space_ids": [
-      1,
       2,
       3,
       4,
-      5
+      5,
+      1,
+      20
     ],
     "panel_title": "技术问答·专家在线",
     "welcome_message": "你好，我是首钢知库智能助手，请问有什么可以帮您？",

@@ -305,6 +305,40 @@ def test_get_admin_space_files_uses_bisheng_file_list(tmp_path: Path):
     }
 
 
+def test_admin_config_endpoints_fail_soft_when_bisheng_is_unauthorized(tmp_path: Path):
+    class UnauthorizedBishengClient(FakeBishengClient):
+        async def get_json(self, path: str, params=None):
+            if path in {
+                "/api/v1/knowledge",
+                "/api/v1/workstation/config/daily",
+                "/api/v1/knowledge/file_list/19",
+            }:
+                raise RuntimeError("401 Unauthorized")
+            return await super().get_json(path, params=params)
+
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = UnauthorizedBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
+        space_options_response = client.get("/api/v1/admin/config/space-options")
+        model_options_response = client.get("/api/v1/admin/config/qa/model-options")
+        space_files_response = client.get("/api/v1/admin/config/spaces/19/files")
+
+    assert space_options_response.status_code == 200
+    assert space_options_response.json()["data"]["options"] == []
+
+    assert model_options_response.status_code == 200
+    model_options = model_options_response.json()["data"]
+    assert model_options["models"] == []
+    assert model_options["selected_model"] == service.get_config().qa.selected_model
+
+    assert space_files_response.status_code == 200
+    assert space_files_response.json()["data"]["files"] == []
+
+
 def test_put_admin_bisheng_config_updates_runtime_without_echoing_secret(tmp_path: Path):
     runtime_service = create_runtime_service(tmp_path)
 
