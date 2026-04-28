@@ -115,8 +115,10 @@
 .msgColumn {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   min-width: 0;
+  max-width: 640px;
 }
 
 .msgBubble {
@@ -236,24 +238,39 @@
 .botContent :global(.citationRef) {
   font-size: 0.72em;
   color: var(--primary-600);
-  margin: 0 1px;
+  margin: 0 2px;
+  vertical-align: super;
+  line-height: 1;
 }
 
 .botContent :global(.citationRef a) {
-  padding: 0 2px;
+  display: inline-block;
+  min-width: 14px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
-  color: inherit;
+  font-weight: 600;
 }
 
 .botContent :global(.citationRef a:hover) {
-  color: var(--primary-700);
-  text-decoration: underline;
+  background: var(--primary-100);
+  color: var(--primary-800);
+}
+
+.botContent :global(.citationRef .citationSep) {
+  display: inline-block;
+  width: 3px;
+  font-size: 0;
+  color: transparent;
 }
 
 .botBubbleWrap {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: flex-end;
   gap: 4px;
   max-width: 100%;
@@ -271,40 +288,64 @@
 .citations {
   list-style: none;
   margin: 0;
-  padding: 8px 14px;
-  background: var(--neutral-50);
-  border: 1px dashed var(--neutral-200);
+  padding: 4px 14px;
+  background: var(--surface);
+  border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
-  font-size: 0.78rem;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.82rem;
   max-width: 600px;
+  width: 100%;
 }
 
 .citationItem {
   display: flex;
-  gap: 6px;
-  align-items: baseline;
-  padding: 3px 0;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
   color: var(--neutral-700);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.citationItem:last-child {
+  border-bottom: none;
 }
 
 .citationIndex {
-  color: var(--primary-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  font-size: 0.78rem;
   font-weight: 600;
-  min-width: 1.3em;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 .citationLink {
   color: var(--neutral-800);
   text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .citationLink:hover {
-  color: var(--primary-600);
+  color: var(--primary-700);
   text-decoration: underline;
 }
 
 .citationHint {
   color: var(--neutral-500);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @keyframes blink {

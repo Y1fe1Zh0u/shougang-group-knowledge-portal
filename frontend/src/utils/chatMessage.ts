@@ -79,7 +79,7 @@ function injectCitationLinks(
       const safeKey = escapeHtml(key);
       return `<a class="citationLink" data-cite-key="${safeKey}" data-cite-ordinal="${ordinal}" href="${href}" title="${title}">${ordinal}</a>`;
     });
-    return `<sup class="citationRef">${links.join('')}</sup>`;
+    return `<sup class="citationRef">${links.join('<span class="citationSep">,</span>')}</sup>`;
   });
 }
 
