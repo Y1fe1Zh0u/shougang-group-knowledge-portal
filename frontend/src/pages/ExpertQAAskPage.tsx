@@ -203,44 +203,33 @@ export default function ExpertQAAskPage() {
               <div className={s.hint}>未邀请专家时，问题将向所选业务域的全部认证专家公开</div>
             </div>
 
-            <div className={s.row2}>
-              <div className={s.field}>
-                <label className={s.fieldLabel}>问题标签</label>
-                <div className={s.tagInput}>
-                  {tags.map((tag) => (
-                    <span key={tag} className={s.tagChip}>
-                      {tag}
-                      <button
-                        type="button"
-                        className={s.tagX}
-                        onClick={() => removeTag(tag)}
-                        aria-label={`移除 ${tag}`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    placeholder="输入后按回车添加"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addTag();
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <div className={s.field}>
-                <label className={s.fieldLabel}>关联文档</label>
+            <div className={s.field}>
+              <label className={s.fieldLabel}>问题标签</label>
+              <div className={s.tagInput}>
+                {tags.map((tag) => (
+                  <span key={tag} className={s.tagChip}>
+                    {tag}
+                    <button
+                      type="button"
+                      className={s.tagX}
+                      onClick={() => removeTag(tag)}
+                      aria-label={`移除 ${tag}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
                 <input
-                  type="text"
-                  className={s.input}
-                  placeholder="搜索关联首钢知库内文档"
+                  placeholder="输入后按回车添加"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
                 />
-                <div className={s.hint}>已关联：1 篇 · 振动纹排查指引 V2.1</div>
               </div>
             </div>
 
