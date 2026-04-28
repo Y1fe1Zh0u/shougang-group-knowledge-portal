@@ -8,6 +8,7 @@ from app.schemas.bisheng_runtime import BishengRuntimeConfigUpdate
 from app.schemas.common import response_error, response_ok
 from app.schemas.portal_config import (
     AppsConfigUpdate,
+    BannersConfigUpdate,
     DomainsConfigUpdate,
     PortalConfig,
     QAConfig,
@@ -228,6 +229,21 @@ async def update_apps_config(
     service: PortalConfigService = Depends(get_portal_config_service),
 ):
     return response_ok({"apps": service.update_apps(payload).apps})
+
+
+@router.get("/banners")
+async def get_banners_config(
+    service: PortalConfigService = Depends(get_portal_config_service),
+):
+    return response_ok({"banners": service.get_config().banners})
+
+
+@router.put("/banners")
+async def update_banners_config(
+    payload: BannersConfigUpdate,
+    service: PortalConfigService = Depends(get_portal_config_service),
+):
+    return response_ok({"banners": service.update_banners(payload).banners})
 
 
 @router.get("/bisheng")

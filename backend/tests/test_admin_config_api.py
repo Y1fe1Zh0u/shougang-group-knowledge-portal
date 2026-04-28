@@ -142,7 +142,6 @@ def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     assert body["status_code"] == 200
     assert "spaces" in body["data"]
     assert "domains" in body["data"]
-    assert "panel_title" in body["data"]["qa"]
     assert "welcome_message" in body["data"]["qa"]
     assert "ai_search_system_prompt" in body["data"]["qa"]
     assert "qa_system_prompt" in body["data"]["qa"]
@@ -193,7 +192,6 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
             "/api/v1/admin/config/qa",
             json={
                 "knowledge_space_ids": [12, 18],
-                "panel_title": "技术问答·设备专家",
                 "welcome_message": "你好，我是首钢设备诊断助手，请问有什么可以帮您？",
                 "hot_questions": ["振动纹通常如何排查？"],
                 "ai_search_system_prompt": "搜索提示词",
@@ -204,12 +202,10 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["data"]["panel_title"] == "技术问答·设备专家"
     assert body["data"]["welcome_message"] == "你好，我是首钢设备诊断助手，请问有什么可以帮您？"
     assert body["data"]["ai_search_system_prompt"] == "搜索提示词"
     assert body["data"]["qa_system_prompt"] == "问答提示词"
     assert body["data"]["selected_model"] == "1"
-    assert service.get_config().qa.panel_title == "技术问答·设备专家"
     assert service.get_config().qa.welcome_message == "你好，我是首钢设备诊断助手，请问有什么可以帮您？"
     assert service.get_config().qa.ai_search_system_prompt == "搜索提示词"
     assert service.get_config().qa.qa_system_prompt == "问答提示词"
@@ -353,6 +349,81 @@ def test_admin_config_endpoints_fail_soft_when_bisheng_is_unauthorized(tmp_path:
 
     assert space_files_response.status_code == 200
     assert space_files_response.json()["data"]["files"] == []
+
+
+def test_put_admin_banners_persists_full_payload(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.put(
+            "/api/v1/admin/config/banners",
+            json={
+                "banners": [
+                    {
+                        "id": 1,
+                        "label": "新春活动",
+                        "title": "首钢知库 — 2026 春季技术月",
+                        "desc": "聚焦冷轧、能源、智能制造三大主题",
+                        "image_url": "/uploads/banners/abc123.jpg",
+                        "link_url": "https://intranet.example.com/spring",
+                        "enabled": True,
+                    }
+                ]
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["banners"][0]["title"] == "首钢知库 — 2026 春季技术月"
+    assert body["data"]["banners"][0]["image_url"] == "/uploads/banners/abc123.jpg"
+    assert body["data"]["banners"][0]["link_url"] == "https://intranet.example.com/spring"
+    persisted = service.get_config().banners
+    assert persisted[0].title == "首钢知库 — 2026 春季技术月"
+    assert persisted[0].image_url == "/uploads/banners/abc123.jpg"
+
+
+def test_put_admin_banners_rejects_missing_required_fields(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.put(
+            "/api/v1/admin/config/banners",
+            json={"banners": [{"id": 1, "label": "缺标题"}]},
+        )
+
+    assert response.status_code == 422
+
+
+def test_get_admin_banners_seeds_defaults_when_missing(tmp_path: Path):
+    config_path = tmp_path / "portal_config.json"
+    config_path.write_text(
+        '{"spaces": [], "domains": [], "sections": [], '
+        '"qa": {"knowledge_space_ids": [], "welcome_message": "", '
+        '"hot_questions": [], "ai_search_system_prompt": "", "qa_system_prompt": "", "selected_model": ""}, '
+        '"recommendation": {"provider": "tag_feed", "home_strategy": "x", "detail_strategy": "y"}, '
+        '"display": {"home": {}, "list": {}, "search": {}, "detail": {}}, '
+        '"apps": []}',
+        encoding="utf-8",
+    )
+    service = PortalConfigService(config_path=config_path)
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.get("/api/v1/admin/config/banners")
+
+    assert response.status_code == 200
+    banners = response.json()["data"]["banners"]
+    assert len(banners) >= 3
+    assert banners[0]["image_url"] == "/banner-hero-1.jpg"
+    assert banners[0]["title"]
 
 
 def test_put_admin_bisheng_config_updates_runtime_without_echoing_secret(tmp_path: Path):

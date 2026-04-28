@@ -38,7 +38,6 @@ DEFAULT_PORTAL_CONFIG = {
     ],
     "qa": {
         "knowledge_space_ids": [],
-        "panel_title": "技术问答·专家在线",
         "welcome_message": "你好，我是首钢知库智能助手，请问有什么可以帮您？",
         "hot_questions": [
             "振动纹通常如何排查？",
@@ -137,6 +136,35 @@ DEFAULT_PORTAL_CONFIG = {
             "color": "#0891b2",
             "bg": "#cffafe",
             "url": "",
+            "enabled": True,
+        },
+    ],
+    "banners": [
+        {
+            "id": 1,
+            "label": "平台概览",
+            "title": "首钢知库 — 钢铁行业知识共享平台",
+            "desc": "汇聚设备、轧线、冷轧、能源全域知识，助力技术传承与创新",
+            "image_url": "/banner-hero-1.jpg",
+            "link_url": "",
+            "enabled": True,
+        },
+        {
+            "id": 2,
+            "label": "专题推荐",
+            "title": "典型案例·事故分析专题上线",
+            "desc": "从实践中学习，从案例中成长，构建安全生产知识体系",
+            "image_url": "/banner-hero-2.jpg",
+            "link_url": "",
+            "enabled": True,
+        },
+        {
+            "id": 3,
+            "label": "能力升级",
+            "title": "技术问答全新升级",
+            "desc": "AI 驱动的智能问答系统，快速定位知识、精准解答技术难题",
+            "image_url": "/banner-hero-3.jpg",
+            "link_url": "",
             "enabled": True,
         },
     ],

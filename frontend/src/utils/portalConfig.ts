@@ -1,5 +1,50 @@
-import type { AppConfig, DisplayConfig, DomainConfig, SectionConfig, SpaceConfig } from '../api/adminConfig';
+import type { AppConfig, BannerSlide, DisplayConfig, DomainConfig, SectionConfig, SpaceConfig } from '../api/adminConfig';
 import { DISPLAY_CONFIG } from '../config/display';
+
+export interface RuntimeBanner {
+  label: string;
+  title: string;
+  desc: string;
+  imageUrl: string;
+  linkUrl: string;
+}
+
+export const FALLBACK_HOME_BANNERS: RuntimeBanner[] = [
+  {
+    label: '平台概览',
+    title: '首钢知库 — 钢铁行业知识共享平台',
+    desc: '汇聚设备、轧线、冷轧、能源全域知识，助力技术传承与创新',
+    imageUrl: '/banner-hero-1.jpg',
+    linkUrl: '',
+  },
+  {
+    label: '专题推荐',
+    title: '典型案例·事故分析专题上线',
+    desc: '从实践中学习，从案例中成长，构建安全生产知识体系',
+    imageUrl: '/banner-hero-2.jpg',
+    linkUrl: '',
+  },
+  {
+    label: '能力升级',
+    title: '技术问答全新升级',
+    desc: 'AI 驱动的智能问答系统，快速定位知识、精准解答技术难题',
+    imageUrl: '/banner-hero-3.jpg',
+    linkUrl: '',
+  },
+];
+
+export function resolveHomeBanners(banners?: BannerSlide[]): RuntimeBanner[] {
+  const portalBanners = (banners ?? [])
+    .filter((banner) => banner.enabled && banner.image_url)
+    .map<RuntimeBanner>((banner) => ({
+      label: banner.label ?? '',
+      title: banner.title ?? '',
+      desc: banner.desc ?? '',
+      imageUrl: banner.image_url,
+      linkUrl: banner.link_url ?? '',
+    }));
+  return portalBanners.length ? portalBanners : FALLBACK_HOME_BANNERS;
+}
 
 export interface RuntimeDisplayConfig {
   home: {

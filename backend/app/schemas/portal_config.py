@@ -31,7 +31,6 @@ class SectionConfig(BaseModel):
 
 class QAConfig(BaseModel):
     knowledge_space_ids: list[int] = Field(default_factory=list)
-    panel_title: str = "技术问答·专家在线"
     welcome_message: str = "你好，我是首钢知库智能助手，请问有什么可以帮您？"
     hot_questions: list[str] = Field(default_factory=list)
     ai_search_system_prompt: str = ""
@@ -121,6 +120,16 @@ class AppConfig(BaseModel):
     enabled: bool = True
 
 
+class BannerSlide(BaseModel):
+    id: int
+    label: str = ""
+    title: str
+    desc: str = ""
+    image_url: str
+    link_url: str = ""
+    enabled: bool = True
+
+
 class PortalConfig(BaseModel):
     spaces: list[SpaceConfig] = Field(default_factory=list)
     domains: list[DomainConfig] = Field(default_factory=list)
@@ -129,6 +138,7 @@ class PortalConfig(BaseModel):
     recommendation: RecommendationConfig
     display: DisplayConfig
     apps: list[AppConfig] = Field(default_factory=list)
+    banners: list[BannerSlide] = Field(default_factory=list)
 
 
 class SpacesConfigUpdate(BaseModel):
@@ -145,3 +155,7 @@ class SectionsConfigUpdate(BaseModel):
 
 class AppsConfigUpdate(BaseModel):
     apps: list[AppConfig]
+
+
+class BannersConfigUpdate(BaseModel):
+    banners: list[BannerSlide]

@@ -28,7 +28,6 @@ export interface SectionConfig {
 
 export interface QAConfig {
   knowledge_space_ids: number[];
-  panel_title: string;
   welcome_message: string;
   hot_questions: string[];
   ai_search_system_prompt: string;
@@ -118,6 +117,16 @@ export interface AppConfig {
   enabled: boolean;
 }
 
+export interface BannerSlide {
+  id: number;
+  label: string;
+  title: string;
+  desc: string;
+  image_url: string;
+  link_url: string;
+  enabled: boolean;
+}
+
 export interface PortalConfig {
   spaces: SpaceConfig[];
   domains: DomainConfig[];
@@ -126,6 +135,7 @@ export interface PortalConfig {
   recommendation: RecommendationConfig;
   display: DisplayConfig;
   apps: AppConfig[];
+  banners: BannerSlide[];
 }
 
 interface ApiEnvelope<T> {
@@ -233,4 +243,21 @@ export function updateAppsConfig(apps: AppConfig[]) {
     method: 'PUT',
     body: JSON.stringify({ apps }),
   });
+}
+
+export function updateBannersConfig(banners: BannerSlide[]) {
+  return request<{ banners: BannerSlide[] }>('/api/v1/admin/config/banners', {
+    method: 'PUT',
+    body: JSON.stringify({ banners }),
+  });
+}
+
+export async function uploadBannerImage(file: File): Promise<{ image_url: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch('/api/v1/admin/upload/banner', {
+    method: 'POST',
+    body: form,
+  });
+  return parseResponse<{ image_url: string }>(response);
 }

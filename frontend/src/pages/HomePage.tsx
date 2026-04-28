@@ -17,8 +17,8 @@ import { useAuth } from '../hooks/useAuth';
 import { resolveSectionVisual } from '../utils/adminSections';
 import { formatDisplayDateTime } from '../utils/dateTime';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
-import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
-import { WIKI_LIST_ITEMS } from '../data/wikiMock';
+import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, resolveHomeBanners, toRuntimeDisplayConfig } from '../utils/portalConfig';
+import { WIKI_LIST_ITEMS } from '../data/wikiData';
 import { COURSE_LIST_ITEMS } from '../data/courseMock';
 import s from './HomePage.module.css';
 
@@ -35,40 +35,12 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Star, AlertTriangle,
 };
 
-const HOME_BANNERS: Array<{
-  label: string;
-  title: string;
-  desc: string;
-  link?: string;
-}> = [
-  {
-    label: '平台概览',
-    title: '首钢知库 — 钢铁行业知识共享平台',
-    desc: '汇聚设备、轧线、冷轧、能源全域知识，助力技术传承与创新',
-  },
-  {
-    label: '专题推荐',
-    title: '典型案例·事故分析专题上线',
-    desc: '从实践中学习，从案例中成长，构建安全生产知识体系',
-  },
-  {
-    label: '能力升级',
-    title: '技术问答全新升级',
-    desc: 'AI 驱动的智能问答系统，快速定位知识、精准解答技术难题',
-  },
-];
+const BANNER_OVERLAY_GRADIENT =
+  'linear-gradient(120deg, rgba(6, 18, 42, 0.55) 0%, rgba(12, 38, 84, 0.36) 38%, rgba(18, 50, 108, 0.15) 100%), radial-gradient(circle at 78% 28%, rgba(97, 150, 255, 0.15) 0%, rgba(97, 150, 255, 0) 26%)';
 
-const HERO_IMAGE_URLS = [
-  '/banner-hero-1.jpg',
-  '/banner-hero-2.jpg',
-  '/banner-hero-3.jpg',
-] as const;
-
-const BANNER_BACKGROUNDS = [
-  `linear-gradient(120deg, rgba(6, 18, 42, 0.55) 0%, rgba(12, 38, 84, 0.36) 38%, rgba(18, 50, 108, 0.15) 100%), radial-gradient(circle at 78% 28%, rgba(97, 150, 255, 0.15) 0%, rgba(97, 150, 255, 0) 26%), url("${HERO_IMAGE_URLS[0]}")`,
-  `linear-gradient(120deg, rgba(11, 24, 26, 0.53) 0%, rgba(12, 53, 42, 0.39) 42%, rgba(12, 53, 42, 0.13) 100%), radial-gradient(circle at 74% 22%, rgba(104, 211, 145, 0.12) 0%, rgba(104, 211, 145, 0) 25%), url("${HERO_IMAGE_URLS[1]}")`,
-  `linear-gradient(120deg, rgba(21, 14, 38, 0.55) 0%, rgba(45, 26, 76, 0.39) 44%, rgba(45, 26, 76, 0.13) 100%), radial-gradient(circle at 76% 24%, rgba(168, 85, 247, 0.11) 0%, rgba(168, 85, 247, 0) 24%), url("${HERO_IMAGE_URLS[2]}")`,
-] as const;
+function buildBannerBackground(imageUrl: string): string {
+  return `${BANNER_OVERLAY_GRADIENT}, url("${imageUrl}")`;
+}
 
 const APP_ENTRY_DEFAULTS = [
   { id: 'app-write', name: '智能写作', desc: '辅助生成报告', iconBg: '#eff6ff', iconColor: '#2563eb', icon: 'PenLine' as const },
@@ -122,13 +94,18 @@ export default function HomePage() {
     });
   }, [navigate]);
 
+  const homeBanners = useMemo(() => resolveHomeBanners(config?.banners), [config?.banners]);
+
+  const safeBannerIdx = homeBanners.length ? bannerIdx % homeBanners.length : 0;
+
   /* Banner auto-play */
   useEffect(() => {
+    if (homeBanners.length <= 1) return;
     const timer = setInterval(() => {
-      setBannerIdx((i) => (i + 1) % HOME_BANNERS.length);
+      setBannerIdx((i) => (i + 1) % homeBanners.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [homeBanners.length]);
 
   useEffect(() => {
     if (!welcomeToast) return;
@@ -198,8 +175,8 @@ export default function HomePage() {
   const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
   const tagCount = hotTags.length;
   const spaceCount = enabledSpaces.length;
-  const activeBanner = HOME_BANNERS[bannerIdx];
-  const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
+  const activeBanner = homeBanners[safeBannerIdx] ?? homeBanners[0];
+  const activeBannerBackground = buildBannerBackground(activeBanner.imageUrl);
   const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
   const domainColumns = Math.max(homeDomains.length || 1, 1);
   const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
@@ -252,10 +229,15 @@ export default function HomePage() {
       <section className={s.hero}>
         <div
           className={s.heroBanner}
-          style={{ backgroundImage: activeBannerBackground }}
+          style={{ backgroundImage: activeBannerBackground, cursor: activeBanner.linkUrl ? 'pointer' : 'default' }}
           onClick={() => {
-            const link = activeBanner.link;
-            if (link) navigate(link);
+            const link = activeBanner.linkUrl;
+            if (!link) return;
+            if (/^https?:\/\//i.test(link)) {
+              window.open(link, '_blank', 'noopener,noreferrer');
+            } else {
+              navigate(link);
+            }
           }}
         >
           <div className={s.heroGlow} />
@@ -313,10 +295,10 @@ export default function HomePage() {
             </div>
           </div>
           <div className={s.bannerDots}>
-            {HOME_BANNERS.map((_, i) => (
+            {homeBanners.map((_, i) => (
               <button
                 key={i}
-                className={`${s.dot} ${i === bannerIdx ? s.dotActive : ''}`}
+                className={`${s.dot} ${i === safeBannerIdx ? s.dotActive : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   setBannerIdx(i);
@@ -482,7 +464,6 @@ export default function HomePage() {
                     <Package size={22} className={s.wikiRowIcon} />
                     <span className={s.wikiRowName}>{item.name}</span>
                     <span className={s.wikiCatTag}>{item.domain}</span>
-                    <span className={s.wikiRowKind}>{item.kind}</span>
                   </Link>
                 ))}
               </div>

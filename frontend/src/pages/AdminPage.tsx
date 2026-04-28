@@ -1,12 +1,13 @@
-import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server,
+  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server, Image as ImageIcon, Upload, X,
 } from 'lucide-react';
 import DomainIcon from '../components/DomainIcon';
 import Header from '../components/Header';
 import {
   type AppConfig,
+  type BannerSlide,
   type BishengRuntimeConfig,
   type DisplayConfig,
   type DomainConfig,
@@ -22,6 +23,7 @@ import {
   type SpaceConfig,
   type QAConfig,
   updateAppsConfig,
+  updateBannersConfig,
   updateBishengRuntimeConfig,
   updateDisplayConfig,
   updateDomainsConfig,
@@ -29,6 +31,7 @@ import {
   updateRecommendationConfig,
   updateSectionsConfig,
   updateSpacesConfig,
+  uploadBannerImage,
 } from '../api/adminConfig';
 import {
   createDomainDraft,
@@ -45,6 +48,11 @@ import {
   validateSectionDraft,
   type SectionDraft,
 } from '../utils/adminSections';
+import {
+  createBannerDraft,
+  validateBannerDraft,
+  type BannerDraft,
+} from '../utils/adminBanners';
 import { formatDisplayDateTime } from '../utils/dateTime';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { canDeleteSpace, getSpaceBindingState, getSpaceUsage, getSpaceUsageSummary, setSpaceEnabled, upsertSpace } from '../utils/adminSpaces';
@@ -65,6 +73,7 @@ const NAV_ITEMS = [
   { key: 'spaces', label: '知识空间', icon: FolderOpen },
   { key: 'domains', label: '业务域', icon: Building },
   { key: 'sections', label: '首页分区', icon: Tag },
+  { key: 'banners', label: '首页 Banner', icon: ImageIcon },
   { key: 'qa', label: '问答配置', icon: Bot },
   { key: 'recommend', label: '推荐策略', icon: Star },
   { key: 'display', label: '展示配置', icon: SlidersHorizontal },
@@ -83,7 +92,6 @@ type DisplayItem = {
 
 type QaDialogMode =
   | 'spaces'
-  | 'panel_title'
   | 'welcome_message'
   | 'hot_questions'
   | 'ai_search_system_prompt'
@@ -153,6 +161,11 @@ export default function AdminPage() {
   const [appDraft, setAppDraft] = useState<AppDraft>(createAppDraft());
   const [appFormError, setAppFormError] = useState('');
   const [appDeleteIndex, setAppDeleteIndex] = useState<number | null>(null);
+  const [bannerEditorOpen, setBannerEditorOpen] = useState(false);
+  const [bannerEditorIndex, setBannerEditorIndex] = useState<number | null>(null);
+  const [bannerDraft, setBannerDraft] = useState<BannerDraft>(createBannerDraft());
+  const [bannerFormError, setBannerFormError] = useState('');
+  const [bannerDeleteIndex, setBannerDeleteIndex] = useState<number | null>(null);
 
   async function loadConfig() {
     setLoading(true);
@@ -321,9 +334,24 @@ export default function AdminPage() {
     setAppFormError('');
   }
 
+  function openCreateBannerDialog() {
+    setBannerEditorOpen(true);
+    setBannerEditorIndex(null);
+    setBannerDraft(createBannerDraft(undefined, config?.banners ?? []));
+    setBannerFormError('');
+  }
+
+  function openEditBannerDialog(banner: BannerSlide, index: number) {
+    setBannerEditorOpen(true);
+    setBannerEditorIndex(index);
+    setBannerDraft(createBannerDraft(banner));
+    setBannerFormError('');
+  }
+
   const displayItems = config ? getDisplayItems(config.display) : [];
   const deletingSpace = config && spaceDeleteIndex !== null ? config.spaces[spaceDeleteIndex] : null;
   const deletingApp = config && appDeleteIndex !== null ? config.apps[appDeleteIndex] : null;
+  const deletingBanner = config && bannerDeleteIndex !== null ? config.banners[bannerDeleteIndex] : null;
 
   return (
     <>
@@ -404,7 +432,6 @@ export default function AdminPage() {
               modelLoading={qaModelLoading}
               modelError={qaModelError}
               onEditSpaces={() => openQaSpacesDialog(config.qa)}
-              onEditPanelTitle={() => openQaTextDialog('panel_title', config.qa.panel_title)}
               onEditWelcomeMessage={() => openQaTextDialog('welcome_message', config.qa.welcome_message)}
               onEditQuestions={() => openQaTextDialog('hot_questions', config.qa.hot_questions.join('\n'))}
               onEditModel={() => void openQaModelDialog(config.qa)}
@@ -441,6 +468,17 @@ export default function AdminPage() {
               onAdd={openCreateAppDialog}
               onEdit={(index) => openEditAppDialog(config.apps[index], index)}
               onDelete={(index) => setAppDeleteIndex(index)}
+            />
+          )}
+          {config && active === 'banners' && (
+            <BannersTable
+              banners={config.banners}
+              saving={saving}
+              onAdd={openCreateBannerDialog}
+              onEdit={(index) => openEditBannerDialog(config.banners[index], index)}
+              onDelete={(index) => setBannerDeleteIndex(index)}
+              onMoveUp={(index) => void handleMoveBanner(config.banners, index, -1, runSave, setConfig)}
+              onMoveDown={(index) => void handleMoveBanner(config.banners, index, 1, runSave, setConfig)}
             />
           )}
         </main>
@@ -636,7 +674,7 @@ export default function AdminPage() {
           value={qaTextDraft}
           saving={saving}
           error={qaDialogError}
-          multiline={isQaDialogMultiline(qaDialogMode)}
+          multiline
           placeholder={getQaDialogPlaceholder(qaDialogMode)}
           onClose={() => setQaDialogMode(null)}
           onChange={(value) => {
@@ -749,6 +787,52 @@ export default function AdminPage() {
             void runSave(async () => {
               await persistApps(config.apps.filter((_, index) => index !== appDeleteIndex), setConfig);
               setAppDeleteIndex(null);
+            });
+          }}
+        />
+      ) : null}
+      {config && bannerEditorOpen ? (
+        <BannerEditorDialog
+          open
+          draft={bannerDraft}
+          saving={saving}
+          error={bannerFormError}
+          onClose={() => setBannerEditorOpen(false)}
+          onChange={(patch) => {
+            setBannerDraft((current) => ({ ...current, ...patch }));
+            setBannerFormError('');
+          }}
+          onSubmit={() => {
+            const result = validateBannerDraft(bannerDraft);
+            if (!result.banner) {
+              setBannerFormError(result.error || 'Banner 配置无效');
+              return;
+            }
+            const nextBanner = result.banner;
+            void runSave(async () => {
+              if (bannerEditorIndex === null) {
+                await persistBanners([...config.banners, nextBanner], setConfig);
+              } else {
+                const updated = [...config.banners];
+                updated[bannerEditorIndex] = nextBanner;
+                await persistBanners(updated, setConfig);
+              }
+              setBannerEditorOpen(false);
+            });
+          }}
+        />
+      ) : null}
+      {config && deletingBanner ? (
+        <BannerDeleteDialog
+          open
+          banner={deletingBanner}
+          saving={saving}
+          onClose={() => setBannerDeleteIndex(null)}
+          onConfirm={() => {
+            if (bannerDeleteIndex === null) return;
+            void runSave(async () => {
+              await persistBanners(config.banners.filter((_, index) => index !== bannerDeleteIndex), setConfig);
+              setBannerDeleteIndex(null);
             });
           }}
         />
@@ -1594,7 +1678,6 @@ function QAConfigTable({
   modelLoading,
   modelError,
   onEditSpaces,
-  onEditPanelTitle,
   onEditWelcomeMessage,
   onEditQuestions,
   onEditModel,
@@ -1608,7 +1691,6 @@ function QAConfigTable({
   modelLoading: boolean;
   modelError: string;
   onEditSpaces: () => void;
-  onEditPanelTitle: () => void;
   onEditWelcomeMessage: () => void;
   onEditQuestions: () => void;
   onEditModel: () => void;
@@ -1626,7 +1708,7 @@ function QAConfigTable({
         <h2 className={s.pageTitle}>问答配置</h2>
       </div>
       <p className={s.pageNote}>
-        这里统一维护问答入口标题、欢迎语、热门问题和两个模型提示词。首页 QA 卡片与问答页会直接读取这些配置。
+        这里统一维护欢迎语、热门问题和两个模型提示词。首页 QA 卡片与问答页会直接读取这些配置。
       </p>
       <table className={s.table}>
         <thead>
@@ -1652,11 +1734,6 @@ function QAConfigTable({
                 <button className={s.inlineBtn} onClick={onEditSpaces} disabled={saving}>{saving ? '保存中...' : '编辑'}</button>
               </div>
             </td>
-          </tr>
-          <tr>
-            <td>问答入口标题</td>
-            <td><div className={s.valueStack}><span className={s.valueTitle}>{qa.panel_title || '未配置'}</span></div></td>
-            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEditPanelTitle} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
           </tr>
           <tr>
             <td>欢迎语</td>
@@ -2247,8 +2324,6 @@ function AppDeleteDialog({
 
 function getQaDialogTitle(mode: Exclude<QaDialogMode, 'spaces' | null>) {
   switch (mode) {
-    case 'panel_title':
-      return '编辑问答入口标题';
     case 'welcome_message':
       return '编辑欢迎语';
     case 'hot_questions':
@@ -2262,8 +2337,6 @@ function getQaDialogTitle(mode: Exclude<QaDialogMode, 'spaces' | null>) {
 
 function getQaDialogNote(mode: Exclude<QaDialogMode, 'spaces' | null>) {
   switch (mode) {
-    case 'panel_title':
-      return '首页右侧 QA 卡片标题会直接读取这个字段。';
     case 'welcome_message':
       return '首页 QA 卡片和问答页新会话首条消息都会共用这句欢迎语。';
     case 'hot_questions':
@@ -2277,8 +2350,6 @@ function getQaDialogNote(mode: Exclude<QaDialogMode, 'spaces' | null>) {
 
 function getQaDialogLabel(mode: Exclude<QaDialogMode, 'spaces' | null>) {
   switch (mode) {
-    case 'panel_title':
-      return '问答入口标题';
     case 'welcome_message':
       return '欢迎语';
     case 'hot_questions':
@@ -2292,8 +2363,6 @@ function getQaDialogLabel(mode: Exclude<QaDialogMode, 'spaces' | null>) {
 
 function getQaDialogPlaceholder(mode: Exclude<QaDialogMode, 'spaces' | null>) {
   switch (mode) {
-    case 'panel_title':
-      return '例如：技术问答·专家在线';
     case 'welcome_message':
       return '例如：你好，我是首钢知库智能助手，请问有什么可以帮您？';
     case 'hot_questions':
@@ -2301,10 +2370,6 @@ function getQaDialogPlaceholder(mode: Exclude<QaDialogMode, 'spaces' | null>) {
     default:
       return '请输入内容';
   }
-}
-
-function isQaDialogMultiline(mode: Exclude<QaDialogMode, 'spaces' | null>) {
-  return mode !== 'panel_title';
 }
 
 function createAppDraft(current?: AppConfig): AppDraft {
@@ -2655,4 +2720,317 @@ function validateBishengDraft(draft: BishengDraft): {
       timeout_seconds,
     },
   };
+}
+
+async function persistBanners(banners: BannerSlide[], setConfig: Dispatch<SetStateAction<PortalConfig | null>>) {
+  const data = await updateBannersConfig(banners);
+  setConfig((current) => (current ? { ...current, banners: data.banners } : current));
+}
+
+async function handleMoveBanner(
+  banners: BannerSlide[],
+  index: number,
+  direction: -1 | 1,
+  runSave: SaveRunner,
+  setConfig: ConfigSetter,
+) {
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= banners.length) return;
+  const reordered = [...banners];
+  const [moved] = reordered.splice(index, 1);
+  reordered.splice(nextIndex, 0, moved);
+  await runSave(() => persistBanners(reordered, setConfig));
+}
+
+function BannersTable({
+  banners,
+  saving,
+  onAdd,
+  onEdit,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+}: {
+  banners: BannerSlide[];
+  saving: boolean;
+  onAdd: () => void;
+  onEdit: (index: number) => void;
+  onDelete: (index: number) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
+}) {
+  return (
+    <>
+      <div className={s.titleBar}>
+        <h2 className={s.pageTitle}>首页 Banner 管理</h2>
+        <button className={s.addBtn} onClick={onAdd} disabled={saving}><Plus size={14} /> 添加</button>
+      </div>
+      <p className={s.pageNote}>
+        管理首页顶部轮播 Banner。可上传本地图片或填写外部图片地址；列表顺序即轮播顺序，停用后该 Banner 不会出现在前台。
+      </p>
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>顺序</th>
+            <th>预览</th>
+            <th>标题 / 副标题</th>
+            <th>跳转</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {banners.map((banner, index) => (
+            <tr key={banner.id}>
+              <td>
+                <div className={s.actionGroup}>
+                  <button className={s.inlineBtn} onClick={() => onMoveUp(index)} disabled={saving || index === 0} aria-label="上移"><ArrowUp size={14} /></button>
+                  <button className={s.inlineBtn} onClick={() => onMoveDown(index)} disabled={saving || index === banners.length - 1} aria-label="下移"><ArrowDown size={14} /></button>
+                </div>
+              </td>
+              <td>
+                {banner.image_url ? (
+                  <img
+                    src={banner.image_url}
+                    alt={banner.title}
+                    style={{ width: 120, height: 60, objectFit: 'cover', borderRadius: 4, display: 'block' }}
+                  />
+                ) : (
+                  <span className={s.inlineHint}>无图片</span>
+                )}
+              </td>
+              <td>
+                <div className={s.valueStack}>
+                  {banner.label ? <span className={s.valueMeta}>{banner.label}</span> : null}
+                  <span className={s.valueTitle}>{banner.title}</span>
+                  {banner.desc ? <span className={s.valueMeta}>{truncateText(banner.desc, 48)}</span> : null}
+                </div>
+              </td>
+              <td>{banner.link_url ? <span className={s.valueMeta}>{truncateText(banner.link_url, 36)}</span> : <span className={s.inlineHint}>不可点击</span>}</td>
+              <td>
+                <span className={banner.enabled ? s.stateEnabled : s.stateDisabled}>
+                  {banner.enabled ? '已启用' : '已停用'}
+                </span>
+              </td>
+              <td>
+                <div className={s.actionGroup}>
+                  <button className={s.inlineBtn} onClick={() => onEdit(index)} disabled={saving}>编辑</button>
+                  <button className={s.inlineDangerBtn} onClick={() => onDelete(index)} disabled={saving}>删除</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {!banners.length ? (
+            <tr><td colSpan={6}><div className={s.emptyState}>暂无 Banner，点击右上角「添加」创建一条。</div></td></tr>
+          ) : null}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+const BANNER_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const BANNER_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
+
+function ImageUploadField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSelect(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > BANNER_IMAGE_MAX_BYTES) {
+      setError('图片不得超过 5MB');
+      return;
+    }
+    setError('');
+    setUploading(true);
+    try {
+      const data = await uploadBannerImage(file);
+      onChange(data.image_url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '图片上传失败');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className={s.subtleBtn}
+          onClick={() => inputRef.current?.click()}
+          disabled={disabled || uploading}
+        >
+          <Upload size={14} />
+          {uploading ? '上传中…' : '上传图片'}
+        </button>
+        <span className={s.fieldHint}>支持 JPEG / PNG / WebP，最大 5MB</span>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={BANNER_IMAGE_ACCEPT}
+          style={{ display: 'none' }}
+          onChange={handleSelect}
+        />
+      </div>
+      {value ? (
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <img
+            src={value}
+            alt="预览"
+            style={{ maxWidth: 240, maxHeight: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--neutral-200)' }}
+          />
+          <button
+            type="button"
+            className={s.subtleBtn}
+            onClick={() => onChange('')}
+            disabled={disabled || uploading}
+            aria-label="移除图片"
+          >
+            <X size={14} /> 移除
+          </button>
+        </div>
+      ) : null}
+      {error ? <div className={s.errorBox} style={{ marginTop: 8 }}>{error}</div> : null}
+    </div>
+  );
+}
+
+function BannerEditorDialog({
+  open,
+  draft,
+  saving,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  draft: BannerDraft;
+  saving: boolean;
+  error: string;
+  onClose: () => void;
+  onChange: (patch: Partial<BannerDraft>) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>{draft.title.trim() ? `编辑 Banner · ${draft.title}` : '新增 Banner'}</h3>
+            <p className={s.modalNote}>统一在这里维护首页轮播 Banner 的图片、文案和跳转地址。</p>
+          </div>
+          <div className={s.modalHeaderActions}>
+            <button type="button" className={s.headerSwitch} onClick={() => onChange({ enabled: !draft.enabled })}>
+              <span>{draft.enabled ? '已启用' : '已停用'}</span>
+              <span className={`${s.switchTrack} ${draft.enabled ? s.switchTrackActive : ''}`}>
+                <span className={`${s.switchThumb} ${draft.enabled ? s.switchThumbActive : ''}`} />
+              </span>
+            </button>
+            <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          </div>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.modalScrollBody}>
+          <div className={s.formGrid}>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>Banner ID</span>
+              <input className={s.formInput} value={draft.id} onChange={(event) => onChange({ id: event.target.value })} placeholder="例如：4" />
+            </label>
+            <label className={s.formField}>
+              <span className={s.fieldLabel}>左上角小标签</span>
+              <input className={s.formInput} value={draft.label} onChange={(event) => onChange({ label: event.target.value })} placeholder="例如：平台概览" />
+            </label>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>主标题</span>
+              <input className={s.formInput} value={draft.title} onChange={(event) => onChange({ title: event.target.value })} placeholder="例如：首钢知库 — 钢铁行业知识共享平台" />
+            </label>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>副标题</span>
+              <textarea className={s.formTextarea} value={draft.desc} onChange={(event) => onChange({ desc: event.target.value })} placeholder="一句话描述 Banner 主题" />
+            </label>
+            <div className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>图片</span>
+              <ImageUploadField
+                value={draft.image_url}
+                onChange={(next) => onChange({ image_url: next })}
+                disabled={saving}
+              />
+              <input
+                className={s.formInput}
+                value={draft.image_url}
+                onChange={(event) => onChange({ image_url: event.target.value })}
+                placeholder="或填写图片地址：/banner-hero-1.jpg 或 https://…"
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>跳转 URL</span>
+              <input className={s.formInput} value={draft.link_url} onChange={(event) => onChange({ link_url: event.target.value })} placeholder="留空则 Banner 不可点击" />
+              <span className={s.fieldHint}>填写后整张 Banner 可点击，跳转到此地址（http(s):// 开头）。</span>
+            </label>
+          </div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BannerDeleteDialog({
+  open,
+  banner,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  banner: BannerSlide;
+  saving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.confirmCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>删除 Banner</h3>
+            <p className={s.modalNote}>删除后首页该 Banner 立即下线。已上传到服务器的图片文件不会被自动清理。</p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+        </div>
+        <div className={s.confirmBody}>
+          <div className={s.confirmLine}><strong>主标题：</strong>{banner.title}</div>
+          {banner.label ? <div className={s.confirmLine}><strong>小标签：</strong>{banner.label}</div> : null}
+          <div className={s.confirmLine}><strong>图片：</strong>{banner.image_url}</div>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+          <button className={s.dangerBtn} onClick={onConfirm} disabled={saving}>确认删除</button>
+        </div>
+      </div>
+    </div>
+  );
 }

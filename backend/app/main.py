@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.services.bisheng_runtime_service import BishengRuntimeService
@@ -44,6 +45,12 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         lifespan=lifespan,
     )
+
+    uploads_root = settings.portal_config_path.parent / "uploads"
+    uploads_root.mkdir(parents=True, exist_ok=True)
+    app.state.uploads_root = uploads_root
+    app.mount("/uploads", StaticFiles(directory=uploads_root), name="uploads")
+
     app.include_router(api_router)
     return app
 

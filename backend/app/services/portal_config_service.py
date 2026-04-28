@@ -7,6 +7,7 @@ from typing import Any
 from app.config.portal_config import DEFAULT_PORTAL_CONFIG
 from app.schemas.portal_config import (
     AppsConfigUpdate,
+    BannersConfigUpdate,
     DomainsConfigUpdate,
     PortalConfig,
     QAModelOption,
@@ -31,7 +32,12 @@ class PortalConfigService:
         self._ensure_seeded()
 
     def get_config(self) -> PortalConfig:
-        return PortalConfig.model_validate(self._read_data())
+        data = self._read_data()
+        if not data.get("banners"):
+            data["banners"] = list(DEFAULT_PORTAL_CONFIG.get("banners") or [])
+            if data["banners"]:
+                self._atomic_write(data)
+        return PortalConfig.model_validate(data)
 
     def with_live_space_data(
         self,
@@ -130,6 +136,11 @@ class PortalConfigService:
     def update_apps(self, payload: AppsConfigUpdate) -> PortalConfig:
         data = self.get_config().model_dump()
         data["apps"] = payload.model_dump()["apps"]
+        return self._write_config(PortalConfig.model_validate(data))
+
+    def update_banners(self, payload: BannersConfigUpdate) -> PortalConfig:
+        data = self.get_config().model_dump()
+        data["banners"] = payload.model_dump()["banners"]
         return self._write_config(PortalConfig.model_validate(data))
 
     def _ensure_seeded(self) -> None:

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, getPrimarySpaceId, toRuntimeDisplayConfig } from '../src/utils/portalConfig';
+import { FALLBACK_HOME_BANNERS, getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, getPrimarySpaceId, resolveHomeBanners, toRuntimeDisplayConfig } from '../src/utils/portalConfig';
 
 test('toRuntimeDisplayConfig maps API display config fields to runtime keys', () => {
   const runtime = toRuntimeDisplayConfig({
@@ -78,4 +78,50 @@ test('enabled helpers filter disabled records and orphaned domains', () => {
 test('getPrimarySpaceId returns the first valid space id', () => {
   assert.equal(getPrimarySpaceId([]), undefined);
   assert.equal(getPrimarySpaceId([25, 30]), 25);
+});
+
+test('resolveHomeBanners returns fallback when banners list is missing or empty', () => {
+  assert.deepEqual(resolveHomeBanners(undefined), FALLBACK_HOME_BANNERS);
+  assert.deepEqual(resolveHomeBanners([]), FALLBACK_HOME_BANNERS);
+});
+
+test('resolveHomeBanners falls back when no banner has both enabled and image_url', () => {
+  const banners = resolveHomeBanners([
+    { id: 1, label: '', title: '禁用', desc: '', image_url: '/x.jpg', link_url: '', enabled: false },
+    { id: 2, label: '', title: '缺图', desc: '', image_url: '', link_url: '', enabled: true },
+  ]);
+  assert.deepEqual(banners, FALLBACK_HOME_BANNERS);
+});
+
+test('resolveHomeBanners maps snake_case BannerSlide to runtime camelCase', () => {
+  const banners = resolveHomeBanners([
+    {
+      id: 7,
+      label: '春季活动',
+      title: '主标题',
+      desc: '副标题',
+      image_url: '/uploads/banners/abc.jpg',
+      link_url: 'https://intranet.example.com/spring',
+      enabled: true,
+    },
+  ]);
+
+  assert.equal(banners.length, 1);
+  assert.deepEqual(banners[0], {
+    label: '春季活动',
+    title: '主标题',
+    desc: '副标题',
+    imageUrl: '/uploads/banners/abc.jpg',
+    linkUrl: 'https://intranet.example.com/spring',
+  });
+});
+
+test('resolveHomeBanners filters out disabled or imageless entries while keeping order', () => {
+  const banners = resolveHomeBanners([
+    { id: 1, label: 'A', title: '一', desc: '', image_url: '/a.jpg', link_url: '', enabled: true },
+    { id: 2, label: 'B', title: '二', desc: '', image_url: '/b.jpg', link_url: '', enabled: false },
+    { id: 3, label: 'C', title: '三', desc: '', image_url: '', link_url: '', enabled: true },
+    { id: 4, label: 'D', title: '四', desc: '', image_url: '/d.jpg', link_url: '', enabled: true },
+  ]);
+  assert.deepEqual(banners.map((b) => b.title), ['一', '四']);
 });
