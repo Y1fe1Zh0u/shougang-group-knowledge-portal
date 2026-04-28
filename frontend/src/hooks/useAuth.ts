@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { logoutPortal, type PortalUser } from '../api/auth';
+import { fetchPortalMe, logoutPortal, type PortalUser } from '../api/auth';
+import { ApiRequestError } from '../api/content';
 
 export type { PortalUser };
 
@@ -39,6 +40,29 @@ export function useAuth() {
     }
     window.addEventListener('storage', syncFromStorage);
     return () => window.removeEventListener('storage', syncFromStorage);
+  }, []);
+
+  // localStorage 是前端登录态，BFF 重启 / session 过期 / cookie 丢失会让它和后端脱钩。
+  // 挂载时拉一次 /auth/me 校准：401 就清掉本地用户，避免 Header 显示已登录而内页提示需要登录。
+  useEffect(() => {
+    if (!readStoredUser()) return;
+    let active = true;
+    void fetchPortalMe()
+      .then((next) => {
+        if (!active) return;
+        savePortalUser(next);
+        setUser(next);
+      })
+      .catch((err) => {
+        if (!active) return;
+        if (err instanceof ApiRequestError && err.status === 401) {
+          clearPortalUser();
+          setUser(null);
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const login = useCallback((next: PortalUser) => {
