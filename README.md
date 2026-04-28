@@ -16,6 +16,7 @@
 .
 ├── frontend/
 ├── backend/
+├── deploy/
 ├── archive/
 └── knowledge-portal-api-spec-bisheng-review.md
 ```
@@ -72,3 +73,37 @@ cd backend
 ```
 
 如果直接使用系统 Python 3.9 运行后端测试，会因为项目已使用 3.11+ 语法和标准库特性而失败；以 `backend/.venv` 为准。
+
+## Docker 镜像构建
+
+仓库在 `deploy/` 提供前后端 Dockerfile：
+
+```text
+deploy/
+├── Dockerfile.portal-frontend   # node:20 编译 SPA → nginx:1.27 运行
+├── Dockerfile.portal-backend    # python:3.11-slim，VOLUME 持久化数据目录
+└── nginx/default.conf           # 默认反代 backend:8010（SSE 兼容，可 -v 覆盖）
+```
+
+在仓库根构建并运行：
+
+```bash
+docker build -f deploy/Dockerfile.portal-backend  -t shougang/portal-backend:0.1.0  .
+docker build -f deploy/Dockerfile.portal-frontend -t shougang/portal-frontend:0.1.0 .
+
+docker network create portal-net
+docker run -d --name backend --network portal-net \
+  -e PORTAL_BISHENG_BASE_URL=http://192.168.106.115:8098 \
+  -v /opt/portal-data:/app/app/config/data \
+  shougang/portal-backend:0.1.0
+docker run -d --name frontend --network portal-net -p 3001:80 \
+  shougang/portal-frontend:0.1.0
+```
+
+可外挂的关键配置：
+
+- 前端 nginx 配置：`-v /path/to/my-nginx.conf:/etc/nginx/conf.d/default.conf:ro` —— upstream 后端地址变化时改 conf 不重 build
+- 后端运行时数据：`-v /opt/portal-data:/app/app/config/data` —— 持久化 `portal_config.json` + `bisheng_runtime.json` + `uploads/`，容器重建不丢 admin 配置
+- 后端环境变量：通过 `-e PORTAL_*=...` 注入 BiSheng 接入参数（完整变量见 `backend/app/settings.py`）
+
+K8s 部署样例见 [`docs/portal-deployment-k8s.md`](docs/portal-deployment-k8s.md)。

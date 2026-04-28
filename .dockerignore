@@ -1,0 +1,33 @@
+# VCS / IDE
+.git
+.github
+.claude
+.idea
+.vscode
+
+# Python runtime
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.venv
+**/.mypy_cache
+
+# Node runtime
+**/node_modules
+**/dist
+**/.test-dist
+**/.vite
+
+# Local secrets and dev-only state
+**/.env
+**/.env.local
+backend/app/config/data/
+
+# Docs and source asset libraries
+docs
+archive
+assets
+
+# Misc
+*.log
+.DS_Store
