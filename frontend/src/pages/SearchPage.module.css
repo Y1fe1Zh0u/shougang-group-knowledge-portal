@@ -167,6 +167,24 @@
   min-width: 0;
 }
 
+.aiThinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+}
+
+.spinner {
+  color: var(--primary-600);
+  animation: search-spin 0.9s linear infinite;
+}
+
+@keyframes search-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .aiText :global(p),
 .aiText :global(ul),
 .aiText :global(ol),

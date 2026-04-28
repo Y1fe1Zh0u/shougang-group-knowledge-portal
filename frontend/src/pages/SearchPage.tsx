@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import FileListItem from '../components/FileListItem';
 import Pagination from '../components/Pagination';
@@ -45,6 +45,7 @@ export default function SearchPage() {
   const [qaSpaceIds, setQaSpaceIds] = useState<number[]>([]);
   const [aiText, setAiText] = useState('');
   const [aiCitations, setAiCitations] = useState<Citation[]>([]);
+  const [aiThinking, setAiThinking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const requestSeq = useRef(0);
@@ -113,6 +114,7 @@ export default function SearchPage() {
     const currentRequest = ++requestSeq.current;
     setAiText('');
     setAiCitations([]);
+    setAiThinking(true);
     void streamChatCompletion({
       scene: 'search',
       text: q,
@@ -120,11 +122,16 @@ export default function SearchPage() {
       onUpdate(text) {
         if (requestSeq.current !== currentRequest) return;
         setAiText(text);
+        setAiThinking(false);
       },
       onCitations(list) {
         if (requestSeq.current !== currentRequest) return;
         setAiCitations(list);
       },
+    }).finally(() => {
+      if (requestSeq.current === currentRequest) {
+        setAiThinking(false);
+      }
     });
   }, [q, qaSpaceIds]);
 
@@ -203,10 +210,17 @@ export default function SearchPage() {
                 <Search size={12} />
                 AI Overview
               </div>
-              <div
-                className={s.aiText}
-                dangerouslySetInnerHTML={{ __html: renderChatMarkdown(aiText, aiCitations) }}
-              />
+              {aiThinking ? (
+                <div className={s.aiThinking}>
+                  <Loader2 size={16} className={s.spinner} />
+                  <span>思考中...</span>
+                </div>
+              ) : (
+                <div
+                  className={s.aiText}
+                  dangerouslySetInnerHTML={{ __html: renderChatMarkdown(aiText, aiCitations) }}
+                />
+              )}
               {referenced.length > 0 && (
                 <ol className={s.citations}>
                   {referenced.map((c, idx) => {

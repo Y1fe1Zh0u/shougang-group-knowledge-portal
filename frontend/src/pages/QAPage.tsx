@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
-import { Bot, User, Send, Plus } from 'lucide-react';
+import { Bot, User, Send, Plus, Loader2 } from 'lucide-react';
 import Header from '../components/Header';
 import { fetchPortalContentConfig, streamChatCompletion, type Citation } from '../api/content';
 import { extractReferencedCitations, renderChatMarkdown } from '../utils/chatMessage';
@@ -205,6 +205,8 @@ export default function QAPage() {
         <div className={s.main}>
           <div className={s.messages}>
             {activeSession.messages.map((msg, i) => {
+              const isLastMessage = i === activeSession.messages.length - 1;
+              const isThinking = streaming && msg.role === 'bot' && isLastMessage && !msg.text.trim();
               const referenced = msg.role === 'bot' && msg.citations
                 ? extractReferencedCitations(msg.text, msg.citations)
                 : [];
@@ -218,10 +220,17 @@ export default function QAPage() {
                   </div>
                   <div className={s.msgColumn}>
                     {msg.role === 'bot' ? (
-                      <div
-                        className={`${s.msgBubble} ${s.msgBot} ${s.botContent}`}
-                        dangerouslySetInnerHTML={{ __html: renderChatMarkdown(msg.text, msg.citations ?? []) }}
-                      />
+                      isThinking ? (
+                        <div className={`${s.msgBubble} ${s.msgBot} ${s.thinking}`}>
+                          <Loader2 size={16} className={s.spinner} />
+                          <span>思考中...</span>
+                        </div>
+                      ) : (
+                        <div
+                          className={`${s.msgBubble} ${s.msgBot} ${s.botContent}`}
+                          dangerouslySetInnerHTML={{ __html: renderChatMarkdown(msg.text, msg.citations ?? []) }}
+                        />
+                      )
                     ) : (
                       <div className={`${s.msgBubble} ${s.msgUser}`}>{msg.text}</div>
                     )}
