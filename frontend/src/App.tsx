@@ -10,6 +10,8 @@ import AdminPage from './pages/AdminPage';
 import DomainsPage from './pages/DomainsPage';
 import LoginPage from './pages/LoginPage';
 import ExpertQAPage from './pages/ExpertQAPage';
+import ExpertQAAskPage from './pages/ExpertQAAskPage';
+import ExpertQADetailPage from './pages/ExpertQADetailPage';
 import WikiPage from './pages/WikiPage';
 import WikiDetailPage from './pages/WikiDetailPage';
 
@@ -57,6 +59,8 @@ export default function App() {
         <Route path="/space/:spaceId/file/:fileId" element={<DetailPage />} />
         <Route path="/qa" element={<QAPage />} />
         <Route path="/expert-qa" element={<ExpertQAPage />} />
+        <Route path="/expert-qa/ask" element={<ExpertQAAskPage />} />
+        <Route path="/expert-qa/:questionId" element={<ExpertQADetailPage />} />
         <Route path="/wiki" element={<WikiPage />} />
         <Route path="/wiki/:wikiId" element={<WikiDetailPage />} />
         <Route path="/apps" element={<AppsPage />} />
