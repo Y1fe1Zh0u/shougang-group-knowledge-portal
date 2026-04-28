@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import PageShell from '../components/PageShell';
@@ -11,7 +11,7 @@ import {
   type Citation,
   type FileItem,
 } from '../api/content';
-import { renderChatMarkdown } from '../utils/chatMessage';
+import { extractReferencedCitations, renderChatMarkdown } from '../utils/chatMessage';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { useListControls } from '../hooks/useListControls';
@@ -45,7 +45,6 @@ export default function SearchPage() {
   const [qaSpaceIds, setQaSpaceIds] = useState<number[]>([]);
   const [aiText, setAiText] = useState('');
   const [aiCitations, setAiCitations] = useState<Citation[]>([]);
-  const [streaming, setStreaming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const requestSeq = useRef(0);
@@ -114,7 +113,6 @@ export default function SearchPage() {
     const currentRequest = ++requestSeq.current;
     setAiText('');
     setAiCitations([]);
-    setStreaming(true);
     void streamChatCompletion({
       scene: 'search',
       text: q,
@@ -127,25 +125,8 @@ export default function SearchPage() {
         if (requestSeq.current !== currentRequest) return;
         setAiCitations(list);
       },
-    }).finally(() => {
-      if (requestSeq.current === currentRequest) {
-        setStreaming(false);
-      }
     });
   }, [q, qaSpaceIds]);
-
-  const handleAiClick = (e: ReactMouseEvent<HTMLDivElement>) => {
-    if (!aiCitations.length) return;
-    const target = (e.target as HTMLElement).closest('[data-cite-key]') as HTMLElement | null;
-    if (!target) return;
-    const key = target.getAttribute('data-cite-key');
-    const citation = aiCitations.find((c) => c.key === key);
-    const sp = citation?.sourcePayload;
-    if (sp?.knowledgeId && sp?.documentId) {
-      e.preventDefault();
-      navigate(`/space/${sp.knowledgeId}/file/${sp.documentId}`);
-    }
-  };
 
   const submitSearch = () => {
     const keyword = draft.trim();
@@ -214,44 +195,51 @@ export default function SearchPage() {
           </div>
         )}
 
-        {hasSearch && (
-          <div className={s.aiOverview}>
-            <div className={s.aiBadge}>
-              <Search size={12} />
-              AI Overview
-            </div>
-            <div className={s.aiBodyWrap}>
+        {hasSearch && (() => {
+          const referenced = extractReferencedCitations(aiText, aiCitations);
+          return (
+            <div className={s.aiOverview}>
+              <div className={s.aiBadge}>
+                <Search size={12} />
+                AI Overview
+              </div>
               <div
                 className={s.aiText}
-                onClick={handleAiClick}
                 dangerouslySetInnerHTML={{ __html: renderChatMarkdown(aiText, aiCitations) }}
               />
-              {streaming && <span className={s.aiCursor} />}
+              {referenced.length > 0 && (
+                <ol className={s.citations}>
+                  {referenced.map((c, idx) => {
+                    const sp = c.sourcePayload ?? {};
+                    const href = sp.knowledgeId && sp.documentId
+                      ? `/space/${sp.knowledgeId}/file/${sp.documentId}`
+                      : undefined;
+                    const label = sp.documentName || c.key;
+                    return (
+                      <li key={c.key} className={s.citationItem}>
+                        <span className={s.citationIndex}>{idx + 1}</span>
+                        {href ? (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={s.citationLink}
+                            title={label}
+                          >
+                            {label}
+                          </a>
+                        ) : (
+                          <span className={s.citationLink}>{label}</span>
+                        )}
+                        {sp.knowledgeName ? <span className={s.citationHint}>· {sp.knowledgeName}</span> : null}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
             </div>
-            {aiCitations.length > 0 && (
-              <ol className={s.citations}>
-                {aiCitations.map((c, idx) => {
-                  const sp = c.sourcePayload ?? {};
-                  const href = sp.knowledgeId && sp.documentId
-                    ? `/space/${sp.knowledgeId}/file/${sp.documentId}`
-                    : undefined;
-                  const label = sp.documentName || c.key;
-                  return (
-                    <li key={c.key} className={s.citationItem}>
-                      <span className={s.citationIndex}>{idx + 1}</span>
-                      {href ? (
-                        <a href={href} className={s.citationLink}>{label}</a>
-                      ) : (
-                        <span>{label}</span>
-                      )}
-                      {sp.knowledgeName ? <span className={s.citationHint}>· {sp.knowledgeName}</span> : null}
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {error ? (
           <div className={s.emptyState}>

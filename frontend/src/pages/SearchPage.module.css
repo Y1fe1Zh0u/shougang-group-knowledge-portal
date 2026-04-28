@@ -160,14 +160,7 @@
   margin-bottom: 12px;
 }
 
-.aiBodyWrap {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-}
-
 .aiText {
-  flex: 1;
   font-size: 0.96rem;
   line-height: 1.8;
   color: var(--neutral-800);
@@ -271,16 +264,6 @@
   color: transparent;
 }
 
-.aiCursor {
-  display: inline-block;
-  width: 2px;
-  height: 0.95em;
-  background: var(--primary-600);
-  animation: blink 1s step-end infinite;
-  margin-bottom: 4px;
-  flex-shrink: 0;
-}
-
 .citations {
   list-style: none;
   margin: 14px 0 0;
@@ -341,7 +324,3 @@
   flex-shrink: 0;
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}

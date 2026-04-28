@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Bot, User, Send, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { fetchPortalContentConfig, streamChatCompletion, type Citation } from '../api/content';
-import { renderChatMarkdown } from '../utils/chatMessage';
+import { extractReferencedCitations, renderChatMarkdown } from '../utils/chatMessage';
 import s from './QAPage.module.css';
 
 interface Message {
@@ -35,9 +34,17 @@ function CitationList({ items }: { items: Citation[] }) {
           <li key={c.key} className={s.citationItem}>
             <span className={s.citationIndex}>{idx + 1}</span>
             {href ? (
-              <a href={href} className={s.citationLink}>{label}</a>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={s.citationLink}
+                title={label}
+              >
+                {label}
+              </a>
             ) : (
-              <span>{label}</span>
+              <span className={s.citationLink}>{label}</span>
             )}
             {sp.knowledgeName ? <span className={s.citationHint}>· {sp.knowledgeName}</span> : null}
           </li>
@@ -48,7 +55,6 @@ function CitationList({ items }: { items: Citation[] }) {
 }
 
 export default function QAPage() {
-  const navigate = useNavigate();
   const initialGreeting = getWelcomeMessage();
   const initialSessions: Session[] = [
     {
@@ -173,19 +179,6 @@ export default function QAPage() {
     setActiveId(id);
   };
 
-  const handleBubbleClick = (e: ReactMouseEvent<HTMLDivElement>, citations?: Citation[]) => {
-    if (!citations?.length) return;
-    const target = (e.target as HTMLElement).closest('[data-cite-key]') as HTMLElement | null;
-    if (!target) return;
-    const key = target.getAttribute('data-cite-key');
-    const citation = citations.find((c) => c.key === key);
-    const sp = citation?.sourcePayload;
-    if (sp?.knowledgeId && sp?.documentId) {
-      e.preventDefault();
-      navigate(`/space/${sp.knowledgeId}/file/${sp.documentId}`);
-    }
-  };
-
   return (
     <>
       <Header />
@@ -212,7 +205,9 @@ export default function QAPage() {
         <div className={s.main}>
           <div className={s.messages}>
             {activeSession.messages.map((msg, i) => {
-              const isLastBot = streaming && msg.role === 'bot' && i === activeSession.messages.length - 1;
+              const referenced = msg.role === 'bot' && msg.citations
+                ? extractReferencedCitations(msg.text, msg.citations)
+                : [];
               return (
                 <div
                   key={i}
@@ -223,19 +218,15 @@ export default function QAPage() {
                   </div>
                   <div className={s.msgColumn}>
                     {msg.role === 'bot' ? (
-                      <div className={s.botBubbleWrap}>
-                        <div
-                          className={`${s.msgBubble} ${s.msgBot} ${s.botContent}`}
-                          onClick={(e) => handleBubbleClick(e, msg.citations)}
-                          dangerouslySetInnerHTML={{ __html: renderChatMarkdown(msg.text, msg.citations ?? []) }}
-                        />
-                        {isLastBot && <span className={s.aiCursor} />}
-                      </div>
+                      <div
+                        className={`${s.msgBubble} ${s.msgBot} ${s.botContent}`}
+                        dangerouslySetInnerHTML={{ __html: renderChatMarkdown(msg.text, msg.citations ?? []) }}
+                      />
                     ) : (
                       <div className={`${s.msgBubble} ${s.msgUser}`}>{msg.text}</div>
                     )}
-                    {msg.role === 'bot' && msg.citations?.length ? (
-                      <CitationList items={msg.citations} />
+                    {msg.role === 'bot' && referenced.length > 0 ? (
+                      <CitationList items={referenced} />
                     ) : null}
                   </div>
                 </div>

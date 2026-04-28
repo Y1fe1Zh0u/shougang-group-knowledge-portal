@@ -24,6 +24,13 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function getCitationGroupId(citation: Citation): string {
+  const docId = citation.sourcePayload?.documentId;
+  if (docId !== undefined && docId !== null) return `doc:${docId}`;
+  if (citation.citationId) return `cid:${citation.citationId}`;
+  return `key:${citation.key}`;
+}
+
 export function stripUnclosedPlaceholders(text: string): string {
   if (!text) return text;
   const lastOpen = text.lastIndexOf(OPEN);
@@ -32,15 +39,37 @@ export function stripUnclosedPlaceholders(text: string): string {
   return text.slice(0, lastOpen);
 }
 
+export function extractReferencedCitations(text: string, citations: Citation[]): Citation[] {
+  if (!text || citations.length === 0) return [];
+  const safeInput = stripUnclosedPlaceholders(text);
+  const citationByKey = new Map(citations.map((c) => [c.key, c]));
+  const seenGroups = new Set<string>();
+  const ordered: Citation[] = [];
+  let match: RegExpExecArray | null;
+  PLACEHOLDER_RE.lastIndex = 0;
+  while ((match = PLACEHOLDER_RE.exec(safeInput)) !== null) {
+    const keys = match[1].split(SEP).map((k) => k.trim());
+    for (const key of keys) {
+      const citation = citationByKey.get(key);
+      if (!citation) continue;
+      const gid = getCitationGroupId(citation);
+      if (seenGroups.has(gid)) continue;
+      seenGroups.add(gid);
+      ordered.push(citation);
+    }
+  }
+  return ordered;
+}
+
 interface SentinelBuild {
   markdown: string;
   sentinelKeys: string[][];
-  ordinals: Map<string, number>;
+  ordinalsByGroup: Map<string, number>;
 }
 
 function buildSentinelMarkdown(text: string, citationByKey: Map<string, Citation>): SentinelBuild {
   const sentinelKeys: string[][] = [];
-  const ordinals = new Map<string, number>();
+  const ordinalsByGroup = new Map<string, number>();
   const markdown = text.replace(PLACEHOLDER_RE, (_match, group: string) => {
     const keys = group
       .split(SEP)
@@ -48,37 +77,51 @@ function buildSentinelMarkdown(text: string, citationByKey: Map<string, Citation
       .filter((k) => k && citationByKey.has(k));
     if (keys.length === 0) return '';
     keys.forEach((k) => {
-      if (!ordinals.has(k)) ordinals.set(k, ordinals.size + 1);
+      const citation = citationByKey.get(k);
+      if (!citation) return;
+      const gid = getCitationGroupId(citation);
+      if (!ordinalsByGroup.has(gid)) {
+        ordinalsByGroup.set(gid, ordinalsByGroup.size + 1);
+      }
     });
     const idx = sentinelKeys.length;
     sentinelKeys.push(keys);
     return `@@CITE_${idx}@@`;
   });
-  return { markdown, sentinelKeys, ordinals };
+  return { markdown, sentinelKeys, ordinalsByGroup };
 }
 
 function injectCitationLinks(
   cleanHtml: string,
   sentinelKeys: string[][],
   citationByKey: Map<string, Citation>,
-  ordinals: Map<string, number>,
+  ordinalsByGroup: Map<string, number>,
 ): string {
   const stripped = cleanHtml.replace(CODE_BLOCK_RE, (block) => block.replace(SENTINEL_RE, ''));
   return stripped.replace(SENTINEL_RE, (_match, idxStr: string) => {
     const idx = Number(idxStr);
     const keys = sentinelKeys[idx];
     if (!keys || keys.length === 0) return '';
-    const links = keys.map((key) => {
+    const seenOrdinals = new Set<number>();
+    const links: string[] = [];
+    for (const key of keys) {
       const citation = citationByKey.get(key);
-      const sp = citation?.sourcePayload ?? {};
-      const ordinal = ordinals.get(key) ?? 0;
+      if (!citation) continue;
+      const gid = getCitationGroupId(citation);
+      const ordinal = ordinalsByGroup.get(gid) ?? 0;
+      if (seenOrdinals.has(ordinal)) continue;
+      seenOrdinals.add(ordinal);
+      const sp = citation.sourcePayload ?? {};
       const href = sp.knowledgeId && sp.documentId
         ? `/space/${sp.knowledgeId}/file/${sp.documentId}`
         : '#';
       const title = escapeHtml(sp.documentName || key);
       const safeKey = escapeHtml(key);
-      return `<a class="citationLink" data-cite-key="${safeKey}" data-cite-ordinal="${ordinal}" href="${href}" title="${title}">${ordinal}</a>`;
-    });
+      links.push(
+        `<a class="citationLink" data-cite-key="${safeKey}" data-cite-ordinal="${ordinal}" href="${href}" title="${title}" target="_blank" rel="noopener noreferrer">${ordinal}</a>`,
+      );
+    }
+    if (links.length === 0) return '';
     return `<sup class="citationRef">${links.join('<span class="citationSep">,</span>')}</sup>`;
   });
 }
@@ -91,10 +134,10 @@ export function renderChatMarkdownWithSanitizer(
   if (!text) return '';
   const safeInput = stripUnclosedPlaceholders(text);
   const citationByKey = new Map(citations.map((c) => [c.key, c]));
-  const { markdown, sentinelKeys, ordinals } = buildSentinelMarkdown(safeInput, citationByKey);
+  const { markdown, sentinelKeys, ordinalsByGroup } = buildSentinelMarkdown(safeInput, citationByKey);
   const rendered = marked.parse(markdown, { async: false }) as string;
   const clean = sanitize(rendered);
-  return injectCitationLinks(clean, sentinelKeys, citationByKey, ordinals);
+  return injectCitationLinks(clean, sentinelKeys, citationByKey, ordinalsByGroup);
 }
 
 export function renderChatMarkdown(text: string, citations: Citation[]): string {

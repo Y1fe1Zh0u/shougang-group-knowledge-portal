@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderChatMarkdownWithSanitizer, stripUnclosedPlaceholders } from '../src/utils/chatMessage';
+import {
+  extractReferencedCitations,
+  renderChatMarkdownWithSanitizer,
+  stripUnclosedPlaceholders,
+} from '../src/utils/chatMessage';
 import type { Citation } from '../src/api/content';
 
 const identity = (html: string) => html;
@@ -42,6 +46,8 @@ test('单引用占位符渲染为可点击角标', () => {
   assert.match(html, /data-cite-key="knowledgesearch_aaa:5"/);
   assert.match(html, /href="\/space\/3313\/file\/86146"/);
   assert.match(html, />1</);
+  assert.match(html, /target="_blank"/);
+  assert.match(html, /rel="noopener noreferrer"/);
   assert.ok(!html.includes('\\ue200'), 'raw 占位符不应残留');
   assert.ok(!html.includes('@@CITE_'), 'sentinel 不应残留');
 });
@@ -92,6 +98,44 @@ test('markdown 富文本与角标可共存', () => {
   assert.match(html, /<ol>/);
   assert.match(html, /<li>列表项一<\/li>/);
   assert.match(html, /<sup class="citationRef">/);
+});
+
+test('extractReferencedCitations 仅返回文中实际被引用的 citation，按出现顺序', () => {
+  const extra: Citation = {
+    key: 'knowledgesearch_zzz:0',
+    sourcePayload: { knowledgeId: 1, documentId: 99999, documentName: '未引用.pdf' },
+  };
+  const text = '段一 \\ue200knowledgesearch_bbb:0\\ue202 段二 \\ue200knowledgesearch_aaa:5\\ue202 段三 \\ue200knowledgesearch_bbb:0\\ue202';
+  const referenced = extractReferencedCitations(text, [K1, K2, extra]);
+  assert.equal(referenced.length, 2);
+  assert.equal(referenced[0].key, 'knowledgesearch_bbb:0');
+  assert.equal(referenced[1].key, 'knowledgesearch_aaa:5');
+});
+
+test('extractReferencedCitations 同 documentId 不重复，无引用返回空', () => {
+  const otherChunk: Citation = {
+    key: 'knowledgesearch_aaa:9',
+    sourcePayload: K1.sourcePayload,
+  };
+  const text = '\\ue200knowledgesearch_aaa:5\\ue201knowledgesearch_aaa:9\\ue202';
+  const referenced = extractReferencedCitations(text, [K1, otherChunk]);
+  assert.equal(referenced.length, 1);
+  assert.equal(referenced[0].sourcePayload?.documentId, 86146);
+
+  const empty = extractReferencedCitations('纯文本无占位符', [K1, K2]);
+  assert.equal(empty.length, 0);
+});
+
+test('同 documentId 的多 chunk 共用同一角标序号', () => {
+  const otherChunk: Citation = {
+    key: 'knowledgesearch_aaa:9',
+    sourcePayload: K1.sourcePayload,
+  };
+  const text = '\\ue200knowledgesearch_aaa:5\\ue201knowledgesearch_aaa:9\\ue202';
+  const html = renderChatMarkdownWithSanitizer(text, [K1, otherChunk], identity);
+  const sup = html.match(/<sup class="citationRef">[\s\S]*?<\/sup>/)?.[0] ?? '';
+  assert.equal((sup.match(/<a /g) ?? []).length, 1, '同 documentId 应去重为 1 个角标');
+  assert.match(sup, />1</);
 });
 
 test('sanitize 钩子能拿到含 raw HTML 的 markdown 渲染产物', () => {
