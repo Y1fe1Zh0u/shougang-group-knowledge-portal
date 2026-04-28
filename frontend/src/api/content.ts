@@ -291,12 +291,30 @@ export async function fetchRelatedFiles(spaceId: number, fileId: number, limit: 
   return data.data.map(mapKnowledgeFileItem);
 }
 
+export interface CitationSourcePayload {
+  knowledgeId?: number;
+  knowledgeName?: string;
+  documentId?: number;
+  documentName?: string;
+  fileType?: string;
+  snippet?: string;
+}
+
+export interface Citation {
+  key: string;
+  citationId?: string;
+  itemId?: string;
+  type?: string;
+  sourcePayload?: CitationSourcePayload;
+}
+
 interface BishengStreamPayload {
   category?: string;
   type?: string;
   message?: { msg?: string; text?: string };
+  citations?: Citation[];
   final?: boolean;
-  responseMessage?: { text?: string };
+  responseMessage?: { text?: string; citations?: Citation[] };
 }
 
 export async function streamChatCompletion(params: {
@@ -305,6 +323,7 @@ export async function streamChatCompletion(params: {
   knowledgeSpaceIds: number[];
   model?: string;
   onUpdate: (text: string) => void;
+  onCitations?: (citations: Citation[]) => void;
 }): Promise<void> {
   const response = await fetch('/api/v1/workstation/chat/completions', {
     method: 'POST',
@@ -331,11 +350,19 @@ export async function streamChatCompletion(params: {
   let buffer = '';
   let accumulated = '';
   let finalText = '';
+  let lastCitations: Citation[] = [];
 
   const emit = (text: string) => {
     if (text && text !== accumulated) {
       accumulated = text;
       params.onUpdate(text);
+    }
+  };
+
+  const emitCitations = (citations: Citation[] | undefined) => {
+    if (citations && citations.length) {
+      lastCitations = citations;
+      params.onCitations?.(citations);
     }
   };
 
@@ -357,16 +384,19 @@ export async function streamChatCompletion(params: {
       }
       if (payload.category === 'agent_answer') {
         const msg = payload.message?.msg ?? '';
-        if (!msg) continue;
         if (payload.type === 'end') {
-          finalText = msg;
-          emit(msg);
-        } else {
+          if (msg) {
+            finalText = msg;
+            emit(msg);
+          }
+          emitCitations(payload.citations);
+        } else if (msg) {
           emit(accumulated + msg);
         }
       } else if (payload.final) {
         const text = payload.responseMessage?.text || finalText || accumulated;
         if (text) emit(text);
+        emitCitations(payload.responseMessage?.citations ?? lastCitations);
       }
     }
   }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import PageShell from '../components/PageShell';
@@ -8,8 +8,10 @@ import {
   fetchAggregatedTags,
   searchFiles,
   streamChatCompletion,
+  type Citation,
   type FileItem,
 } from '../api/content';
+import { renderChatMarkdown } from '../utils/chatMessage';
 import { FILE_EXT_OPTIONS } from '../constants/fileTypes';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { useListControls } from '../hooks/useListControls';
@@ -42,6 +44,7 @@ export default function SearchPage() {
   const [domains, setDomains] = useState<DomainOption[]>([]);
   const [qaSpaceIds, setQaSpaceIds] = useState<number[]>([]);
   const [aiText, setAiText] = useState('');
+  const [aiCitations, setAiCitations] = useState<Citation[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -68,6 +71,7 @@ export default function SearchPage() {
       setFiles([]);
       setTotal(0);
       setAiText('');
+      setAiCitations([]);
       setTags([]);
       return;
     }
@@ -109,6 +113,7 @@ export default function SearchPage() {
     if (!q) return;
     const currentRequest = ++requestSeq.current;
     setAiText('');
+    setAiCitations([]);
     setStreaming(true);
     void streamChatCompletion({
       scene: 'search',
@@ -118,12 +123,29 @@ export default function SearchPage() {
         if (requestSeq.current !== currentRequest) return;
         setAiText(text);
       },
+      onCitations(list) {
+        if (requestSeq.current !== currentRequest) return;
+        setAiCitations(list);
+      },
     }).finally(() => {
       if (requestSeq.current === currentRequest) {
         setStreaming(false);
       }
     });
   }, [q, qaSpaceIds]);
+
+  const handleAiClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!aiCitations.length) return;
+    const target = (e.target as HTMLElement).closest('[data-cite-key]') as HTMLElement | null;
+    if (!target) return;
+    const key = target.getAttribute('data-cite-key');
+    const citation = aiCitations.find((c) => c.key === key);
+    const sp = citation?.sourcePayload;
+    if (sp?.knowledgeId && sp?.documentId) {
+      e.preventDefault();
+      navigate(`/space/${sp.knowledgeId}/file/${sp.documentId}`);
+    }
+  };
 
   const submitSearch = () => {
     const keyword = draft.trim();
@@ -198,10 +220,36 @@ export default function SearchPage() {
               <Search size={12} />
               AI Overview
             </div>
-            <div className={s.aiText}>
-              {aiText}
+            <div className={s.aiBodyWrap}>
+              <div
+                className={s.aiText}
+                onClick={handleAiClick}
+                dangerouslySetInnerHTML={{ __html: renderChatMarkdown(aiText, aiCitations) }}
+              />
               {streaming && <span className={s.aiCursor} />}
             </div>
+            {aiCitations.length > 0 && (
+              <ol className={s.citations}>
+                {aiCitations.map((c, idx) => {
+                  const sp = c.sourcePayload ?? {};
+                  const href = sp.knowledgeId && sp.documentId
+                    ? `/space/${sp.knowledgeId}/file/${sp.documentId}`
+                    : undefined;
+                  const label = sp.documentName || c.key;
+                  return (
+                    <li key={c.key} className={s.citationItem}>
+                      <span className={s.citationIndex}>{idx + 1}</span>
+                      {href ? (
+                        <a href={href} className={s.citationLink}>{label}</a>
+                      ) : (
+                        <span>{label}</span>
+                      )}
+                      {sp.knowledgeName ? <span className={s.citationHint}>· {sp.knowledgeName}</span> : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
         )}
 

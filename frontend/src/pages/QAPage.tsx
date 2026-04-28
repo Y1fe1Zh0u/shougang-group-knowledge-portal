@@ -1,12 +1,15 @@
-import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { Bot, User, Send, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { fetchPortalContentConfig, streamChatCompletion } from '../api/content';
+import { fetchPortalContentConfig, streamChatCompletion, type Citation } from '../api/content';
+import { renderChatMarkdown } from '../utils/chatMessage';
 import s from './QAPage.module.css';
 
 interface Message {
   role: 'bot' | 'user';
   text: string;
+  citations?: Citation[];
 }
 
 interface Session {
@@ -19,7 +22,33 @@ function getWelcomeMessage(welcomeMessage?: string) {
   return welcomeMessage?.trim() || '你好，我是首钢知库智能助手，请问有什么可以帮您？';
 }
 
+function CitationList({ items }: { items: Citation[] }) {
+  return (
+    <ol className={s.citations}>
+      {items.map((c, idx) => {
+        const sp = c.sourcePayload ?? {};
+        const href = sp.knowledgeId && sp.documentId
+          ? `/space/${sp.knowledgeId}/file/${sp.documentId}`
+          : undefined;
+        const label = sp.documentName || c.key;
+        return (
+          <li key={c.key} className={s.citationItem}>
+            <span className={s.citationIndex}>{idx + 1}</span>
+            {href ? (
+              <a href={href} className={s.citationLink}>{label}</a>
+            ) : (
+              <span>{label}</span>
+            )}
+            {sp.knowledgeName ? <span className={s.citationHint}>· {sp.knowledgeName}</span> : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export default function QAPage() {
+  const navigate = useNavigate();
   const initialGreeting = getWelcomeMessage();
   const initialSessions: Session[] = [
     {
@@ -68,6 +97,19 @@ export default function QAPage() {
     };
   }, []);
 
+  const updateLastBotMessage = (mutator: (last: Message) => Message) => {
+    setSessions((prev) =>
+      prev.map((ss) => {
+        if (ss.id !== activeId) return ss;
+        const msgs = [...ss.messages];
+        const lastIdx = msgs.length - 1;
+        if (lastIdx < 0 || msgs[lastIdx].role !== 'bot') return ss;
+        msgs[lastIdx] = mutator(msgs[lastIdx]);
+        return { ...ss, messages: msgs };
+      }),
+    );
+  };
+
   const sendMessage = () => {
     if (!input.trim() || streaming) return;
     const text = input.trim();
@@ -91,7 +133,9 @@ export default function QAPage() {
           prev.map((ss) => {
             if (ss.id !== activeId) return ss;
             const msgs = [...ss.messages];
-            msgs[msgs.length - 1] = { role: 'bot', text: currentText };
+            const lastIdx = msgs.length - 1;
+            if (lastIdx < 0 || msgs[lastIdx].role !== 'bot') return ss;
+            msgs[lastIdx] = { ...msgs[lastIdx], text: currentText };
             return {
               ...ss,
               title: ss.title === '新会话' ? text.slice(0, 12) : ss.title,
@@ -100,15 +144,15 @@ export default function QAPage() {
           }),
         );
       },
+      onCitations(list) {
+        updateLastBotMessage((last) => ({ ...last, citations: list }));
+      },
     }).catch(() => {
-      setSessions((prev) =>
-        prev.map((ss) => {
-          if (ss.id !== activeId) return ss;
-          const msgs = [...ss.messages];
-          msgs[msgs.length - 1] = { role: 'bot', text: '问答请求失败，请稍后重试。' };
-          return { ...ss, messages: msgs };
-        }),
-      );
+      updateLastBotMessage((last) => ({
+        ...last,
+        text: '问答请求失败，请稍后重试。',
+        citations: undefined,
+      }));
     }).finally(() => {
       setStreaming(false);
     });
@@ -127,6 +171,19 @@ export default function QAPage() {
     };
     setSessions((prev) => [...prev, ns]);
     setActiveId(id);
+  };
+
+  const handleBubbleClick = (e: ReactMouseEvent<HTMLDivElement>, citations?: Citation[]) => {
+    if (!citations?.length) return;
+    const target = (e.target as HTMLElement).closest('[data-cite-key]') as HTMLElement | null;
+    if (!target) return;
+    const key = target.getAttribute('data-cite-key');
+    const citation = citations.find((c) => c.key === key);
+    const sp = citation?.sourcePayload;
+    if (sp?.knowledgeId && sp?.documentId) {
+      e.preventDefault();
+      navigate(`/space/${sp.knowledgeId}/file/${sp.documentId}`);
+    }
   };
 
   return (
@@ -154,22 +211,36 @@ export default function QAPage() {
 
         <div className={s.main}>
           <div className={s.messages}>
-            {activeSession.messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`${s.msgRow} ${msg.role === 'user' ? s.msgRowUser : ''}`}
-              >
-                <div className={`${s.avatar} ${msg.role === 'bot' ? s.avatarBot : s.avatarUser}`}>
-                  {msg.role === 'bot' ? <Bot size={16} /> : <User size={16} />}
+            {activeSession.messages.map((msg, i) => {
+              const isLastBot = streaming && msg.role === 'bot' && i === activeSession.messages.length - 1;
+              return (
+                <div
+                  key={i}
+                  className={`${s.msgRow} ${msg.role === 'user' ? s.msgRowUser : ''}`}
+                >
+                  <div className={`${s.avatar} ${msg.role === 'bot' ? s.avatarBot : s.avatarUser}`}>
+                    {msg.role === 'bot' ? <Bot size={16} /> : <User size={16} />}
+                  </div>
+                  <div className={s.msgColumn}>
+                    {msg.role === 'bot' ? (
+                      <div className={s.botBubbleWrap}>
+                        <div
+                          className={`${s.msgBubble} ${s.msgBot} ${s.botContent}`}
+                          onClick={(e) => handleBubbleClick(e, msg.citations)}
+                          dangerouslySetInnerHTML={{ __html: renderChatMarkdown(msg.text, msg.citations ?? []) }}
+                        />
+                        {isLastBot && <span className={s.aiCursor} />}
+                      </div>
+                    ) : (
+                      <div className={`${s.msgBubble} ${s.msgUser}`}>{msg.text}</div>
+                    )}
+                    {msg.role === 'bot' && msg.citations?.length ? (
+                      <CitationList items={msg.citations} />
+                    ) : null}
+                  </div>
                 </div>
-                <div className={`${s.msgBubble} ${msg.role === 'bot' ? s.msgBot : s.msgUser}`}>
-                  {msg.text}
-                  {streaming && msg.role === 'bot' && i === activeSession.messages.length - 1 && (
-                    <span className={s.aiCursor} />
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={msgEndRef} />
           </div>
 
