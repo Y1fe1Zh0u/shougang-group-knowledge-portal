@@ -66,7 +66,7 @@ const NAV_ITEMS = [
   { key: 'domains', label: '业务域', icon: Building },
   { key: 'sections', label: '首页分区', icon: Tag },
   { key: 'qa', label: '问答配置', icon: Bot },
-  { key: 'recommend', label: '推荐策略', icon: Star, disabled: true },
+  { key: 'recommend', label: '推荐策略', icon: Star },
   { key: 'display', label: '展示配置', icon: SlidersHorizontal },
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
   { key: 'bisheng', label: '数据源配置', icon: Server },
@@ -336,11 +336,8 @@ export default function AdminPage() {
             return (
               <div
                 key={item.key}
-                className={`${s.navItem} ${active === item.key ? s.navItemActive : ''} ${item.disabled ? s.navItemDisabled : ''}`}
-                onClick={() => {
-                  if (item.disabled) return;
-                  setActive(item.key);
-                }}
+                className={`${s.navItem} ${active === item.key ? s.navItemActive : ''}`}
+                onClick={() => setActive(item.key)}
               >
                 <Icon size={16} />
                 {item.label}
