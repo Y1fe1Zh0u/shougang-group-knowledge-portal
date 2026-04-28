@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from pydantic import AnyHttpUrl, Field
+from pydantic import AnyHttpUrl, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     bisheng_base_url: AnyHttpUrl = Field(default="http://localhost:7860")
     bisheng_timeout_seconds: float = 30.0
     bisheng_api_token: Optional[str] = None
+    bisheng_username: Optional[str] = None
+    bisheng_password: Optional[SecretStr] = None
     bisheng_default_model: Optional[str] = None
     bisheng_page_size_limit: int = 100
     bisheng_runtime_config_path: Path = Field(

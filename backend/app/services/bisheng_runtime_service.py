@@ -1,10 +1,12 @@
 import asyncio
 import base64
+import json
+import logging
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Callable
+from typing import Awaitable, Callable
 
 import httpx
 
@@ -14,6 +16,12 @@ from app.schemas.bisheng_runtime import (
     BishengRuntimeConfigUpdate,
     BishengRuntimeConfigView,
 )
+
+logger = logging.getLogger(__name__)
+
+
+DEFAULT_REFRESH_INTERVAL_SECONDS = 30 * 60
+DEFAULT_REFRESH_THRESHOLD_SECONDS = 60 * 60
 
 
 def encrypt_bisheng_password(public_key_pem: str, password: str) -> str:
@@ -28,24 +36,46 @@ class BishengRuntimeService:
         default_base_url: str,
         default_timeout_seconds: float,
         default_api_token: str | None = None,
+        default_username: str | None = None,
+        default_password: str | None = None,
         client_factory: Callable[[str, float, str | None], BishengClient] = BishengClient,
         password_encryptor: Callable[[str, str], str] = encrypt_bisheng_password,
+        refresh_interval_seconds: float = DEFAULT_REFRESH_INTERVAL_SECONDS,
+        refresh_threshold_seconds: float = DEFAULT_REFRESH_THRESHOLD_SECONDS,
+        sleeper: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ):
         self._config_path = config_path
         self._default_base_url = default_base_url
         self._default_timeout_seconds = default_timeout_seconds
         self._default_api_token = default_api_token or ""
+        self._default_username = (default_username or "").strip()
+        self._default_password = default_password or ""
         self._client_factory = client_factory
         self._password_encryptor = password_encryptor
+        self._refresh_interval_seconds = refresh_interval_seconds
+        self._refresh_threshold_seconds = refresh_threshold_seconds
+        self._sleeper = sleeper
         self._lock = asyncio.Lock()
         self._client: BishengClient | None = None
+        self._refresh_task: asyncio.Task | None = None
         self._ensure_seeded()
 
     async def initialize(self) -> None:
         async with self._lock:
             await self._replace_client(self._read_config())
+        if self._can_auto_refresh():
+            await self._refresh_token_if_due()
+            self._refresh_task = asyncio.create_task(self._refresh_loop())
 
     async def aclose(self) -> None:
+        task = self._refresh_task
+        self._refresh_task = None
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
         client = self._client
         self._client = None
         if client is not None:
@@ -100,6 +130,64 @@ class BishengRuntimeService:
             await self._replace_client(updated)
             return self._to_public_view(updated)
 
+    async def _refresh_loop(self) -> None:
+        while True:
+            try:
+                await self._sleeper(self._refresh_interval_seconds)
+            except asyncio.CancelledError:
+                raise
+            try:
+                await self._refresh_token_if_due()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("BiSheng token 自动刷新循环异常，将在下次轮询重试")
+
+    async def _refresh_token_if_due(self) -> None:
+        async with self._lock:
+            current = self._read_config()
+            if not self._is_token_due_for_refresh(current.api_token):
+                return
+            username = current.username.strip() or self._default_username
+            if not username or not self._default_password:
+                logger.warning(
+                    "BiSheng token 即将过期但未配置 PORTAL_BISHENG_USERNAME / PORTAL_BISHENG_PASSWORD，无法自动续期"
+                )
+                return
+            try:
+                next_token = await self._login_and_get_token(
+                    base_url=str(current.base_url),
+                    username=username,
+                    password=self._default_password,
+                    timeout_seconds=current.timeout_seconds,
+                )
+            except ValueError as err:
+                logger.warning("BiSheng token 自动续期失败：%s", err)
+                return
+
+            updated = BishengRuntimeConfig(
+                base_url=current.base_url,
+                username=username,
+                timeout_seconds=current.timeout_seconds,
+                api_token=next_token,
+                last_auth_at=_utc_now(),
+            )
+            self._write_config(updated)
+            await self._replace_client(updated)
+            logger.info("BiSheng token 已自动续期")
+
+    def _is_token_due_for_refresh(self, token: str) -> bool:
+        if not token:
+            return True
+        exp = _decode_jwt_exp(token)
+        if exp is None:
+            return True
+        remaining = (exp - datetime.now(UTC)).total_seconds()
+        return remaining <= self._refresh_threshold_seconds
+
+    def _can_auto_refresh(self) -> bool:
+        return bool(self._default_password)
+
     async def _login_and_get_token(
         self,
         *,
@@ -147,7 +235,7 @@ class BishengRuntimeService:
             return
         seeded = BishengRuntimeConfig(
             base_url=self._default_base_url,
-            username="",
+            username=self._default_username,
             timeout_seconds=self._default_timeout_seconds,
             api_token=self._default_api_token,
             last_auth_at="",
@@ -194,6 +282,23 @@ def _unwrap_bisheng_payload(response: dict) -> dict:
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _decode_jwt_exp(token: str) -> datetime | None:
+    parts = token.split(".")
+    if len(parts) < 2:
+        return None
+    payload_segment = parts[1]
+    padding = "=" * (-len(payload_segment) % 4)
+    try:
+        payload_bytes = base64.urlsafe_b64decode(payload_segment + padding)
+        payload = json.loads(payload_bytes)
+    except (ValueError, json.JSONDecodeError):
+        return None
+    exp = payload.get("exp")
+    if not isinstance(exp, (int, float)):
+        return None
+    return datetime.fromtimestamp(exp, tz=timezone.utc)
 
 
 def _parse_rsa_public_key(public_key_pem: str) -> tuple[int, int]:

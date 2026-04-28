@@ -1,8 +1,14 @@
 import asyncio
+import base64
+import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.schemas.bisheng_runtime import BishengRuntimeConfigUpdate
-from app.services.bisheng_runtime_service import BishengRuntimeService
+from app.services.bisheng_runtime_service import (
+    BishengRuntimeService,
+    _decode_jwt_exp,
+)
 
 
 class FakeRuntimeBishengClient:
@@ -104,3 +110,249 @@ def test_runtime_service_requires_password_when_endpoint_changes(tmp_path: Path)
         assert "必须重新输入密码" in str(err)
     else:
         raise AssertionError("Expected ValueError when changing endpoint without password")
+
+
+# ---------------- 自动续期相关测试 ----------------
+
+
+def _make_fake_jwt(exp_delta_seconds: float) -> str:
+    exp = int((datetime.now(timezone.utc) + timedelta(seconds=exp_delta_seconds)).timestamp())
+    header_b64 = base64.urlsafe_b64encode(b'{"alg":"none"}').rstrip(b"=").decode()
+    payload_b64 = base64.urlsafe_b64encode(
+        json.dumps({"exp": exp}).encode()
+    ).rstrip(b"=").decode()
+    return f"{header_b64}.{payload_b64}.sig"
+
+
+class _ScriptedBishengClient:
+    def __init__(self, base_url: str, timeout_seconds: float, api_token: str | None, state: dict):
+        self.base_url = base_url
+        self.timeout_seconds = timeout_seconds
+        self.api_token = api_token
+        self._state = state
+
+    async def get_json(self, path, params=None):
+        if path == "/api/v1/user/get_captcha":
+            return {"status_code": 200, "data": {"captcha_key": "k", "user_capthca": False}}
+        if path == "/api/v1/user/public_key":
+            return {"status_code": 200, "data": {"public_key": "fake-public-key"}}
+        raise AssertionError(f"Unexpected get: {path}")
+
+    async def post_json(self, path, json=None):
+        if path == "/api/v1/user/login":
+            self._state["login_calls"] += 1
+            self._state["last_login_payload"] = json
+            if self._state["errors"]:
+                err = self._state["errors"].pop(0)
+                if err is not None:
+                    raise err
+            token = self._state["tokens"].pop(0) if self._state["tokens"] else "next-token"
+            return {"status_code": 200, "data": {"access_token": token}}
+        raise AssertionError(f"Unexpected post: {path}")
+
+    async def aclose(self):
+        return None
+
+
+def _make_scripted_factory(*, login_tokens=None, login_errors=None):
+    state = {
+        "login_calls": 0,
+        "last_login_payload": None,
+        "tokens": list(login_tokens or []),
+        "errors": list(login_errors or []),
+    }
+
+    def factory(base_url, timeout_seconds, api_token=None):
+        return _ScriptedBishengClient(base_url, timeout_seconds, api_token, state)
+
+    return factory, state
+
+
+def _seed_runtime_config(path: Path, *, api_token: str, username: str = "admin") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "base_url": "http://example.com",
+                "username": username,
+                "timeout_seconds": 30.0,
+                "api_token": api_token,
+                "last_auth_at": "",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_decode_jwt_exp_returns_aware_datetime():
+    token = _make_fake_jwt(3600)
+    exp = _decode_jwt_exp(token)
+    assert exp is not None
+    remaining = (exp - datetime.now(timezone.utc)).total_seconds()
+    assert 3500 < remaining < 3700
+
+
+def test_decode_jwt_exp_handles_invalid_inputs():
+    assert _decode_jwt_exp("") is None
+    assert _decode_jwt_exp("not.a.jwt") is None
+    header = base64.urlsafe_b64encode(b"{}").rstrip(b"=").decode()
+    payload_no_exp = base64.urlsafe_b64encode(b'{"sub":"x"}').rstrip(b"=").decode()
+    assert _decode_jwt_exp(f"{header}.{payload_no_exp}.sig") is None
+
+
+def test_refresh_skips_when_token_is_fresh(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    fresh = _make_fake_jwt(2 * 3600)
+    _seed_runtime_config(config_path, api_token=fresh)
+    factory, state = _make_scripted_factory(login_tokens=["never-used"])
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_username="admin",
+        default_password="pwd",
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+    )
+    asyncio.run(service._refresh_token_if_due())
+
+    assert state["login_calls"] == 0
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert saved["api_token"] == fresh
+
+
+def test_refresh_relogins_when_token_near_expiry(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    expiring = _make_fake_jwt(30 * 60)
+    _seed_runtime_config(config_path, api_token=expiring)
+    new_token = _make_fake_jwt(24 * 3600)
+    factory, state = _make_scripted_factory(login_tokens=[new_token])
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_username="admin",
+        default_password="pwd",
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+    )
+    asyncio.run(service._refresh_token_if_due())
+
+    assert state["login_calls"] == 1
+    assert state["last_login_payload"]["user_name"] == "admin"
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert saved["api_token"] == new_token
+    assert saved["last_auth_at"] != ""
+
+
+def test_refresh_falls_back_to_default_username(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    _seed_runtime_config(config_path, api_token=_make_fake_jwt(30 * 60), username="")
+    factory, state = _make_scripted_factory(login_tokens=[_make_fake_jwt(24 * 3600)])
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_username="env-admin",
+        default_password="pwd",
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+    )
+    asyncio.run(service._refresh_token_if_due())
+
+    assert state["login_calls"] == 1
+    assert state["last_login_payload"]["user_name"] == "env-admin"
+
+
+def test_refresh_skipped_without_default_password(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    _seed_runtime_config(config_path, api_token=_make_fake_jwt(30 * 60))
+    factory, state = _make_scripted_factory(login_tokens=["x"])
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_username="admin",
+        default_password=None,
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+    )
+    asyncio.run(service._refresh_token_if_due())
+    assert state["login_calls"] == 0
+
+
+def test_refresh_swallows_login_failure(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    expiring = _make_fake_jwt(30 * 60)
+    _seed_runtime_config(config_path, api_token=expiring)
+    factory, _state = _make_scripted_factory(login_errors=[ValueError("auth down")])
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_username="admin",
+        default_password="pwd",
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+    )
+    asyncio.run(service._refresh_token_if_due())
+
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert saved["api_token"] == expiring
+
+
+def test_initialize_does_not_start_loop_without_password(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    _seed_runtime_config(config_path, api_token=_make_fake_jwt(2 * 3600))
+    factory, _state = _make_scripted_factory()
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+    )
+
+    async def _run():
+        await service.initialize()
+        task = service._refresh_task
+        await service.aclose()
+        return task
+
+    assert asyncio.run(_run()) is None
+
+
+def test_initialize_starts_and_aclose_cancels_loop_with_password(tmp_path: Path):
+    config_path = tmp_path / "rt.json"
+    _seed_runtime_config(config_path, api_token=_make_fake_jwt(2 * 3600))
+    factory, _state = _make_scripted_factory()
+
+    async def long_sleep(_seconds):
+        await asyncio.sleep(3600)
+
+    service = BishengRuntimeService(
+        config_path=config_path,
+        default_base_url="http://example.com",
+        default_timeout_seconds=30.0,
+        default_username="admin",
+        default_password="pwd",
+        client_factory=factory,
+        password_encryptor=lambda _pk, _p: "enc",
+        sleeper=long_sleep,
+    )
+
+    async def _run():
+        await service.initialize()
+        task = service._refresh_task
+        assert task is not None
+        await service.aclose()
+        return task
+
+    task = asyncio.run(_run())
+    assert task.done()

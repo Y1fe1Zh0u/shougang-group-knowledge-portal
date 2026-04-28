@@ -17,6 +17,10 @@ async def lifespan(app: FastAPI):
         default_base_url=str(settings.bisheng_base_url),
         default_timeout_seconds=settings.bisheng_timeout_seconds,
         default_api_token=settings.bisheng_api_token,
+        default_username=settings.bisheng_username,
+        default_password=(
+            settings.bisheng_password.get_secret_value() if settings.bisheng_password else None
+        ),
     )
     await app.state.bisheng_runtime_service.initialize()
     app.state.portal_config_service = PortalConfigService(
