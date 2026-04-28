@@ -212,11 +212,13 @@ class PortalAuthService:
         account = self._first_str(data, "user_name", "username", "account", "email") or fallback_account
         name = self._first_str(data, "nick_name", "nickname", "name", "real_name", "user_name") or account
         role = self._first_str(data, "role_name", "role", "position", "department_name", "department")
+        external_id = self._first_str(data, "external_id", "employee_id", "staff_id")
         return PortalUserView(
             account=account,
             name=name,
             initial=name[:1].upper(),
             role=role or "内部员工",
+            external_id=external_id,
             login_at=int(time.time() * 1000),
         )
 

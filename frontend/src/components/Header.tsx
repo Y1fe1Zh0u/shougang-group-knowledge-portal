@@ -42,7 +42,7 @@ export default function Header() {
   const closeMenu = useMemo(() => () => setMenuKey(null), []);
 
   const initial = user ? (user.initial || user.name.slice(0, 1)) : '';
-  const role = user?.role || '内部员工';
+  const externalId = user?.externalId?.trim() || user?.account || '';
 
   const goLogin = () => {
     const redirect = `${location.pathname}${location.search}`;
@@ -106,7 +106,9 @@ export default function Header() {
                   <div className={s.userMenuAvatar}>{initial}</div>
                   <div>
                     <div className={s.userMenuName}>{user.name}</div>
-                    <div className={s.userMenuRole}>{role}</div>
+                    {externalId ? (
+                      <div className={s.userMenuRole}>工号 {externalId}</div>
+                    ) : null}
                   </div>
                 </div>
                 {bishengAdminUrl ? (

@@ -14,6 +14,7 @@ class PortalUserView(BaseModel):
     name: str
     initial: str = ""
     role: str = ""
+    external_id: str = ""
     login_at: int
 
 
