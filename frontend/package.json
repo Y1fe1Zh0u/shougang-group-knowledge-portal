@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:preview-mock": "node scripts/preview_mock_dev.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "mock:preview": "node scripts/preview_mock_server.mjs",
     "test": "rm -rf .test-dist && tsc -p tsconfig.tests.json && printf '{\"type\":\"commonjs\"}' > .test-dist/package.json && node --test .test-dist/tests/**/*.test.js",
     "preview": "vite preview"
   },

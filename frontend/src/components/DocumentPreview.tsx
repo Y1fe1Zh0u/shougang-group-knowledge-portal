@@ -2,20 +2,60 @@ import { useEffect, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
 import * as mammoth from 'mammoth';
 import { marked } from 'marked';
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import { getDocument, PDFWorker } from 'pdfjs-dist';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 import * as XLSX from 'xlsx';
 import type { FileChunkItem } from '../api/content';
 import type { ResolvedFilePreview } from '../utils/filePreview';
 import s from './DocumentPreview.module.css';
-
-GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface Props {
   chunks: FileChunkItem[];
   onPreviewFailure: () => void;
   preview: ResolvedFilePreview;
   title: string;
+}
+
+interface PreviewAsset {
+  buffer: ArrayBuffer;
+  contentType: string;
+}
+
+async function fetchPreviewAsset(sourceUrl: string, signal?: AbortSignal): Promise<PreviewAsset> {
+  const response = await fetch(sourceUrl, { credentials: 'include', signal });
+  if (!response.ok) throw new Error('预览资源请求失败');
+  const buffer = await response.arrayBuffer();
+  return {
+    buffer,
+    contentType: detectContentType(buffer, response.headers.get('content-type')),
+  };
+}
+
+function detectContentType(buffer: ArrayBuffer, contentTypeHeader: string | null): string {
+  const headerContentType = (contentTypeHeader ?? '').split(';')[0].trim().toLowerCase();
+  if (headerContentType && headerContentType !== 'application/octet-stream') {
+    return headerContentType;
+  }
+
+  const bytes = new Uint8Array(buffer.slice(0, 16));
+  const textStart = decodeAscii(buffer.slice(0, 256)).trimStart().toLowerCase();
+  if (textStart.startsWith('%pdf-')) return 'application/pdf';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (textStart.startsWith('gif87a') || textStart.startsWith('gif89a')) return 'image/gif';
+  if (textStart.startsWith('<svg') || textStart.startsWith('<?xml')) return 'image/svg+xml';
+  if (textStart.startsWith('<!doctype html') || textStart.startsWith('<html')) return 'text/html';
+  if (textStart.startsWith('riff') && textStart.slice(8, 12) === 'webp') return 'image/webp';
+  if (textStart.startsWith('bm')) return 'image/bmp';
+  return headerContentType || 'application/octet-stream';
+}
+
+function decodeAscii(buffer: ArrayBuffer): string {
+  return String.fromCharCode(...new Uint8Array(buffer));
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
 }
 
 function sanitizeHtml(value: string): string {
@@ -33,6 +73,25 @@ function decodeTextBuffer(buffer: ArrayBuffer): string {
   } catch {
     return utf8;
   }
+}
+
+function isZipContainer(buffer: ArrayBuffer): boolean {
+  const bytes = new Uint8Array(buffer.slice(0, 4));
+  return bytes[0] === 0x50 && bytes[1] === 0x4b;
+}
+
+function isCompoundOfficeDocument(buffer: ArrayBuffer): boolean {
+  const bytes = new Uint8Array(buffer.slice(0, 8));
+  return (
+    bytes[0] === 0xd0
+    && bytes[1] === 0xcf
+    && bytes[2] === 0x11
+    && bytes[3] === 0xe0
+    && bytes[4] === 0xa1
+    && bytes[5] === 0xb1
+    && bytes[6] === 0x1a
+    && bytes[7] === 0xe1
+  );
 }
 
 function LoadingState({ label }: { label: string }) {
@@ -65,11 +124,45 @@ function ChunkFallbackPreview({ chunks, reason }: { chunks: FileChunkItem[]; rea
 }
 
 function ImagePreview({ title, viewerUrl, onPreviewFailure }: { title: string; viewerUrl: string; onPreviewFailure: () => void }) {
+  const [imageUrl, setImageUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    const controller = new AbortController();
+    setLoading(true);
+    setImageUrl('');
+    void (async () => {
+      try {
+        const asset = await fetchPreviewAsset(viewerUrl, controller.signal);
+        objectUrl = URL.createObjectURL(new Blob([asset.buffer], { type: asset.contentType }));
+        if (!active) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setImageUrl(objectUrl);
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
+        onPreviewFailure();
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [onPreviewFailure, viewerUrl]);
+
+  if (loading) return <LoadingState label="正在加载图片预览..." />;
+  if (!imageUrl) return <FallbackState reason="图片预览资源不可用。" />;
   return (
     <div className={s.imageSurface}>
       <img
         className={s.image}
-        src={viewerUrl}
+        src={imageUrl}
         alt={`${title} 预览`}
         onError={onPreviewFailure}
       />
@@ -89,17 +182,16 @@ function HtmlPreview({
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setHtml('');
     void (async () => {
       try {
-        const response = await fetch(sourceUrl);
-        if (!response.ok) throw new Error('HTML 预览请求失败');
-        const buffer = await response.arrayBuffer();
+        const { buffer } = await fetchPreviewAsset(sourceUrl, controller.signal);
         if (!active) return;
         setHtml(sanitizeHtml(decodeTextBuffer(buffer)));
-      } catch {
-        if (!active) return;
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
         onPreviewFailure();
       } finally {
         if (active) setLoading(false);
@@ -107,6 +199,7 @@ function HtmlPreview({
     })();
     return () => {
       active = false;
+      controller.abort();
     };
   }, [onPreviewFailure, sourceUrl]);
 
@@ -126,18 +219,17 @@ function MarkdownPreview({
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setHtml('');
     void (async () => {
       try {
-        const response = await fetch(sourceUrl);
-        if (!response.ok) throw new Error('Markdown 预览请求失败');
-        const buffer = await response.arrayBuffer();
+        const { buffer } = await fetchPreviewAsset(sourceUrl, controller.signal);
         const rendered = marked.parse(decodeTextBuffer(buffer));
         if (!active) return;
         setHtml(sanitizeHtml(typeof rendered === 'string' ? rendered : ''));
-      } catch {
-        if (!active) return;
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
         onPreviewFailure();
       } finally {
         if (active) setLoading(false);
@@ -145,6 +237,7 @@ function MarkdownPreview({
     })();
     return () => {
       active = false;
+      controller.abort();
     };
   }, [onPreviewFailure, sourceUrl]);
 
@@ -164,17 +257,16 @@ function TextPreview({
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setContent('');
     void (async () => {
       try {
-        const response = await fetch(sourceUrl);
-        if (!response.ok) throw new Error('文本预览请求失败');
-        const buffer = await response.arrayBuffer();
+        const { buffer } = await fetchPreviewAsset(sourceUrl, controller.signal);
         if (!active) return;
         setContent(decodeTextBuffer(buffer));
-      } catch {
-        if (!active) return;
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
         onPreviewFailure();
       } finally {
         if (active) setLoading(false);
@@ -182,6 +274,7 @@ function TextPreview({
     })();
     return () => {
       active = false;
+      controller.abort();
     };
   }, [onPreviewFailure, sourceUrl]);
 
@@ -207,18 +300,17 @@ function DocxPreview({
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setHtml('');
     void (async () => {
       try {
-        const response = await fetch(sourceUrl);
-        if (!response.ok) throw new Error('DOCX 预览请求失败');
-        const buffer = await response.arrayBuffer();
+        const { buffer } = await fetchPreviewAsset(sourceUrl, controller.signal);
         const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
         if (!active) return;
         setHtml(sanitizeHtml(result.value));
-      } catch {
-        if (!active) return;
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
         onPreviewFailure();
       } finally {
         if (active) setLoading(false);
@@ -226,6 +318,7 @@ function DocxPreview({
     })();
     return () => {
       active = false;
+      controller.abort();
     };
   }, [onPreviewFailure, sourceUrl]);
 
@@ -248,6 +341,7 @@ function SpreadsheetPreview({
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     workbookRef.current = null;
     setLoading(true);
     setSheetNames([]);
@@ -255,17 +349,18 @@ function SpreadsheetPreview({
     setHtml('');
     void (async () => {
       try {
-        const response = await fetch(sourceUrl);
-        if (!response.ok) throw new Error('表格预览请求失败');
-        const buffer = await response.arrayBuffer();
-        const workbook = XLSX.read(buffer, { dense: true });
+        const { buffer } = await fetchPreviewAsset(sourceUrl, controller.signal);
+        const workbook = (isZipContainer(buffer) || isCompoundOfficeDocument(buffer))
+          ? XLSX.read(buffer, { dense: true, type: 'array' })
+          : XLSX.read(decodeTextBuffer(buffer), { dense: true, type: 'string' });
         const nextSheetNames = workbook.SheetNames;
-        if (!active || !nextSheetNames.length) return;
+        if (!nextSheetNames.length) throw new Error('表格预览为空');
+        if (!active) return;
         workbookRef.current = workbook;
         setSheetNames(nextSheetNames);
         setSelectedSheet(nextSheetNames[0]);
-      } catch {
-        if (!active) return;
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
         onPreviewFailure();
       } finally {
         if (active) setLoading(false);
@@ -273,6 +368,7 @@ function SpreadsheetPreview({
     })();
     return () => {
       active = false;
+      controller.abort();
       workbookRef.current = null;
     };
   }, [onPreviewFailure, sourceUrl]);
@@ -323,6 +419,8 @@ function PdfPreview({
     let active = true;
     const container = containerRef.current;
     let loadingTask: ReturnType<typeof getDocument> | null = null;
+    let pdfWorker: PDFWorker | null = null;
+    const controller = new AbortController();
     if (!container) return undefined;
 
     container.innerHTML = '';
@@ -330,7 +428,10 @@ function PdfPreview({
 
     void (async () => {
       try {
-        loadingTask = getDocument(sourceUrl);
+        const { buffer } = await fetchPreviewAsset(sourceUrl, controller.signal);
+        if (!active) return;
+        pdfWorker = PDFWorker.create({ port: new PdfWorker() });
+        loadingTask = getDocument({ data: new Uint8Array(buffer), worker: pdfWorker });
         const pdfDocument = await loadingTask.promise;
         if (!active) return;
         for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
@@ -359,8 +460,8 @@ function PdfPreview({
 
           await page.render({ canvas, canvasContext: context, viewport }).promise;
         }
-      } catch {
-        if (!active) return;
+      } catch (error) {
+        if (!active || isAbortError(error)) return;
         onPreviewFailure();
       } finally {
         if (active) setLoading(false);
@@ -369,8 +470,10 @@ function PdfPreview({
 
     return () => {
       active = false;
+      controller.abort();
       container.innerHTML = '';
       if (loadingTask) void loadingTask.destroy();
+      if (pdfWorker) pdfWorker.destroy();
     };
   }, [onPreviewFailure, sourceUrl]);
 

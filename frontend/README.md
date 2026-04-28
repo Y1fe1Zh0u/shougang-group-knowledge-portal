@@ -33,6 +33,22 @@ npm run dev
 VITE_BACKEND_PROXY_TARGET=http://localhost:8010 npm run dev
 ```
 
+### 本地预览渲染器 Mock
+
+本地没有 BiSheng 数据时，可以启动内置 mock API 验证详情页预览渲染器：
+
+```bash
+npm run dev:preview-mock
+```
+
+启动后打开：
+
+```text
+http://localhost:5173/space/9001
+```
+
+mock 空间包含 PDF、DOCX、XLSX、CSV、Markdown、HTML、TXT、SVG、unsupported 和 chunks fallback 样例。mock 的 `/preview/content` 会返回真实二进制或文本内容，可用于验证所有 viewer 分支。
+
 ## 常用命令
 
 ```bash
