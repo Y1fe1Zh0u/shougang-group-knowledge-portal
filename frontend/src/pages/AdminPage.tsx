@@ -192,7 +192,7 @@ export default function AdminPage() {
       if (bishengResult.status === 'fulfilled') {
         setBishengConfig(bishengResult.value);
       } else {
-        errors.push(bishengResult.reason instanceof Error ? bishengResult.reason.message : 'BISHENG 配置加载失败');
+        errors.push(bishengResult.reason instanceof Error ? bishengResult.reason.message : '大模型应用平台配置加载失败');
       }
 
       if (errors.length) {
@@ -634,7 +634,7 @@ export default function AdminPage() {
           onSubmit={() => {
             const result = validateBishengDraft(bishengDraft);
             if (!result.payload) {
-              setBishengFormError(result.error || 'BISHENG 配置无效');
+              setBishengFormError(result.error || '大模型应用平台配置无效');
               return;
             }
             const nextPayload = result.payload;
@@ -857,9 +857,9 @@ export default function AdminPage() {
       {config && integrationsDialogOpen ? (
         <TextEditorDialog
           open
-          title="编辑 BiSheng 嵌入入口 URL"
-          note={'管理员点击右上角「知识管理后台」时跳转到此 URL；留空则不显示该入口。需 BiSheng 侧已按 docs/bisheng-portal-admin-integration.md 完成补丁部署。'}
-          label="BiSheng 嵌入入口 URL"
+          title="编辑大模型应用平台嵌入入口 URL"
+          note={'管理员点击右上角「知识管理后台」时跳转到此 URL；留空则不显示该入口。需在大模型应用平台侧已按 docs/bisheng-portal-admin-integration.md 完成补丁部署。'}
+          label="大模型应用平台嵌入入口 URL"
           value={integrationsDraft}
           saving={saving}
           error={integrationsDialogError}
@@ -1016,7 +1016,7 @@ function SpacePickerDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>添加知识空间</h3>
-            <p className={s.modalNote}>从 BISHENG 现有知识空间里选择，不向用户展示空间 ID。</p>
+            <p className={s.modalNote}>从大模型应用平台现有知识空间里选择，不向用户展示空间 ID。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>关闭</button>
         </div>
@@ -1094,7 +1094,7 @@ function SpaceDeleteDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>删除知识空间</h3>
-            <p className={s.modalNote}>这只会移除门户绑定，不会删除 BISHENG 里的原始知识空间。</p>
+            <p className={s.modalNote}>这只会移除门户绑定，不会删除大模型应用平台里的原始知识空间。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>取消</button>
         </div>
@@ -1606,7 +1606,7 @@ function BishengConfigTable({
         <h2 className={s.pageTitle}>数据源配置</h2>
       </div>
       <p className={s.pageNote}>
-        这里维护门户后端使用的 BISHENG 数据源环境。密码不会回显到前端；保存成功后会立即更新运行中的连接配置。
+        这里维护门户后端使用的大模型应用平台数据源环境。密码不会回显到前端；保存成功后会立即更新运行中的连接配置。
       </p>
       <table className={s.table}>
         <thead>
@@ -1618,13 +1618,13 @@ function BishengConfigTable({
         </thead>
         <tbody>
           <tr>
-            <td>BISHENG 地址</td>
+            <td>大模型应用平台地址</td>
             <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.base_url || '未配置'}</span></div></td>
             <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
           </tr>
           <tr>
             <td>资源域名（预览代理）</td>
-            <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.asset_base_url || '与 BISHENG 地址相同'}</span></div></td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.asset_base_url || '与大模型应用平台地址相同'}</span></div></td>
             <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
           </tr>
           <tr>
@@ -1675,7 +1675,7 @@ function BishengEditorDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>编辑数据源配置</h3>
-            <p className={s.modalNote}>请填 BISHENG <strong>后端 API</strong> 地址（端口通常是 :7860/:7861/:8098），<strong>不是</strong> :4001/:3001/:3002 这种带 nginx 静态托管的浏览器入口。保存时后端会直接调用 BISHENG 登录接口验证账号密码。密码不会回显；如果只改超时，可以留空继续沿用当前登录态。</p>
+            <p className={s.modalNote}>请填大模型应用平台<strong>后端 API</strong> 地址（端口通常是 :7860/:7861/:8098），<strong>不是</strong> :4001/:3001/:3002 这种带 nginx 静态托管的浏览器入口。保存时后端会直接调用大模型应用平台登录接口验证账号密码。密码不会回显；如果只改超时，可以留空继续沿用当前登录态。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>关闭</button>
         </div>
@@ -1683,13 +1683,13 @@ function BishengEditorDialog({
         <div className={s.modalScrollBody}>
           <div className={s.formGrid}>
             <label className={`${s.formField} ${s.formFieldWide}`}>
-              <span className={s.fieldLabel}>BISHENG 地址</span>
-              <input className={s.formInput} value={draft.base_url} onChange={(event) => onChange({ base_url: event.target.value })} placeholder="例如：http://192.168.106.114:7860（BiSheng 后端 API，不是浏览器入口）" />
+              <span className={s.fieldLabel}>大模型应用平台地址</span>
+              <input className={s.formInput} value={draft.base_url} onChange={(event) => onChange({ base_url: event.target.value })} placeholder="例如：http://192.168.106.114:7860（大模型应用平台后端 API，不是浏览器入口）" />
             </label>
             <label className={`${s.formField} ${s.formFieldWide}`}>
               <span className={s.fieldLabel}>资源域名（asset_base_url）</span>
-              <input className={s.formInput} value={draft.asset_base_url} onChange={(event) => onChange({ asset_base_url: event.target.value })} placeholder="例如：http://192.168.106.120:3002（用于解析 BiSheng 预签名相对 URL，留空则沿用 BISHENG 地址）" />
-              <span className={s.fieldHint}>BiSheng 返回的预览/下载 URL 是相对路径，需要它指向能反代 MinIO 的 nginx 入口。若 BISHENG 后端 API 同时具备 MinIO 反代，可留空。</span>
+              <input className={s.formInput} value={draft.asset_base_url} onChange={(event) => onChange({ asset_base_url: event.target.value })} placeholder="例如：http://192.168.106.120:3002（用于解析大模型应用平台预签名相对 URL，留空则沿用大模型应用平台地址）" />
+              <span className={s.fieldHint}>大模型应用平台返回的预览/下载 URL 是相对路径，需要它指向能反代 MinIO 的 nginx 入口。若大模型应用平台后端 API 同时具备 MinIO 反代，可留空。</span>
             </label>
             <label className={s.formField}>
               <span className={s.fieldLabel}>登录账号</span>
@@ -1802,10 +1802,10 @@ function QAConfigTable({
                 <span className={s.valueTitle}>{selectedModelLabel}</span>
                 <span className={s.valueMeta}>
                   {modelLoading
-                    ? '正在从 BISHENG 日常模式加载模型列表...'
+                    ? '正在从大模型应用平台日常模式加载模型列表...'
                     : modelError
                       ? '模型列表加载失败，当前显示的是已保存配置。'
-                      : '来自 BISHENG 日常模式，用于问答页和 AI Overview 的模型选择。'}
+                      : '来自大模型应用平台日常模式，用于问答页和 AI Overview 的模型选择。'}
                 </span>
               </div>
             </td>
@@ -1907,7 +1907,7 @@ function IntegrationsConfigTable({
         <h2 className={s.pageTitle}>集成配置</h2>
       </div>
       <p className={s.pageNote}>
-        门户与 BiSheng 工作台的集成入口。配置后，右上角用户菜单出现「知识管理后台」入口，点击在新标签打开 BiSheng 内嵌的门户后台页面；留空则不显示该入口。BiSheng 侧需按 docs/bisheng-portal-admin-integration.md 部署对应补丁。
+        门户与大模型应用平台工作台的集成入口。配置后，右上角用户菜单出现「知识管理后台」入口，点击在新标签打开大模型应用平台内嵌的门户后台页面；留空则不显示该入口。大模型应用平台侧需按 docs/bisheng-portal-admin-integration.md 部署对应补丁。
       </p>
       <table className={s.table}>
         <thead>
@@ -1919,12 +1919,12 @@ function IntegrationsConfigTable({
         </thead>
         <tbody>
           <tr>
-            <td>BiSheng 嵌入入口 URL</td>
+            <td>大模型应用平台嵌入入口 URL</td>
             <td>
               <div className={s.valueStack}>
                 <span className={s.valueTitle}>{url || '（未配置 — 入口隐藏）'}</span>
                 <span className={s.valueMeta}>
-                  示例：http://bisheng.example.com/workspace/shougang-portal-admin
+                  示例：http://workspace.example.com/workspace/shougang-portal-admin
                 </span>
               </div>
             </td>
@@ -2233,7 +2233,7 @@ function QaModelDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>编辑问答模型</h3>
-            <p className={s.modalNote}>候选项直接来自 BISHENG 的日常模式配置。问答页回复和 AI Overview 都会优先走这一项。</p>
+            <p className={s.modalNote}>候选项直接来自大模型应用平台的日常模式配置。问答页回复和 AI Overview 都会优先走这一项。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>关闭</button>
         </div>
@@ -2800,11 +2800,11 @@ function validateBishengDraft(draft: BishengDraft): {
   error?: string;
 } {
   const base_url = draft.base_url.trim();
-  if (!/^https?:\/\//i.test(base_url)) return { error: '请输入有效的 BISHENG 地址，必须以 http:// 或 https:// 开头' };
+  if (!/^https?:\/\//i.test(base_url)) return { error: '请输入有效的大模型应用平台地址，必须以 http:// 或 https:// 开头' };
 
   const asset_base_url = draft.asset_base_url.trim();
   if (asset_base_url && !/^https?:\/\//i.test(asset_base_url)) {
-    return { error: '资源域名（asset_base_url）必须以 http:// 或 https:// 开头，留空则与 BISHENG 地址相同' };
+    return { error: '资源域名（asset_base_url）必须以 http:// 或 https:// 开头，留空则与大模型应用平台地址相同' };
   }
 
   const timeout_seconds = Number(draft.timeout_seconds.trim());

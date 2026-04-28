@@ -11,7 +11,6 @@ import {
   EyeOff,
   FolderLock,
   Lock,
-  QrCode,
   User,
   Users,
 } from 'lucide-react';
@@ -176,7 +175,6 @@ export default function LoginPage() {
         <section className={s.formSide}>
           <div className={s.formInner}>
             <h2 className={s.formTitle}>账号登录</h2>
-            <p className={s.formSub}>输入 BiSheng 账号与密码，登录后将返回知识门户首页。</p>
 
             <form noValidate onSubmit={handleSubmit}>
               {formError ? (
@@ -194,7 +192,7 @@ export default function LoginPage() {
                     id="login-account"
                     className={`${s.input} ${accountError ? s.inputInvalid : ''}`}
                     autoComplete="username"
-                    placeholder="工号或邮箱"
+                    placeholder="账号ID"
                     value={account}
                     onChange={(e) => {
                       setAccount(e.target.value);
@@ -279,17 +277,6 @@ export default function LoginPage() {
               <button type="button" className={s.ssoBtn}>
                 <Building2 size={16} />企业 SSO
               </button>
-              <button type="button" className={s.ssoBtn}>
-                <QrCode size={16} />扫码登录
-              </button>
-            </div>
-
-            <div className={s.demoHint}>
-              账号密码由门户后端提交到管理员配置的 BiSheng 地址，浏览器只保存门户会话。
-            </div>
-
-            <div className={s.footnote}>
-              登录即代表您同意 <a>服务协议</a> 与 <a>隐私政策</a>。
             </div>
           </div>
         </section>
