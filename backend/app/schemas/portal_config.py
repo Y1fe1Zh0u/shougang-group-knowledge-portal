@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class SpaceConfig(BaseModel):
@@ -17,13 +17,6 @@ class DomainConfig(BaseModel):
     icon: str
     background_image: str = ""
     enabled: bool = True
-
-    @field_validator("space_ids")
-    @classmethod
-    def validate_space_ids(cls, value: list[int]) -> list[int]:
-        if not value:
-            raise ValueError("space_ids cannot be empty")
-        return value
 
 
 class SectionConfig(BaseModel):

@@ -452,6 +452,19 @@
   gap: 4px;
 }
 
+.unboundBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+  border: 1px dashed var(--neutral-300);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .valueStack {
   display: flex;
   flex-direction: column;

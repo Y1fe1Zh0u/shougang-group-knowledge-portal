@@ -4,7 +4,21 @@ import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.portal_config import SpacesConfigUpdate
 from app.services.portal_config_service import PortalConfigService
+
+
+def _seed_test_spaces(service: PortalConfigService) -> None:
+    """Inject the space ids most knowledge-route tests rely on (12 / 18 / 25)."""
+    service.update_spaces(
+        SpacesConfigUpdate(
+            spaces=[
+                {"id": 12, "name": "轧线技术案例库", "file_count": 0, "tag_count": 0, "enabled": True},
+                {"id": 18, "name": "冷轧技术手册", "file_count": 0, "tag_count": 0, "enabled": True},
+                {"id": 25, "name": "设备维修规范", "file_count": 0, "tag_count": 0, "enabled": True},
+            ]
+        )
+    )
 
 
 class FakeBishengClient:
@@ -220,6 +234,7 @@ class FakeBishengClient:
 
 def make_client(tmp_path: Path):
     config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    _seed_test_spaces(config_service)
     fake_bisheng = FakeBishengClient()
     with TestClient(app) as client:
         client.app.state.portal_config_service = config_service
@@ -317,6 +332,7 @@ def test_get_file_preview_normalizes_relative_urls(tmp_path: Path):
             return await super().get(path, params=params)
 
     config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    _seed_test_spaces(config_service)
     fake_bisheng = RelativePreviewBishengClient()
     with TestClient(app) as client:
         client.app.state.portal_config_service = config_service
@@ -361,6 +377,7 @@ def test_get_file_preview_uses_preview_task_when_direct_urls_missing(tmp_path: P
             return await super().get(path, params=params)
 
     config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    _seed_test_spaces(config_service)
     fake_bisheng = PreviewTaskBishengClient()
     with TestClient(app) as client:
         client.app.state.portal_config_service = config_service
@@ -428,6 +445,7 @@ def test_get_file_preview_content_uses_preview_asset_fetcher_for_original_urls(t
             return await super().get_json(path, params=params)
 
     config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    _seed_test_spaces(config_service)
     fake_bisheng = PreviewAssetOnlyBishengClient()
     with TestClient(app) as client:
         client.app.state.portal_config_service = config_service
@@ -525,6 +543,7 @@ def test_search_and_tags_skip_unauthorized_spaces_instead_of_500(tmp_path: Path)
             return await super().get_json(path, params=params)
 
     config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    _seed_test_spaces(config_service)
     fake_bisheng = PartialUnauthorizedBishengClient()
     with TestClient(app) as client:
         client.app.state.portal_config_service = config_service

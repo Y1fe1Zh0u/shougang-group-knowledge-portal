@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.portal_config import SpacesConfigUpdate
 from app.services.bisheng_runtime_service import BishengRuntimeService
 from app.services.portal_config_service import PortalConfigService
 
@@ -113,6 +114,13 @@ def create_runtime_service(tmp_path: Path) -> BishengRuntimeService:
 
 def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    service.update_spaces(
+        SpacesConfigUpdate(
+            spaces=[
+                {"id": 12, "name": "占位", "file_count": 0, "tag_count": 0, "enabled": True},
+            ]
+        )
+    )
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:

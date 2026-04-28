@@ -1,0 +1,185 @@
+From 280138844bcaa04275ff2b7e463159ad4e73191b Mon Sep 17 00:00:00 2001
+From: LineWalker <jieyuhuayang@foxmail.com>
+Date: Tue, 28 Apr 2026 15:10:42 +0800
+Subject: [PATCH 1/4] =?UTF-8?q?feat(shougang):=20=E5=B7=A5=E4=BD=9C?=
+ =?UTF-8?q?=E5=8F=B0=E4=BE=A7=E6=A0=8F=E5=A2=9E=E5=8A=A0=E9=A6=96=E9=92=A2?=
+ =?UTF-8?q?=E9=97=A8=E6=88=B7=E9=85=8D=E7=BD=AE=E5=85=A5=E5=8F=A3?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- BiSheng 系统配置 YAML 加 `shougang` 命名空间承载首钢专属配置
+- 后端透传 shougang 命名空间到 /api/v1/workstation/config 响应
+- 前端工作台侧栏读取 bsConfig.shougang.portal_admin_url（兜底 window 变量），
+  仅当超管 + 桌面端 + URL 有值时显示"门户配置"菜单
+- 点击进 /shougang-portal-admin 路由，iframe 内嵌门户 admin
+- 非首钢部署不在 YAML 加字段、不挂 ConfigMap，菜单永远不出现
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+---
+ .../workstation/api/endpoints/config.py       |  3 +++
+ .../client/src/layouts/MainLayout.tsx         | 20 ++++++++++++++--
+ .../src/locales/zh-Hans/translation.json      |  1 +
+ .../src/pages/ShougangPortalAdmin/index.tsx   | 23 +++++++++++++++++++
+ src/frontend/client/src/routes/index.tsx      |  2 ++
+ src/frontend/client/src/types/chat/config.ts  |  7 ++++++
+ src/frontend/client/src/vite-env.d.ts         |  5 ++++
+ 7 files changed, 59 insertions(+), 2 deletions(-)
+ create mode 100644 src/frontend/client/src/pages/ShougangPortalAdmin/index.tsx
+
+diff --git a/src/backend/bisheng/workstation/api/endpoints/config.py b/src/backend/bisheng/workstation/api/endpoints/config.py
+index edf01c6b1..c93a61b10 100644
+--- a/src/backend/bisheng/workstation/api/endpoints/config.py
++++ b/src/backend/bisheng/workstation/api/endpoints/config.py
+@@ -28,6 +28,9 @@ async def get_config(request: Request, login_user=LoginUserDep):
+     ret['linsight_invitation_code'] = linsight_invitation_code if linsight_invitation_code else False
+     ret['linsight_cache_dir'] = './'
+     ret['waiting_list_url'] = (await bisheng_settings.aget_linsight_conf()).waiting_list_url
++    # 首钢部署专属命名空间：整段透传给前端，未来加新字段不需要再改本文件
++    shougang_conf = (await bisheng_settings.aget_all_config()).get('shougang', None)
++    ret['shougang'] = shougang_conf if isinstance(shougang_conf, dict) else None
+     return resp_200(data=ret)
+ 
+ 
+diff --git a/src/frontend/client/src/layouts/MainLayout.tsx b/src/frontend/client/src/layouts/MainLayout.tsx
+index 796eb7e9c..8537ecb7e 100644
+--- a/src/frontend/client/src/layouts/MainLayout.tsx
++++ b/src/frontend/client/src/layouts/MainLayout.tsx
+@@ -136,9 +136,16 @@ function Sidebar({
+       || Boolean(plugins?.includes('backend') || plugins?.includes('admin'))
+     );
+ 
++  // 首钢门户专属入口：仅首钢部署（YAML 命名空间或 ConfigMap window 变量任一有值）+ 系统超管 + 桌面端才显示
++  const portalAdminUrl =
++    bsConfig?.shougang?.portal_admin_url
++    ?? window.__SHOUGANG_PORTAL_ADMIN_URL__;
++  const showShougangPortalTab =
++    user?.role === 'admin' && !isMobile && Boolean(portalAdminUrl);
++
+   // --- Sidebar link definitions with dynamic `to` for KeepAlive restoration ---
+   const links = useMemo<Array<{
+-    section: 'home' | 'apps' | 'channel' | 'knowledge';
++    section: 'home' | 'apps' | 'channel' | 'knowledge' | 'portal-admin';
+     to: string;
+     icon: React.ReactNode;
+     label: string;
+@@ -179,14 +186,23 @@ function Sidebar({
+         isActive: matchPath('/app/:id/:fid/:type', pathname) !== null || pathname.startsWith('/apps'),
+         closeDrawerOnNavigate: true,
+       },
++      {
++        section: 'portal-admin' as const,
++        to: '/shougang-portal-admin',
++        icon: <MonitorIcon />,
++        label: localize('com_nav_portal_admin'),
++        isActive: pathname.startsWith('/shougang-portal-admin'),
++        closeDrawerOnNavigate: true,
++      },
+     ].filter((l) => {
+       if (l.section === 'home') return showHomeTab;
+       if (l.section === 'apps') return showAppsTab;
+       if (l.section === 'channel') return showSubscriptionTab;
+       if (l.section === 'knowledge') return showKnowledgeSpaceTab;
++      if (l.section === 'portal-admin') return showShougangPortalTab;
+       return true;
+     });
+-  }, [canOpenWorkbenchEntry, pathname, showKnowledgeSpaceTab, showSubscriptionTab, showHomeTab, showAppsTab, menuApprovalMode, plugins, localize]);
++  }, [canOpenWorkbenchEntry, pathname, showKnowledgeSpaceTab, showSubscriptionTab, showHomeTab, showAppsTab, showShougangPortalTab, menuApprovalMode, plugins, localize]);
+ 
+   const changeLang = useCallback((value: string) => {
+     let userLang = value;
+diff --git a/src/frontend/client/src/locales/zh-Hans/translation.json b/src/frontend/client/src/locales/zh-Hans/translation.json
+index c8fb35050..a9bebc03c 100644
+--- a/src/frontend/client/src/locales/zh-Hans/translation.json
++++ b/src/frontend/client/src/locales/zh-Hans/translation.json
+@@ -439,6 +439,7 @@
+     "com_msg_source_reference": "参考来源",
+     "com_nav_account_settings": "账户设置",
+     "com_nav_admin_panel": "管理后台",
++    "com_nav_portal_admin": "门户配置",
+     "com_auth_no_workspace_access": "当前用户没有访问工作台的权限",
+     "com_nav_always_make_prod": "始终应用新版本",
+     "com_nav_app_center": "应用",
+diff --git a/src/frontend/client/src/pages/ShougangPortalAdmin/index.tsx b/src/frontend/client/src/pages/ShougangPortalAdmin/index.tsx
+new file mode 100644
+index 000000000..5ffb7caf7
+--- /dev/null
++++ b/src/frontend/client/src/pages/ShougangPortalAdmin/index.tsx
+@@ -0,0 +1,23 @@
++import { useGetBsConfig } from '~/hooks/queries/data-provider';
++
++/**
++ * 首钢门户专属：在 BiSheng 工作台内嵌 iframe 打开知识门户的后台管理界面。
++ * URL 双源——优先 BiSheng "系统配置" YAML 的 shougang.portal_admin_url；
++ * 兜底 ConfigMap 注入的 window.__SHOUGANG_PORTAL_ADMIN_URL__。
++ */
++export default function ShougangPortalAdmin() {
++  const { data: bsConfig } = useGetBsConfig();
++  const url =
++    bsConfig?.shougang?.portal_admin_url
++    ?? window.__SHOUGANG_PORTAL_ADMIN_URL__;
++  if (!url) return null;
++  return (
++    <div className="h-full w-full bg-white">
++      <iframe
++        src={url}
++        title="门户配置"
++        className="h-full w-full border-0"
++      />
++    </div>
++  );
++}
+diff --git a/src/frontend/client/src/routes/index.tsx b/src/frontend/client/src/routes/index.tsx
+index d89995d26..0293f37df 100644
+--- a/src/frontend/client/src/routes/index.tsx
++++ b/src/frontend/client/src/routes/index.tsx
+@@ -28,6 +28,7 @@ import FilePreviewPage from '~/pages/knowledge/FilePreview/FilePreviewPage';
+ import DevLogin from '~/pages/DevLogin';
+ import StandaloneChatPage from '~/pages/standaloneChat/StandaloneChatPage';
+ import MenuUnavailablePage from '@/pages/MenuUnavailablePage';
++import ShougangPortalAdmin from '@/pages/ShougangPortalAdmin';
+ import { useAuthContext } from '@/hooks';
+ import MenuApprovalPluginGate from '@/layouts/MenuApprovalPluginGate';
+ import { appsSectionLinkTarget } from '@/layouts/appModuleNavPaths';
+@@ -168,6 +169,7 @@ export const router = createBrowserRouter([
+           { path: 'knowledge/space/:spaceId/folder/:folderId', element: <Knowledge /> },
+           { path: 'knowledge/share/:spaceId', element: <Knowledge /> },
+           { path: 'menu-unavailable', element: <MenuUnavailablePage /> },
++          { path: 'shougang-portal-admin', element: <ShougangPortalAdmin /> },
+         ],
+       },
+       // Standalone chat — auth (login required, inside AuthLayout)
+diff --git a/src/frontend/client/src/types/chat/config.ts b/src/frontend/client/src/types/chat/config.ts
+index bb12cdb5a..b9e8e5e9e 100644
+--- a/src/frontend/client/src/types/chat/config.ts
++++ b/src/frontend/client/src/types/chat/config.ts
+@@ -547,6 +547,13 @@ export type BsConfig = {
+   linsight_invitation_code: boolean
+   linsight_cache_dir: string
+   waiting_list_url: string
++  /** 首钢部署专属命名空间；非首钢部署不出现该字段 */
++  shougang?: {
++    /** 部署标识，仅供 admin 阅读 YAML 时识别 */
++    deployment_label?: string;
++    /** 门户管理后台 URL；有值则 BiSheng 工作台侧栏显示"门户配置"菜单 */
++    portal_admin_url?: string;
++  };
+ };
+ 
+ export const configSchema = z.object({
+diff --git a/src/frontend/client/src/vite-env.d.ts b/src/frontend/client/src/vite-env.d.ts
+index 98ed908f5..466b7c9e9 100644
+--- a/src/frontend/client/src/vite-env.d.ts
++++ b/src/frontend/client/src/vite-env.d.ts
+@@ -19,3 +19,8 @@ declare const __APP_ENV__: {
+ };
+ 
+ declare const __VCONSOLE_ENABLED__: boolean;
++
++/** 首钢门户专属：ConfigMap 注入的"部署默认值"开关；首选 BiSheng 系统配置 YAML 的 shougang.portal_admin_url */
++interface Window {
++  __SHOUGANG_PORTAL_ADMIN_URL__?: string;
++}
+-- 
+2.50.1 (Apple Git-155)
+

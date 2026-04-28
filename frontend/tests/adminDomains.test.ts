@@ -50,16 +50,31 @@ test('validateDomainDraft returns a domain config for valid input', () => {
   });
 });
 
-test('validateDomainDraft rejects unknown or missing spaces', () => {
-  const missing = validateDomainDraft({
+test('validateDomainDraft accepts empty spaceId as unbound (treated as 待补绑定)', () => {
+  const result = validateDomainDraft({
     name: '能源',
     spaceId: '',
     icon: 'Zap',
-    backgroundImage: '',
+    backgroundImage: '/energy-domain-bg.jpg',
     color: '#d97706',
     bg: '#fef3c7',
     enabled: true,
   }, []);
+
+  assert.deepEqual(result, {
+    domain: {
+      name: '能源',
+      space_ids: [],
+      icon: 'Zap',
+      background_image: '/energy-domain-bg.jpg',
+      color: '#d97706',
+      bg: '#fef3c7',
+      enabled: true,
+    },
+  });
+});
+
+test('validateDomainDraft still rejects unknown spaces', () => {
   const unknown = validateDomainDraft({
     name: '能源',
     spaceId: '30',
@@ -72,7 +87,6 @@ test('validateDomainDraft rejects unknown or missing spaces', () => {
     { id: 12, name: '轧线技术案例库', file_count: 10, tag_count: 0, enabled: true },
   ]);
 
-  assert.equal(missing.error, '请选择绑定的知识空间');
   assert.equal(unknown.error, '绑定空间不存在');
 });
 

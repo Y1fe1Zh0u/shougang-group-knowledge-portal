@@ -49,9 +49,14 @@ export function validateDomainDraft(draft: DomainDraft, spaces: SpaceConfig[]): 
   const name = draft.name.trim();
   if (!name) return { error: '请输入业务域名称' };
 
-  const spaceId = Number(draft.spaceId);
-  if (!Number.isInteger(spaceId) || spaceId <= 0) return { error: '请选择绑定的知识空间' };
-  if (!spaces.some((space) => space.id === spaceId)) return { error: '绑定空间不存在' };
+  const spaceIdRaw = draft.spaceId.trim();
+  let spaceIds: number[] = [];
+  if (spaceIdRaw) {
+    const spaceId = Number(spaceIdRaw);
+    if (!Number.isInteger(spaceId) || spaceId <= 0) return { error: '绑定空间格式有误' };
+    if (!spaces.some((space) => space.id === spaceId)) return { error: '绑定空间不存在' };
+    spaceIds = [spaceId];
+  }
 
   const icon = draft.icon.trim();
   if (!icon) return { error: '请输入图标名' };
@@ -65,7 +70,7 @@ export function validateDomainDraft(draft: DomainDraft, spaces: SpaceConfig[]): 
   return {
     domain: {
       name,
-      space_ids: [spaceId],
+      space_ids: spaceIds,
       icon,
       background_image: draft.backgroundImage.trim(),
       color,

@@ -1040,7 +1040,13 @@ function DomainsTable({
                     '未配置'
                   )}
                 </td>
-                <td>{sp?.name || d.space_ids.join(', ')}</td>
+                <td>
+                  {sp?.name
+                    ? sp.name
+                    : d.space_ids.length > 0
+                      ? d.space_ids.join(', ')
+                      : <span className={s.unboundBadge} title="未绑定的业务域不会显示在前台首页">未绑定 · 待补绑定</span>}
+                </td>
                 <td>
                   <div className={s.actionGroup}>
                     <button className={s.inlineBtn} onClick={() => onEdit(index)} disabled={saving}>编辑</button>
@@ -1140,13 +1146,14 @@ function DomainEditorDialog({
               value={draft.spaceId}
               onChange={(event) => onChange({ spaceId: event.target.value })}
             >
-              <option value="">请选择知识空间</option>
+              <option value="">未绑定（暂不上首页）</option>
               {spaces.map((space) => (
                 <option key={space.id} value={space.id}>
                   {space.name}{space.enabled ? '' : '（已停用）'}
                 </option>
               ))}
             </select>
+            <span className={s.fieldHint}>未绑定的业务域只在后台可见，绑定知识空间后会按数组顺序出现在首页业务域导航。</span>
           </label>
           <label className={s.formField}>
             <span className={s.fieldLabel}>背景图</span>

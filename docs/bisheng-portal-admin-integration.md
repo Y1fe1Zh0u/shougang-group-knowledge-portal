@@ -1,6 +1,8 @@
 # BiSheng 工作台集成门户管理入口 —— 技术方案
 
 > **结论先行**：在 BiSheng 打 7 处最小源码补丁（前端 6 + 后端 1）、复用 BiSheng 现有"系统配置 YAML"作为客户自助开关（ConfigMap 作为部署默认值兜底）、Ingress 把门户和 BiSheng 收拢到同源，即可让 BiSheng 工作台侧栏出现一个"门户配置"菜单，点击在 iframe 内打开知识门户的后台管理界面。改动总量约 40 行代码 + 几份 K8s YAML，对 BiSheng 上游零分叉、对非首钢部署零影响。
+>
+> **当前进度**：开发期跨域 demo 走 §7 P0 路径——利用 BiSheng test 环境（120:3002，release CI + `bisheng-deploy test`）+ 现有门户部署（114:3001）拼出最小验证链路，零额外部署。生产同源化（P2-P5）保留为后续阶段。
 
 ---
 
@@ -17,7 +19,9 @@
 - **位置**：BiSheng client 工作台 `/workspace` 左侧固定侧栏，"知识空间"图标下方
 - **可见性**：仅 BiSheng 管理员可见；普通员工无入口
 - **部署隔离**：仅首钢部署的 BiSheng 出现该入口；BiSheng 在其他客户处部署不能看到首钢专属菜单
-- **目标页面**：知识门户的 admin 页面（开发期 `http://localhost:5173/admin`，生产期同源 `/portal-admin/`）
+- **目标页面**：知识门户的 admin 页面
+  - **开发期**：已部署在 `http://192.168.106.114:3001/admin`，复用即可，门户侧零改动
+  - **生产期**：与 BiSheng 同 host 同源 `/portal-admin/`
 
 ### 1.2 项目约束
 
@@ -53,7 +57,14 @@
 
 ## 3. 整体架构
 
-### 3.1 拓扑
+> **两阶段拓扑差异**：本章 §3.1–3.3 描述生产期同源最终态。开发期由于 BiSheng test 环境（192.168.106.120:3002）与门户已部署实例（192.168.106.114:3001）跨主机，链路降级为跨域 iframe，鉴权层暂时弱化——开发期落地步骤见 §7 P0。
+>
+> | 阶段 | BiSheng 入口 | 门户入口 | iframe URL | cookie 透传 | BFF 鉴权 |
+> |---|---|---|---|---|---|
+> | **开发期**（当前）| `192.168.106.120:3002` | `192.168.106.114:3001/admin` | 绝对 URL | ❌ 跨域不带 | 跳过（门户 admin 当前依赖网络隔离）|
+> | **生产期** | `bisheng.shougang.local/workspace` | `bisheng.shougang.local/portal-admin/` | 同源相对路径 `/portal-admin/` | ✅ 自动 | 启用 §6.2 中间件 |
+
+### 3.1 拓扑（生产期同源）
 
 ```
                      ┌─── shougang-bisheng ingress ────────────────────┐
@@ -143,7 +154,7 @@ sequenceDiagram
 const portalAdminUrl =
   bsConfig?.shougang?.portal_admin_url          // 优先：BiSheng 系统配置 YAML 的 shougang 命名空间
   ?? window.__SHOUGANG_PORTAL_ADMIN_URL__;      // 兜底：ConfigMap 注入的部署默认值
-const isSuperAdmin = user?.role === 'ADMIN';
+const isSuperAdmin = user?.role === 'admin';
 const showPortalAdminTab = isSuperAdmin && !isMobile && Boolean(portalAdminUrl);
 ```
 
@@ -167,7 +178,7 @@ if (l.section === 'portal-admin') return showPortalAdminTab;
 
 **三个判断条件各自的理由**：
 
-- **`role === 'ADMIN'`（不用 plugins）**：必须和 §6 BFF 鉴权中间件用同一条件，否则部门管理员能看到菜单但点进去 403。BiSheng 现有 `plugins.includes('admin'|'backend')` 颗粒度不一致——保守用 role 系统超管。
+- **`role === 'admin'`（不用 plugins）**：必须和 §6 BFF 鉴权中间件用同一条件，否则部门管理员能看到菜单但点进去 403。BiSheng 现有 `plugins.includes('admin'|'backend')` 颗粒度不一致——保守用 role 系统超管。注意 BiSheng 实际值是小写 `'admin'`（不是 `SystemRoles` 枚举里的 `'ADMIN'`），勘察后确认与现有代码 `MainLayout.tsx:135` 一致。
 - **`!isMobile`**：移动端 iframe 嵌入桌面 admin 页面体验差（缩放、滚动、键盘遮挡），直接不展示。
 - **`Boolean(portalAdminUrl)`**：双源任一有值即视为"开关打开"。
 
@@ -459,9 +470,21 @@ docker build \
 
 ## 6. 认证与权限
 
-**结论：iframe 同源天然继承 BiSheng cookie，门户 BFF 反向调 `/api/v1/user/info` 二次校验，不引入任何新的鉴权机制。**
+**结论：生产同源拓扑下 iframe 天然继承 BiSheng cookie，门户 BFF 反向调 `/api/v1/user/info` 二次校验，不引入任何新的鉴权机制。开发期跨域拓扑下鉴权链路降级（cookie 不带），门户 admin 暂时依赖网络隔离 + 不公开 URL，等生产同源化后再启用本章 BFF 中间件。**
 
-### 6.1 同源 cookie 自动复用
+### 6.0 开发期降级说明
+
+| 检查项 | 开发期跨域（114 ↔ 120）| 生产期同源 |
+|---|---|---|
+| iframe 加载是否成功 | ✅（已确认 114 nginx 无 X-Frame-Options / CSP 限制） | ✅ |
+| BiSheng cookie 是否到达门户 BFF | ❌ 跨域 + SameSite=Lax | ✅ |
+| 谁能进门户 admin | 任何能访问 192.168.106.114:3001 的人 | 仅 BiSheng 系统超管 |
+| BFF `/admin/*` 路由是否要鉴权 | 暂不要（不实现 §6.2 中间件） | 必须，按 §6.2 实现 |
+| 风险 | 门户 admin 当前对内网 114 段开放，可见性靠"不公开 URL" | 鉴权完整 |
+
+> ⚠️ **进入生产前必须切换**：生产同源化后，§6.2 中间件必须启用；切换路径 = §7 P3 阶段。
+
+### 6.1 同源 cookie 自动复用（生产期）
 
 - 用户在 BiSheng 登录 → 浏览器存 `access_token_cookie`（domain = `bisheng.shougang.local`）
 - 加载 `/portal-admin/` iframe → 浏览器自动带这个 cookie
@@ -514,37 +537,88 @@ admin_router = APIRouter(
 
 ## 7. 实施计划
 
-**五阶段渐进验证，前阶段不通过下阶段不开始**。
+**六阶段渐进验证，前阶段不通过下阶段不开始**。P0 是利用现有 BiSheng test 环境（120:3002）+ 现有门户部署（114:3001）拼出的"跨域最小 demo"，零额外部署，半天可跑通。
 
 | 阶段 | 目标 | 验收 |
 |---|---|---|
-| **P1 本地代码** | 7 处补丁手工应用到本地 BiSheng client + 后端，本地启 dev server，菜单 + iframe 能渲染 | 浏览器看到菜单；点击进入 iframe，iframe 加载本地 5173/admin |
+| **P0 共享环境跨域 demo** | BiSheng patch 推到 120:3002 + 114 门户 iframe 跨域加载，让客户/团队在 120:3002 看到菜单 + 点开 iframe | admin 在 BiSheng 系统配置加 `shougang:` 命名空间 → 120:3002 工作台出现"门户配置"菜单 → 点击 iframe 加载 114:3001/admin |
+| **P1 本地代码** | 7 处补丁本地手工应用，本地启 BiSheng dev server，菜单 + iframe 能渲染 | 浏览器看到菜单；点击进入 iframe |
 | **P2 门户适配** | 门户前端支持 `VITE_BASE_PATH`；BFF 加 `root_path`；本地用 nginx 反代试同源 | 浏览器在 nginx 端口看到完整链路，cookie 自动透传 |
 | **P3 BFF 鉴权** | admin 中间件接入；非 admin 用户访问 `/portal-api/admin/*` 返回 403 | 单测 + 手工浏览器测试 |
-| **P4 镜像 + 测试集群** | 前端、后端 Dockerfile 跑通；patch 自动应用；ConfigMap + YAML 双源都验证；测试集群端到端 | YAML 字段切换 + ConfigMap 切换都能控制菜单可见性 |
+| **P4 镜像 + 测试集群** | 前端、后端 Dockerfile 跑通；patch 自动应用；ConfigMap + YAML 双源都验证 | YAML 字段切换 + ConfigMap 切换都能控制菜单可见性 |
 | **P5 生产上线** | 首钢生产 K8s 灰度部署；运维侧文档交付 | 首钢管理员实际使用 |
 
-### 7.1 验收清单（P5 终态）
+### 7.0 P0 详细步骤（共享环境跨域 demo）
 
-**功能可见性**
-- [ ] BiSheng 系统超管（`role === 'ADMIN'`）进 `/workspace`，左侧栏看到"门户配置"菜单（图标 + 文字）
+**前置确认**（已完成）：
+- [x] `curl -sI http://192.168.106.114:3001/admin` 无 `X-Frame-Options` / `frame-ancestors` 限制 → 跨域 iframe 不会被拒
+- [x] BiSheng test 环境部署链路已掌握：120:3002 前端走 `bisheng-deploy test`，后端走 release CI → 116
+
+**步骤**：
+
+1. **应用 7 处 patch 到 BiSheng release 分支**
+   - 前端 6 处（文件 1-6）：`src/frontend/client/` 下
+   - 后端 1 处（文件 7）：`src/backend/bisheng/workstation/api/endpoints/config.py`
+   - `git push` 到 release → Drone CI 触发 → 116 backend 自动重启
+   - ⚠️ **影响 116:3001 release 验收环境**——push 前打招呼
+
+2. **手动部署 release 分支前端到 120:3002**
+   ```bash
+   ssh root@192.168.106.120 bisheng-deploy test release
+   ```
+   - 复用上次部署的 ref？看 `cat /var/lib/bisheng-deploy/test.json` 决定要不要传具体 commit
+   - 输出 rc=0 + 看到 `commit=` 行即成功
+
+3. **在 BiSheng 系统配置加首钢命名空间**
+   - 浏览器访问 `http://192.168.106.120:3002/sys`
+   - admin 登录 → 系统配置 → 在 YAML 末尾加：
+     ```yaml
+     # 首钢集团知识门户专属配置
+     shougang:
+       deployment_label: "首钢集团知识门户（114 开发环境）"
+       portal_admin_url: "http://192.168.106.114:3001/admin"
+     ```
+   - 保存
+   - 等 Redis 缓存刷新（看 §6.3 风险表，可能需要 admin 端短等或重启）
+
+4. **验证菜单**
+   - 访问 `http://192.168.106.120:3002/workspace/`
+   - admin 用户左侧栏看到"门户配置"菜单 → 点击 → URL 跳到 `/shougang-portal-admin` → iframe 加载 114:3001/admin
+
+### 7.1 验收清单（按阶段）
+
+**P0 验收（共享环境跨域）**
+
+- [ ] BiSheng release 分支前端已通过 `bisheng-deploy test release` 部署到 120:3002，commit 与 GitHub 一致
+- [ ] BiSheng release 分支后端 CI 已部署到 116，120:3002 通过 Gateway 看到新后端
+- [ ] BiSheng "系统配置" YAML 已加 `shougang:` 命名空间，保存成功
+- [ ] **保存后再次打开 YAML 编辑器**：`shougang:` 整 block 应原样保留（验证 `parse_key` 文本保留行为）
+- [ ] admin 用户访问 `http://192.168.106.120:3002/workspace/` 看到"门户配置"菜单
+- [ ] 部门管理员、普通员工访问看不到菜单
+- [ ] 点击菜单 → iframe 内 114:3001/admin 主界面正常加载，无 console `Refused to display ... in a frame because ...` 报错
+- [ ] iframe 内进行配置变更（如改业务域名称），门户主站能看到效果
+
+**P5 验收（生产同源终态）**
+
+_功能可见性_
+- [ ] BiSheng 系统超管（`role === 'admin'`）进 `/workspace`，左侧栏看到"门户配置"菜单（图标 + 文字）
 - [ ] BiSheng 部门管理员、普通员工进 `/workspace` 看不到"门户配置"菜单
 - [ ] 移动端浏览器（窄视口）下，超管也看不到"门户配置"菜单
 - [ ] 点击菜单 → URL 变为 `bisheng.shougang.local/shougang-portal-admin`
 - [ ] iframe 加载门户 admin 主界面，无白屏、无 console 报错（特别是 `Refused to display ... in a frame because ...` / `frame-ancestors` 报错）
 
-**双源开关**
+_双源开关_
 - [ ] BiSheng admin 在系统配置 UI 加 `shougang.portal_admin_url: "/portal-admin/"` → 保存 → 刷新 BiSheng → 菜单显现
 - [ ] **保存后再次打开 YAML 编辑器**：`shougang:` 整个 block（含 `deployment_label` 注释或字段）应原样保留——验证 `parse_key` 的整 block 文本保留行为
 - [ ] 删除 YAML `shougang:` 节 + 不挂 ConfigMap → 菜单消失
 - [ ] 仅挂 ConfigMap、不在 YAML 加字段 → 菜单显现（验证 fallback）
 - [ ] YAML 与 ConfigMap 同时配不同 URL → iframe 加载 YAML 里的 URL（验证优先级）
 
-**鉴权一致性**
+_鉴权一致性_
 - [ ] 部门管理员通过手动改 URL 强行进 `/shougang-portal-admin` → iframe 内门户 admin 调用 `/portal-api/admin/*` 一律 403
 - [ ] BiSheng 注销后 → iframe 内任何 admin API 返回 401，前端正确引导重新登录
 
-**集成稳定性**
+_集成稳定性_
 - [ ] 在门户内做配置变更（增加业务域、改 system_prompt 等），刷新 BiSheng 主站对应展示能看到生效
 - [ ] BiSheng 升级一个小版本（如 0.5.3 → 0.5.4），前端、后端 patch 都自动 apply 通过
 
@@ -613,7 +687,7 @@ shougang-knowledge-portal/
 | 双源优先级 | YAML 优先，window 兜底 | window 优先 | YAML 是运营开关、客户主动维护；window 是部署默认值，运营改 YAML 时不应被覆盖 |
 | YAML 字段结构 | **结构化命名空间** `shougang: { portal_admin_url, deployment_label }` | 扁平字段 `shougang_portal_admin_url` / 顶部注释标识 | 命名空间下未来扩展首钢专属字段不需改后端；BiSheng `parse_key` 对整个 block 保留更稳定（含注释）；扁平字段命名散乱、注释方案受 `parse_key` 行为限制 |
 | URL 传递 | YAML/ConfigMap 都写同源相对路径 `/portal-admin/` | 跨域绝对 URL | 跨域要处理 X-Frame-Options + Cookie SameSite + CORS 三件套 |
-| 权限判断 | `role === 'ADMIN'`（系统超管） | `plugins.includes('admin'\|'backend')` | 必须与 BFF 鉴权条件完全一致；plugins 颗粒度松，会让部门管理员看到菜单但点进去 403 |
+| 权限判断 | `role === 'admin'`（系统超管，BiSheng 实际用小写） | `plugins.includes('admin'\|'backend')` / `role === 'ADMIN'`（枚举大写） | 必须与 BFF 鉴权条件完全一致；plugins 颗粒度松，会让部门管理员看到菜单但点进去 403；BiSheng 后端返回 `user.role` 是小写 `'admin'`，与 `SystemRoles.ADMIN` 枚举的大写不一致 |
 | 移动端 | 显式 `!isMobile` 排除 | 不区分 | iframe 内桌面 admin 在窄屏体验差，宁可不显示 |
 | 鉴权实现 | BFF 反向调 BiSheng `/api/v1/user/info` | 自建用户表 / JWT 解析 | 门户不持有业务数据原则；自解析 JWT 易和 BiSheng 升级脱钩 |
 | 补丁交付 | git patch + Dockerfile apply | 维护 BiSheng fork 仓库 | fork 长期分歧成本高；patch 文件可读、可 review、可独立版本化 |

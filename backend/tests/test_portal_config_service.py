@@ -11,9 +11,38 @@ def test_portal_config_service_seeds_default_config(tmp_path: Path):
     config = service.get_config()
 
     assert config_path.exists()
-    assert config.spaces
-    assert config.domains
-    assert config.qa.knowledge_space_ids
+    assert len(config.domains) == 14
+    assert all(domain.space_ids == [] for domain in config.domains)
+    domain_names = [domain.name for domain in config.domains]
+    assert domain_names == [
+        "生产", "投资", "研发", "采购", "营销", "财务", "设备",
+        "安全", "环保", "质量", "人力", "信息", "能源", "管理",
+    ]
+    assert config.spaces == []
+    assert config.qa.knowledge_space_ids == []
+
+
+def test_portal_config_service_accepts_unbound_domain(tmp_path: Path):
+    config_path = tmp_path / "portal_config.json"
+    service = PortalConfigService(config_path=config_path)
+
+    updated = service.update_domains(
+        DomainsConfigUpdate(
+            domains=[
+                {
+                    "name": "未绑定域",
+                    "space_ids": [],
+                    "color": "#000000",
+                    "bg": "#ffffff",
+                    "icon": "Factory",
+                    "background_image": "",
+                    "enabled": True,
+                }
+            ]
+        )
+    )
+
+    assert updated.domains[0].space_ids == []
 
 
 def test_portal_config_service_persists_domain_updates(tmp_path: Path):
