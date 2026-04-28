@@ -114,7 +114,7 @@ export default function SearchPage() {
       scene: 'search',
       text: q,
       knowledgeSpaceIds: qaSpaceIds,
-      onFinalText(text) {
+      onUpdate(text) {
         if (requestSeq.current !== currentRequest) return;
         setAiText(text);
       },

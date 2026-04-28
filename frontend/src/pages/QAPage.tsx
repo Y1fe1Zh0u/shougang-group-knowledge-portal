@@ -86,12 +86,12 @@ export default function QAPage() {
       scene: 'qa',
       text,
       knowledgeSpaceIds,
-      onFinalText(finalText) {
+      onUpdate(currentText) {
         setSessions((prev) =>
           prev.map((ss) => {
             if (ss.id !== activeId) return ss;
             const msgs = [...ss.messages];
-            msgs[msgs.length - 1] = { role: 'bot', text: finalText };
+            msgs[msgs.length - 1] = { role: 'bot', text: currentText };
             return {
               ...ss,
               title: ss.title === '新会话' ? text.slice(0, 12) : ss.title,

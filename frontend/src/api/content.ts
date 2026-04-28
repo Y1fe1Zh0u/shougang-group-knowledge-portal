@@ -291,12 +291,20 @@ export async function fetchRelatedFiles(spaceId: number, fileId: number, limit: 
   return data.data.map(mapKnowledgeFileItem);
 }
 
+interface BishengStreamPayload {
+  category?: string;
+  type?: string;
+  message?: { msg?: string; text?: string };
+  final?: boolean;
+  responseMessage?: { text?: string };
+}
+
 export async function streamChatCompletion(params: {
   scene: 'search' | 'qa';
   text: string;
   knowledgeSpaceIds: number[];
   model?: string;
-  onFinalText: (text: string) => void;
+  onUpdate: (text: string) => void;
 }): Promise<void> {
   const response = await fetch('/api/v1/workstation/chat/completions', {
     method: 'POST',
@@ -321,6 +329,15 @@ export async function streamChatCompletion(params: {
   const reader = response.body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
+  let accumulated = '';
+  let finalText = '';
+
+  const emit = (text: string) => {
+    if (text && text !== accumulated) {
+      accumulated = text;
+      params.onUpdate(text);
+    }
+  };
 
   while (true) {
     const { value, done } = await reader.read();
@@ -329,18 +346,27 @@ export async function streamChatCompletion(params: {
     const events = buffer.split('\n\n');
     buffer = events.pop() || '';
     for (const event of events) {
-      const line = event.split('\n').find((item) => item.startsWith('data: '));
-      if (!line) continue;
+      const dataLines = event.split('\n').filter((line) => line.startsWith('data: '));
+      if (dataLines.length === 0) continue;
+      const raw = dataLines.map((line) => line.slice(6)).join('\n');
+      let payload: BishengStreamPayload;
       try {
-        const payload = JSON.parse(line.slice(6)) as {
-          final?: boolean;
-          responseMessage?: { text?: string };
-        };
-        if (payload.final && payload.responseMessage?.text) {
-          params.onFinalText(payload.responseMessage.text);
-        }
+        payload = JSON.parse(raw) as BishengStreamPayload;
       } catch {
-        // Ignore non-final events during the current phase.
+        continue;
+      }
+      if (payload.category === 'agent_answer') {
+        const msg = payload.message?.msg ?? '';
+        if (!msg) continue;
+        if (payload.type === 'end') {
+          finalText = msg;
+          emit(msg);
+        } else {
+          emit(accumulated + msg);
+        }
+      } else if (payload.final) {
+        const text = payload.responseMessage?.text || finalText || accumulated;
+        if (text) emit(text);
       }
     }
   }
