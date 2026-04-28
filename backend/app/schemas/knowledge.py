@@ -12,6 +12,8 @@ class KnowledgeFileItem(BaseModel):
     updated_at: str
     tags: list[str] = Field(default_factory=list)
     file_ext: str = ""
+    file_size: str = ""
+    file_encoding: str = ""
 
 
 class KnowledgeFileSpace(BaseModel):

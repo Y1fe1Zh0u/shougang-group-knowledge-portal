@@ -91,6 +91,7 @@ export default function DetailPage() {
 
   const META_TAGS = ['最新精选', '典型案例'];
   const displayTags = detail.tags.filter((t) => !META_TAGS.includes(t));
+  const formattedUpdatedAt = formatDisplayDateTime(detail.date) || '—';
   const resolvedPreview = resolveFilePreview(preview);
   const effectivePreview = clientFallbackActive
     ? {
@@ -126,11 +127,27 @@ export default function DetailPage() {
 
         <div className={s.card}>
           <h1 className={s.title}>{detail.title}</h1>
-          <div className={s.meta}>
-            <div className={s.tags}>
-              {displayTags.map((t) => <TagPill key={t} name={t} neutral />)}
+          <div className={s.metaGrid}>
+            <div className={s.metaItem}>
+              <span className={s.metaLabel}>文件大小</span>
+              <span className={s.metaValue}>{detail.sizeLabel || '—'}</span>
             </div>
-            <span className={s.updateDate}>更新于 {formatDisplayDateTime(detail.date)}</span>
+            <div className={s.metaItem}>
+              <span className={s.metaLabel}>标签</span>
+              <div className={s.metaTags}>
+                {displayTags.length > 0
+                  ? displayTags.map((t) => <TagPill key={t} name={t} neutral />)
+                  : <span className={s.metaValue}>无</span>}
+              </div>
+            </div>
+            <div className={s.metaItem}>
+              <span className={s.metaLabel}>文件编码</span>
+              <span className={s.metaValue}>{detail.fileEncoding || '—'}</span>
+            </div>
+            <div className={s.metaItem}>
+              <span className={s.metaLabel}>更新时间</span>
+              <span className={s.metaValue}>{formattedUpdatedAt}</span>
+            </div>
           </div>
           <div className={s.divider} />
           <div className={s.summaryBlock}>

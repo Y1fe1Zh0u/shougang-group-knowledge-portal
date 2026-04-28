@@ -13,6 +13,8 @@ const files = [
     title: 'Preview Smoke PDF',
     ext: 'pdf',
     mode: 'pdf',
+    fileSize: '18.42KB',
+    fileEncoding: 'GF-MOCK-PDF-1001',
     summary: 'PDF viewer smoke case. The mock intentionally serves bytes from the preview proxy.',
   },
   {
@@ -20,6 +22,8 @@ const files = [
     title: 'Preview Smoke DOCX',
     ext: 'docx',
     mode: 'docx',
+    fileSize: '2.11KB',
+    fileEncoding: 'GF-MOCK-DOCX-1002',
     summary: 'DOCX viewer smoke case rendered through mammoth.',
   },
   {
@@ -27,6 +31,8 @@ const files = [
     title: 'Preview Smoke XLSX',
     ext: 'xlsx',
     mode: 'spreadsheet',
+    fileSize: '16.72KB',
+    fileEncoding: 'GF-MOCK-XLSX-1003',
     summary: 'Spreadsheet viewer smoke case with multiple cells.',
   },
   {
@@ -34,6 +40,8 @@ const files = [
     title: 'Preview Smoke CSV',
     ext: 'csv',
     mode: 'spreadsheet',
+    fileSize: '62B',
+    fileEncoding: 'GF-MOCK-CSV-1004',
     summary: 'CSV viewer smoke case parsed by the spreadsheet viewer.',
   },
   {
@@ -41,6 +49,8 @@ const files = [
     title: 'Preview Smoke Markdown',
     ext: 'md',
     mode: 'markdown',
+    fileSize: '71B',
+    fileEncoding: 'GF-MOCK-MD-1005',
     summary: 'Markdown viewer smoke case.',
   },
   {
@@ -48,6 +58,8 @@ const files = [
     title: 'Preview Smoke HTML',
     ext: 'html',
     mode: 'html',
+    fileSize: '146B',
+    fileEncoding: 'GF-MOCK-HTML-1006',
     summary: 'HTML viewer smoke case with sanitization.',
   },
   {
@@ -55,6 +67,8 @@ const files = [
     title: 'Preview Smoke Text',
     ext: 'txt',
     mode: 'text',
+    fileSize: '31B',
+    fileEncoding: 'GF-MOCK-TXT-1007',
     summary: 'Plain text viewer smoke case.',
   },
   {
@@ -62,6 +76,8 @@ const files = [
     title: 'Preview Smoke Image',
     ext: 'svg',
     mode: 'image',
+    fileSize: '501B',
+    fileEncoding: 'GF-MOCK-SVG-1008',
     summary: 'Image viewer smoke case served through the preview proxy.',
   },
   {
@@ -69,6 +85,8 @@ const files = [
     title: 'Preview Smoke Unsupported PPTX',
     ext: 'pptx',
     mode: 'unsupported',
+    fileSize: '3.25MB',
+    fileEncoding: 'GF-MOCK-PPTX-1009',
     summary: 'Unsupported mode smoke case.',
   },
   {
@@ -76,6 +94,8 @@ const files = [
     title: 'Preview Smoke Chunks Fallback',
     ext: 'bin',
     mode: 'chunks',
+    fileSize: '8KB',
+    fileEncoding: 'GF-MOCK-BIN-1010',
     summary: 'Chunks fallback smoke case.',
   },
 ];
@@ -150,6 +170,8 @@ function toFileItem(file) {
     updated_at: '2026-04-28T12:00:00',
     tags: ['预览测试', file.ext.toUpperCase()],
     file_ext: file.ext,
+    file_size: file.fileSize,
+    file_encoding: file.fileEncoding,
   };
 }
 

@@ -66,6 +66,8 @@ class FakeBishengClient:
                                 "abstract": "振动纹治理实践摘要",
                                 "file_type": 1,
                                 "status": 2,
+                                "file_size": "949.33KB",
+                                "file_encoding": "GF-ZD-SC-202604-01201",
                                 "update_time": "2026-04-13T10:30:00",
                                 "tags": [{"id": 101, "name": "热轧"}, {"id": 103, "name": "振动纹"}],
                             }
@@ -83,6 +85,8 @@ class FakeBishengClient:
                             "abstract": "振动纹治理实践摘要",
                             "file_type": 1,
                             "status": 2,
+                            "file_size": "949.33KB",
+                            "file_encoding": "GF-ZD-SC-202604-01201",
                             "update_time": "2026-04-13T10:30:00",
                             "tags": [{"id": 101, "name": "热轧"}, {"id": 103, "name": "振动纹"}],
                         },
@@ -93,6 +97,8 @@ class FakeBishengClient:
                             "abstract": "温度控制摘要",
                             "file_type": 1,
                             "status": 2,
+                            "file_size": 2432696,
+                            "file_encoding": "GF-ZD-SC-202604-01193",
                             "update_time": "2026-04-10T08:00:00",
                             "tags": [{"id": 101, "name": "热轧"}],
                         },
@@ -111,6 +117,8 @@ class FakeBishengClient:
                             "abstract": "板面缺陷摘要",
                             "file_type": 1,
                             "status": 2,
+                            "file_size": "1.17MB",
+                            "file_encoding": "GF-ZD-LZ-202604-01185",
                             "update_time": "2026-04-11T09:00:00",
                             "tags": [{"id": 205, "name": "板面缺陷"}],
                         }
@@ -290,6 +298,9 @@ def test_list_space_files_maps_bisheng_results(tmp_path: Path):
     assert body["data"][0]["space_id"] == 12
     assert body["data"][0]["title"] == "热轧1580产线精轧机振动纹治理实践"
     assert body["data"][0]["file_ext"] == "pdf"
+    assert body["data"][0]["file_size"] == "949.33KB"
+    assert body["data"][0]["file_encoding"] == "GF-ZD-SC-202604-01201"
+    assert body["data"][1]["file_size"] == "2.32MB"
 
 
 def test_get_file_detail_and_preview(tmp_path: Path):
@@ -301,6 +312,8 @@ def test_get_file_detail_and_preview(tmp_path: Path):
     detail = detail_response.json()["data"]
     assert detail["space"]["id"] == 12
     assert detail["tags"] == ["热轧", "振动纹"]
+    assert detail["file_size"] == "949.33KB"
+    assert detail["file_encoding"] == "GF-ZD-SC-202604-01201"
 
     assert preview_response.status_code == 200
     preview = preview_response.json()["data"]

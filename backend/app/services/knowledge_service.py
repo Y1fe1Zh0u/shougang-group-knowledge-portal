@@ -43,6 +43,28 @@ SPACE_LIST_ENDPOINTS = (
     ("managed", "/api/v1/knowledge/space/managed"),
 )
 ROLE_PRIORITY = {"creator": 3, "admin": 2, "member": 1}
+FILE_SIZE_KEYS = (
+    "file_size",
+    "fileSize",
+    "size",
+    "file_bytes",
+    "fileBytes",
+    "bytes",
+)
+FILE_ENCODING_KEYS = (
+    "file_encoding",
+    "fileEncoding",
+    "file_encode",
+    "fileEncode",
+    "file_code",
+    "fileCode",
+    "document_code",
+    "documentCode",
+    "doc_code",
+    "docCode",
+    "file_no",
+    "fileNo",
+)
 
 
 @dataclass
@@ -191,7 +213,12 @@ class KnowledgeService:
         if not file_info or int(file_info.get("knowledge_id", 0)) != space_id:
             return None
 
-        tags = await self._get_file_tags(space_id=space_id, file_id=file_id, file_name=file_info.get("file_name", ""))
+        search_item = await self._get_file_search_item(
+            space_id=space_id,
+            file_id=file_id,
+            file_name=file_info.get("file_name", ""),
+        )
+        tags = self._extract_tag_names(search_item or {})
         source = self.get_space_name_map().get(space_id, str(space_id))
         return KnowledgeFileDetail(
             id=file_id,
@@ -202,6 +229,8 @@ class KnowledgeService:
             updated_at=self._serialize_datetime(file_info.get("update_time")),
             tags=tags,
             file_ext=self._get_file_ext(file_info.get("file_name", "")),
+            file_size=self._extract_file_size_label(file_info, search_item),
+            file_encoding=self._extract_file_encoding(file_info, search_item),
             space=KnowledgeFileSpace(id=space_id, name=source),
         )
 
@@ -591,12 +620,12 @@ class KnowledgeService:
         tags = response.get("data") or []
         return {tag["name"]: int(tag["id"]) for tag in tags if "name" in tag and "id" in tag}
 
-    async def _get_file_tags(self, space_id: int, file_id: int, file_name: str) -> list[str]:
+    async def _get_file_search_item(self, space_id: int, file_id: int, file_name: str) -> dict[str, Any] | None:
         search_result = await self._fetch_space_files(space_id=space_id, keyword=file_name or None, tag_name=None)
         for item in search_result.items:
             if int(item.get("id", 0)) == file_id:
-                return self._extract_tag_names(item)
-        return []
+                return item
+        return None
 
     def _filter_items(
         self,
@@ -657,6 +686,8 @@ class KnowledgeService:
                     updated_at=self._serialize_datetime(item.get("update_time")),
                     tags=self._extract_tag_names(item),
                     file_ext=self._get_file_ext(file_name),
+                    file_size=self._extract_file_size_label(item),
+                    file_encoding=self._extract_file_encoding(item),
                 )
             )
         return mapped
@@ -684,6 +715,45 @@ class KnowledgeService:
             if isinstance(tag, dict) and tag.get("name"):
                 names.append(tag["name"])
         return names
+
+    @staticmethod
+    def _extract_file_size_label(*items: dict[str, Any] | None) -> str:
+        value = KnowledgeService._first_value_from_items(items, FILE_SIZE_KEYS)
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped:
+                return stripped
+        try:
+            size = float(value)
+        except (TypeError, ValueError):
+            return str(value).strip()
+        if size < 0:
+            return ""
+        units = ("B", "KB", "MB", "GB", "TB")
+        unit_index = 0
+        while size >= 1024 and unit_index < len(units) - 1:
+            size /= 1024
+            unit_index += 1
+        if unit_index == 0:
+            return f"{int(size)}{units[unit_index]}"
+        return f"{size:.2f}".rstrip("0").rstrip(".") + units[unit_index]
+
+    @staticmethod
+    def _extract_file_encoding(*items: dict[str, Any] | None) -> str:
+        value = KnowledgeService._first_value_from_items(items, FILE_ENCODING_KEYS)
+        return str(value).strip() if value not in (None, "") else ""
+
+    @staticmethod
+    def _first_value_from_items(items: tuple[dict[str, Any] | None, ...], keys: tuple[str, ...]) -> Any:
+        for item in items:
+            if not item:
+                continue
+            value = KnowledgeService._first_value(item, *keys)
+            if value not in (None, ""):
+                return value
+        return None
 
     @staticmethod
     def _clean_title(file_name: str) -> str:

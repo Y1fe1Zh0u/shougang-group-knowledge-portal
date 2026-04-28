@@ -9,6 +9,8 @@ export interface FileItem {
   date: string;
   tags: string[];
   ext: string;
+  sizeLabel: string;
+  fileEncoding: string;
 }
 
 export interface FileDetail extends FileItem {
@@ -73,6 +75,8 @@ interface KnowledgeFileItemDto {
   updated_at: string;
   tags: string[];
   file_ext?: string;
+  file_size?: string;
+  file_encoding?: string;
 }
 
 interface KnowledgeFileDetailDto extends KnowledgeFileItemDto {
@@ -138,6 +142,8 @@ export function mapKnowledgeFileItem(dto: KnowledgeFileItemDto): FileItem {
     date: dto.updated_at,
     tags: dto.tags ?? [],
     ext: dto.file_ext ?? '',
+    sizeLabel: dto.file_size ?? '',
+    fileEncoding: dto.file_encoding ?? '',
   };
 }
 
