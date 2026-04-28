@@ -360,7 +360,10 @@ export default function HomePage() {
                       <div className={s.panelIcon} style={{ background: visual.bg, color: visual.color }}><Icon size={14} /></div>
                       <span className={s.panelTitle}>{sec.title}</span>
                     </div>
-                    <Link to={sec.link} className={s.panelMore}>
+                    <Link
+                      to={`${sec.link}${sec.link.includes('?') ? '&' : '?'}title=${encodeURIComponent(sec.title)}`}
+                      className={s.panelMore}
+                    >
                       更多 <ChevronRight size={14} />
                     </Link>
                   </div>

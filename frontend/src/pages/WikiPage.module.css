@@ -6,7 +6,7 @@
 }
 
 .pageHeaderInner {
-  max-width: var(--max-w);
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -178,12 +178,12 @@
 
 /* ===== main grid ===== */
 .mainGrid {
-  max-width: var(--max-w);
+  max-width: 1600px;
   margin: 0 auto;
   padding: 24px;
   display: grid;
-  grid-template-columns: 224px 1fr;
-  gap: 24px;
+  grid-template-columns: 240px 1fr;
+  gap: 28px;
   align-items: start;
 }
 

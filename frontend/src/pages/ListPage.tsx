@@ -19,7 +19,13 @@ import { getVisibleRange } from '../utils/listControls';
 import { getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import s from './ListPage.module.css';
 
-function resolveListContext(config: PortalConfig, domainName?: string, spaceIdParam?: string, tagParam?: string) {
+function resolveListContext(
+  config: PortalConfig,
+  domainName?: string,
+  spaceIdParam?: string,
+  tagParam?: string,
+  titleParam?: string,
+) {
   const matchedDomain = domainName ? config.domains.find((item) => item.name === domainName) : undefined;
   const parsedSpaceId = spaceIdParam ? Number(spaceIdParam) : undefined;
   const spaceId = matchedDomain ? matchedDomain.space_ids[0] : parsedSpaceId;
@@ -28,6 +34,8 @@ function resolveListContext(config: PortalConfig, domainName?: string, spaceIdPa
   if (spaceId) {
     const space = config.spaces.find((item) => item.id === spaceId);
     pageTitle = matchedDomain?.name || space?.name || '知识空间';
+  } else if (titleParam) {
+    pageTitle = titleParam;
   } else if (tagParam) {
     const sec = config.sections.find((item) => item.tag === tagParam);
     pageTitle = sec?.title || tagParam;
@@ -48,6 +56,7 @@ export default function ListPage() {
   const location = useLocation();
   const { config, error: configError } = usePortalConfig();
   const tagParam = params.get('tag') || '';
+  const titleParam = params.get('title') || '';
   const fileExt = params.get('file_ext') || '';
   const [spaceId, setSpaceId] = useState<number | undefined>();
   const [pageTitle, setPageTitle] = useState('知识列表');
@@ -61,10 +70,10 @@ export default function ListPage() {
 
   useEffect(() => {
     if (!config) return;
-    const context = resolveListContext(config, domainName, spaceIdStr, tagParam);
+    const context = resolveListContext(config, domainName, spaceIdStr, tagParam, titleParam);
     setSpaceId(context.spaceId);
     setPageTitle(context.pageTitle);
-  }, [config, domainName, spaceIdStr, tagParam]);
+  }, [config, domainName, spaceIdStr, tagParam, titleParam]);
 
   useEffect(() => {
     if (!configError) return;

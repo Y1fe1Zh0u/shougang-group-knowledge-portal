@@ -139,7 +139,6 @@ const portalConfig = {
   ],
   qa: {
     knowledge_space_ids: [SPACE_ID],
-    panel_title: '本地 mock 问答',
     welcome_message: '本地预览 mock 已启动。',
     hot_questions: ['PDF 是否可预览？', 'DOCX 是否可预览？', '表格是否可预览？'],
     ai_search_system_prompt: '',

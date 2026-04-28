@@ -27,7 +27,7 @@
   --green-500: #22c55e;
   --amber-500: #f59e0b;
 
-  --max-w: 1440px;
+  --max-w: min(2400px, calc(100vw - 96px));
   --header-h: 56px;
   --radius-sm: 4px;
   --radius-md: 6px;
