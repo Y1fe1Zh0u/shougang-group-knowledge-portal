@@ -6,7 +6,7 @@ import {
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
   PenLine, MessageSquare, Globe, Network, User, Leaf, Truck, Wrench, GraduationCap,
   Award, MessageSquarePlus, Sparkles, FolderLock, Lock,
-  BookOpen, Package,
+  BookOpen, Package, Video, Flame, Briefcase, Users,
 } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
@@ -19,10 +19,12 @@ import { formatDisplayDateTime } from '../utils/dateTime';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
 import { WIKI_LIST_ITEMS } from '../data/wikiMock';
+import { COURSE_LIST_ITEMS } from '../data/courseMock';
 import s from './HomePage.module.css';
 
 const DOMAIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle, Leaf, Truck, Network, Wrench, GraduationCap,
+  Briefcase, Users,
 };
 
 const APP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -425,6 +427,42 @@ export default function HomePage() {
               );
             })}
 
+            {/* 专业课程 · 岗位赋能 */}
+            <div className={s.panel}>
+              <div className={s.panelHeader}>
+                <div className={s.panelHeaderLeft}>
+                  <div className={`${s.panelIcon} ${s.panelIconCourse}`}>
+                    <GraduationCap size={14} />
+                  </div>
+                  <span className={s.panelTitle}>专业课程 · 岗位赋能</span>
+                </div>
+                <Link to="/apps" className={s.panelMore}>
+                  全部课程 <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className={s.courseList}>
+                {COURSE_LIST_ITEMS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={s.courseRow}
+                    onClick={() => navigate('/apps')}
+                  >
+                    <Video size={22} className={s.courseRowIcon} />
+                    <span className={s.courseRowTitle}>{c.title}</span>
+                    {c.hot ? (
+                      <span className={s.courseHotTag}>
+                        <Flame size={10} />热门
+                      </span>
+                    ) : c.domain ? (
+                      <span className={s.courseDomainTag}>{c.domain}</span>
+                    ) : null}
+                    <span className={s.courseRowDuration}>{c.duration}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 股份百科 · 知识产品 */}
             <div className={s.panel}>
               <div className={s.panelHeader}>
@@ -528,28 +566,30 @@ export default function HomePage() {
             </div>
 
             {/* 热门标签 */}
-            <div className={`${s.qaPanel} ${s.rankPanel}`}>
-              <div className={s.qaHeader}>
-                <div className={s.qaHeaderLeft}>
-                  <div className={s.panelIcon}><Tag size={14} /></div>
-                  <span className={s.panelTitle}>热门标签</span>
+            {tagRankList.length > 0 ? (
+              <div className={`${s.qaPanel} ${s.rankPanel}`}>
+                <div className={s.qaHeader}>
+                  <div className={s.qaHeaderLeft}>
+                    <div className={s.panelIcon}><Tag size={14} /></div>
+                    <span className={s.panelTitle}>热门标签</span>
+                  </div>
+                </div>
+                <div className={s.tagRankGrid}>
+                  {tagRankList.map((tagName, index) => (
+                    <button
+                      key={tagName}
+                      type="button"
+                      className={s.tagRankItem}
+                      onClick={() => navigate(`/list?tag=${encodeURIComponent(tagName)}`)}
+                    >
+                      <span className={s.tagRankIndex}>#{index + 1}</span>
+                      <span className={s.tagRankName}>{tagName}</span>
+                      <span className={s.tagRankCount}>标签</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className={s.tagRankGrid}>
-                {tagRankList.map((tagName, index) => (
-                  <button
-                    key={tagName}
-                    type="button"
-                    className={s.tagRankItem}
-                    onClick={() => navigate(`/list?tag=${encodeURIComponent(tagName)}`)}
-                  >
-                    <span className={s.tagRankIndex}>#{index + 1}</span>
-                    <span className={s.tagRankName}>{tagName}</span>
-                    <span className={s.tagRankCount}>标签</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            ) : null}
 
             {/* 受控知识空间 — visible only for unauthenticated visitors */}
             {!user ? (
@@ -577,29 +617,31 @@ export default function HomePage() {
             ) : null}
 
             {/* 知识广场 */}
-            <div className={s.qaPanel}>
-              <div className={s.qaHeader}>
-                <div className={s.qaHeaderLeft}>
-                  <div className={s.panelIcon}><FolderOpen size={14} /></div>
-                  <span className={s.panelTitle}>知识广场</span>
+            {homeSpaces.length > 0 ? (
+              <div className={s.qaPanel}>
+                <div className={s.qaHeader}>
+                  <div className={s.qaHeaderLeft}>
+                    <div className={s.panelIcon}><FolderOpen size={14} /></div>
+                    <span className={s.panelTitle}>知识广场</span>
+                  </div>
+                </div>
+                <div className={s.squareGrid}>
+                  {homeSpaces.map((sp) => (
+                    <div
+                      key={sp.id}
+                      className={s.squareCard}
+                      onClick={() => navigate(`/space/${sp.id}`)}
+                    >
+                      <span className={s.squareName}>{sp.name}</span>
+                      <span className={s.squareCount}>
+                        <span className={s.squareNum}>{sp.file_count}</span>
+                        <span className={s.squareUnit}>篇</span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className={s.squareGrid}>
-                {homeSpaces.map((sp) => (
-                  <div
-                    key={sp.id}
-                    className={s.squareCard}
-                    onClick={() => navigate(`/space/${sp.id}`)}
-                  >
-                    <span className={s.squareName}>{sp.name}</span>
-                    <span className={s.squareCount}>
-                      <span className={s.squareNum}>{sp.file_count}</span>
-                      <span className={s.squareUnit}>篇</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ) : null}
 
             {/* 应用入口 */}
             <div className={s.qaPanel}>

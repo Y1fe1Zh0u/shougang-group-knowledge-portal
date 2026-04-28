@@ -45,78 +45,86 @@
   ],
   "domains": [
     {
-      "name": "域2",
-      "space_ids": [
-        2
-      ],
-      "color": "#059669",
-      "bg": "#d1fae5",
-      "icon": "Factory",
-      "background_image": "/rolling-domain-bg.jpg",
-      "enabled": true
-    },
-    {
-      "name": "域4",
-      "space_ids": [
-        4
-      ],
-      "color": "#6366f1",
-      "bg": "#ede9fe",
-      "icon": "Zap",
+      "name": "管理",
+      "space_ids": [],
+      "color": "#0369a1",
+      "bg": "#e0f2fe",
+      "icon": "Briefcase",
       "background_image": "",
       "enabled": true
     },
     {
-      "name": "域1",
-      "space_ids": [
-        1
-      ],
+      "name": "安全",
+      "space_ids": [],
+      "color": "#92400e",
+      "bg": "#fef3c7",
+      "icon": "Shield",
+      "background_image": "",
+      "enabled": true
+    },
+    {
+      "name": "环保",
+      "space_ids": [],
+      "color": "#166534",
+      "bg": "#dcfce7",
+      "icon": "Leaf",
+      "background_image": "",
+      "enabled": true
+    },
+    {
+      "name": "设备",
+      "space_ids": [],
       "color": "#2563eb",
       "bg": "#eff6ff",
-      "icon": "Snowflake",
+      "icon": "Settings",
+      "background_image": "/device-domain-bg.png",
+      "enabled": true
+    },
+    {
+      "name": "技术",
+      "space_ids": [],
+      "color": "#2563eb",
+      "bg": "#eff6ff",
+      "icon": "Wrench",
+      "background_image": "/cold-domain-bg.jpg",
+      "enabled": true
+    },
+    {
+      "name": "质量",
+      "space_ids": [],
+      "color": "#2563eb",
+      "bg": "#eff6ff",
+      "icon": "CheckCircle",
       "background_image": "/rolling-domain-bg.jpg",
       "enabled": true
     },
     {
-      "name": "域3",
-      "space_ids": [
-        3
-      ],
-      "color": "#475569",
-      "bg": "#e2e8f0",
-      "icon": "Factory",
-      "background_image": "",
-      "enabled": true
-    },
-    {
-      "name": "域5",
-      "space_ids": [
-        5
-      ],
-      "color": "#dc2626",
-      "bg": "#fee2e2",
-      "icon": "Shield",
+      "name": "人员",
+      "space_ids": [],
+      "color": "#6d28d9",
+      "bg": "#ede9fe",
+      "icon": "Users",
       "background_image": "",
       "enabled": true
     }
   ],
   "sections": [
     {
-      "title": "典型案例 · 事故分析",
-      "tag": "典型案例",
-      "link": "/list?tag=%E5%85%B8%E5%9E%8B%E6%A1%88%E4%BE%8B",
-      "icon": "AlertTriangle",
-      "color": "#dc2626",
-      "bg": "#fee2e2",
-      "enabled": true
-    },
-    {
-      "title": "知识推荐 · 最新精选",
+      "title": "最新精选",
       "tag": "最新精选",
       "link": "/list?tag=%E6%9C%80%E6%96%B0%E7%B2%BE%E9%80%89",
       "icon": "Star",
       "color": "#2563eb",
       "bg": "#eff6ff",
+      "enabled": true
+    },
+    {
+      "title": "典型案例",
+      "tag": "典型案例",
+      "link": "/list?tag=%E5%85%B8%E5%9E%8B%E6%A1%88%E4%BE%8B",
+      "icon": "AlertTriangle",
+      "color": "#dc2626",
+      "bg": "#fee2e2",
       "enabled": true
     }
   ],
@@ -152,7 +160,7 @@
       "section_page_size": 6,
       "hot_tags_count": 8,
       "qa_hot_count": 4,
-      "domain_count": 5,
+      "domain_count": 7,
       "spaces_count": 5,
       "apps_count": 6
     },

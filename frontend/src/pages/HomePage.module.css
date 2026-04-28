@@ -322,7 +322,7 @@
 }
 
 .domainName {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--neutral-900);
 }
@@ -942,6 +942,90 @@
 .panelIconWiki {
   background: #f5f3ff;
   color: #7c3aed;
+}
+
+.panelIconCourse {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.courseList {
+  display: flex;
+  flex-direction: column;
+}
+
+.courseRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  border-top: 1px solid var(--neutral-100);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.courseRow:first-child {
+  border-top: none;
+  padding-top: 6px;
+}
+
+.courseRow:hover {
+  background: var(--primary-50);
+}
+
+.courseRow:hover .courseRowTitle {
+  color: var(--primary-700);
+}
+
+.courseRowIcon {
+  color: var(--neutral-700);
+  flex-shrink: 0;
+}
+
+.courseRowTitle {
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  transition: color 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.courseHotTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: #fff1f0;
+  color: #e94235;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+.courseDomainTag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--primary-50);
+  color: var(--primary-600);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+.courseRowDuration {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
 }
 
 .wikiList {
