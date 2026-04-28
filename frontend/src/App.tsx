@@ -15,6 +15,7 @@ import ExpertQADetailPage from './pages/ExpertQADetailPage';
 import KnowledgeSpacesPage from './pages/KnowledgeSpacesPage';
 import WikiPage from './pages/WikiPage';
 import WikiDetailPage from './pages/WikiDetailPage';
+import CoursePage from './pages/CoursePage';
 
 function RouteScrollReset() {
   const location = useLocation();
@@ -65,6 +66,8 @@ export default function App() {
         <Route path="/expert-qa/:questionId" element={<ExpertQADetailPage />} />
         <Route path="/wiki" element={<WikiPage />} />
         <Route path="/wiki/:wikiId" element={<WikiDetailPage />} />
+        <Route path="/course" element={<CoursePage />} />
+        <Route path="/course/:courseId" element={<CoursePage />} />
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/login" element={<LoginPage />} />
