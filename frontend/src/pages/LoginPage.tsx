@@ -1,0 +1,295 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Bell,
+  Bookmark,
+  Building2,
+  Check,
+  Eye,
+  EyeOff,
+  FolderLock,
+  Lock,
+  QrCode,
+  User,
+  Users,
+} from 'lucide-react';
+import { loadPortalUser, savePortalUser, type PortalUser } from '../hooks/useAuth';
+import s from './LoginPage.module.css';
+
+const FALLBACK_REDIRECT = '/';
+const WELCOME_FLAG = 'sg_just_logged_in';
+
+function resolveRedirect(target: string | null): string {
+  if (!target) return FALLBACK_REDIRECT;
+  if (!target.startsWith('/') || target.startsWith('//')) return FALLBACK_REDIRECT;
+  return target;
+}
+
+export default function LoginPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const redirect = resolveRedirect(params.get('redirect'));
+
+  useEffect(() => {
+    if (loadPortalUser()) navigate(redirect, { replace: true });
+  }, [navigate, redirect]);
+
+  const [account, setAccount] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [accountError, setAccountError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  function clearErrors() {
+    setAccountError('');
+    setPasswordError('');
+    setFormError('');
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    clearErrors();
+    const a = account.trim();
+    const p = password;
+    let bad = false;
+    if (!a) {
+      setAccountError('请输入账号');
+      bad = true;
+    }
+    if (!p) {
+      setPasswordError('请输入密码');
+      bad = true;
+    }
+    if (bad) return;
+
+    setSubmitting(true);
+    window.setTimeout(() => {
+      const okDemo = a === 'demo' && p === 'shougang';
+      const okAny = a.length >= 2 && p.length >= 2;
+      if (!okDemo && !okAny) {
+        setSubmitting(false);
+        setFormError('账号或密码不正确，请重试。');
+        return;
+      }
+      const isDemo = okDemo;
+      const displayName = isDemo
+        ? '韩志远'
+        : a.includes('@')
+          ? a.split('@')[0]
+          : a;
+      const initial = displayName.slice(0, 1).toUpperCase();
+      const role = isDemo ? '冷轧厂 · 设备工程师' : '内部员工';
+      const user: PortalUser = {
+        account: a,
+        name: displayName,
+        initial,
+        role,
+        loginAt: Date.now(),
+      };
+      savePortalUser(user);
+      try {
+        if (remember) window.sessionStorage.setItem(WELCOME_FLAG, '1');
+      } catch {
+        // ignore session storage errors
+      }
+      navigate(redirect, { replace: true });
+    }, 600);
+  }
+
+  return (
+    <div className={s.page}>
+      <header className={s.header}>
+        <div className={s.headerInner}>
+          <Link to="/" className={s.brand}>
+            <img src="/shougang-stock-logo.png" alt="首钢股份" />
+            <span>首钢知库</span>
+          </Link>
+          <div className={s.headerSpacer} />
+          <Link to="/" className={s.backHome}>
+            <ArrowLeft size={14} />
+            返回首页
+          </Link>
+        </div>
+      </header>
+
+      <main className={s.shell}>
+        <aside
+          className={s.visualSide}
+          style={{ backgroundImage: `linear-gradient(125deg, rgba(6,18,42,.78) 0%, rgba(12,38,84,.62) 42%, rgba(18,50,108,.45) 100%), radial-gradient(circle at 75% 22%, rgba(97,150,255,.22) 0%, rgba(97,150,255,0) 32%), url("/banner-hero-1.jpg")` }}
+        >
+          <div className={s.visualGlow} />
+          <span className={s.visualLabel}>企业账号登录</span>
+
+          <div className={s.visualBlock}>
+            <h1 className={s.visualTitle}>
+              登录后<br />解锁全域知识
+            </h1>
+            <p className={s.visualSub}>
+              使用首钢统一身份账号登录，访问您所在业务域的内部知识库、专家社区与协同应用。
+            </p>
+          </div>
+
+          <div className={s.visualPoints}>
+            <div className={s.visualPoint}>
+              <div className={s.visualPointIco}><FolderLock size={18} /></div>
+              <div>
+                <div className={s.visualPointTitle}>受控知识空间</div>
+                <div className={s.visualPointDesc}>按权限可见内部技术规范、案例库</div>
+              </div>
+            </div>
+            <div className={s.visualPoint}>
+              <div className={s.visualPointIco}><Users size={18} /></div>
+              <div>
+                <div className={s.visualPointTitle}>专家直连</div>
+                <div className={s.visualPointDesc}>向认证专家发起一对一提问</div>
+              </div>
+            </div>
+            <div className={s.visualPoint}>
+              <div className={s.visualPointIco}><Bookmark size={18} /></div>
+              <div>
+                <div className={s.visualPointTitle}>个人收藏</div>
+                <div className={s.visualPointDesc}>订阅标签与文档，记录阅读历史</div>
+              </div>
+            </div>
+            <div className={s.visualPoint}>
+              <div className={s.visualPointIco}><Bell size={18} /></div>
+              <div>
+                <div className={s.visualPointTitle}>订阅推送</div>
+                <div className={s.visualPointDesc}>关注业务域更新，到岗即知</div>
+              </div>
+            </div>
+          </div>
+
+          <div className={s.visualFootnote}>© 2026 首钢集团 · 首钢知库知识门户平台</div>
+        </aside>
+
+        <section className={s.formSide}>
+          <div className={s.formInner}>
+            <h2 className={s.formTitle}>账号登录</h2>
+            <p className={s.formSub}>输入企业账号与密码，登录后将返回知识门户首页。</p>
+
+            <form noValidate onSubmit={handleSubmit}>
+              {formError ? (
+                <div className={s.formError}>
+                  <AlertCircle size={14} />
+                  <span>{formError}</span>
+                </div>
+              ) : null}
+
+              <div className={s.field}>
+                <label className={s.fieldLabel} htmlFor="login-account">账号</label>
+                <div className={s.fieldWrap}>
+                  <User size={16} className={s.leadIcon} />
+                  <input
+                    id="login-account"
+                    className={`${s.input} ${accountError ? s.inputInvalid : ''}`}
+                    autoComplete="username"
+                    placeholder="工号或邮箱"
+                    value={account}
+                    onChange={(e) => {
+                      setAccount(e.target.value);
+                      if (accountError) setAccountError('');
+                      if (formError) setFormError('');
+                    }}
+                  />
+                </div>
+                {accountError ? (
+                  <div className={s.fieldError}>
+                    <AlertCircle size={12} />
+                    <span>{accountError}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={s.field}>
+                <label className={s.fieldLabel} htmlFor="login-password">密码</label>
+                <div className={s.fieldWrap}>
+                  <Lock size={16} className={s.leadIcon} />
+                  <input
+                    id="login-password"
+                    className={`${s.input} ${passwordError ? s.inputInvalid : ''}`}
+                    type={showPwd ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="请输入密码"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) setPasswordError('');
+                      if (formError) setFormError('');
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={s.pwdToggle}
+                    aria-label={showPwd ? '隐藏密码' : '显示密码'}
+                    onClick={() => setShowPwd((prev) => !prev)}
+                  >
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {passwordError ? (
+                  <div className={s.fieldError}>
+                    <AlertCircle size={12} />
+                    <span>{passwordError}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={s.row}>
+                <label className={s.checkbox}>
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                  />
+                  <span className={s.checkboxBox}>
+                    <Check size={12} />
+                  </span>
+                  记住我（7 天内免登录）
+                </label>
+                <button
+                  type="button"
+                  className={s.forgot}
+                  onClick={() =>
+                    setFormError('请联系系统管理员或运维窗口（内线 88-2031）重置密码。')
+                  }
+                >
+                  忘记密码
+                </button>
+              </div>
+
+              <button type="submit" className={s.submitBtn} disabled={submitting}>
+                {submitting ? <span className={s.spinner} /> : null}
+                <span>{submitting ? '登录中' : '登录'}</span>
+              </button>
+            </form>
+
+            <div className={s.divider}>其他登录方式</div>
+            <div className={s.ssoRow}>
+              <button type="button" className={s.ssoBtn}>
+                <Building2 size={16} />企业 SSO
+              </button>
+              <button type="button" className={s.ssoBtn}>
+                <QrCode size={16} />扫码登录
+              </button>
+            </div>
+
+            <div className={s.demoHint}>
+              <b>演示账号：</b>账号 <code>demo</code> · 密码 <code>shougang</code>，或输入任意非空账号密码即可登录。
+            </div>
+
+            <div className={s.footnote}>
+              登录即代表您同意 <a>服务协议</a> 与 <a>隐私政策</a>。
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

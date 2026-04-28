@@ -5,16 +5,20 @@ import {
   BarChart3, Bot, ChevronRight, FileText, Tag,
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
   PenLine, MessageSquare, Globe, Network, User, Leaf, Truck, Wrench, GraduationCap,
+  Award, MessageSquarePlus, Sparkles, FolderLock, Lock,
+  BookOpen, Package,
 } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content';
 import { usePortalConfig } from '../hooks/usePortalConfig';
+import { useAuth } from '../hooks/useAuth';
 import { resolveSectionVisual } from '../utils/adminSections';
 import { formatDisplayDateTime } from '../utils/dateTime';
 import { getDomainVisualPreset } from '../utils/domainVisualPresets';
 import { getEnabledApps, getEnabledDomains, getEnabledSections, getEnabledSpaces, toRuntimeDisplayConfig } from '../utils/portalConfig';
+import { WIKI_LIST_ITEMS } from '../data/wikiMock';
 import s from './HomePage.module.css';
 
 const DOMAIN_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -64,6 +68,13 @@ const BANNER_BACKGROUNDS = [
   `linear-gradient(120deg, rgba(21, 14, 38, 0.55) 0%, rgba(45, 26, 76, 0.39) 44%, rgba(45, 26, 76, 0.13) 100%), radial-gradient(circle at 76% 24%, rgba(168, 85, 247, 0.11) 0%, rgba(168, 85, 247, 0) 24%), url("${HERO_IMAGE_URLS[2]}")`,
 ] as const;
 
+const APP_ENTRY_DEFAULTS = [
+  { id: 'app-write', name: '智能写作', desc: '辅助生成报告', iconBg: '#eff6ff', iconColor: '#2563eb', icon: 'PenLine' as const },
+  { id: 'app-search', name: '全域检索', desc: '跨空间定位', iconBg: '#ecfeff', iconColor: '#0891b2', icon: 'Search' as const },
+  { id: 'app-qa', name: 'AI 问答', desc: 'AI 即时解答', iconBg: '#f5f3ff', iconColor: '#7c3aed', icon: 'MessageSquare' as const },
+  { id: 'app-bi', name: '数据看板', desc: '关键指标可视化', iconBg: '#ecfdf5', iconColor: '#059669', icon: 'BarChart3' as const },
+];
+
 function getPrimaryTag(file: FileItem) {
   return file.tags.find((t) => t !== '最新精选' && t !== '典型案例');
 }
@@ -75,6 +86,7 @@ function getWelcomeMessage(welcomeMessage?: string) {
 export default function HomePage() {
   const navigate = useNavigate();
   const { config, error } = usePortalConfig();
+  const { user } = useAuth();
   const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [query, setQuery] = useState('');
   const [bannerIdx, setBannerIdx] = useState(0);
@@ -82,6 +94,20 @@ export default function HomePage() {
   const [hotTags, setHotTags] = useState<string[]>([]);
   const [caseCount, setCaseCount] = useState(0);
   const [loadError, setLoadError] = useState('');
+  const [welcomeToast, setWelcomeToast] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const flag = window.sessionStorage.getItem('sg_just_logged_in');
+      if (!flag) return '';
+      window.sessionStorage.removeItem('sg_just_logged_in');
+      const raw = window.localStorage.getItem('sg_portal_user');
+      if (!raw) return '';
+      const parsed = JSON.parse(raw) as { name?: string };
+      return parsed.name ? `欢迎回来，${parsed.name}` : '';
+    } catch {
+      return '';
+    }
+  });
 
   const navigateToTop = useCallback((path: string) => {
     const root = document.documentElement;
@@ -101,6 +127,12 @@ export default function HomePage() {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!welcomeToast) return;
+    const timer = window.setTimeout(() => setWelcomeToast(''), 1800);
+    return () => window.clearTimeout(timer);
+  }, [welcomeToast]);
 
   const handleSearch = useCallback(() => {
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
@@ -167,13 +199,53 @@ export default function HomePage() {
   const activeBanner = HOME_BANNERS[bannerIdx];
   const activeBannerBackground = BANNER_BACKGROUNDS[bannerIdx % BANNER_BACKGROUNDS.length];
   const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
+  const domainColumns = Math.max(homeDomains.length || 1, 1);
   const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
+  const heroHotTags = rankedHotTags.slice(0, 5);
+  const tagRankList = rankedHotTags.slice(0, 6);
+  const homeSpaces = enabledSpaces.slice(0, displayConfig.home.spacesCount);
+  const homeApps = enabledApps.slice(0, displayConfig.home.appsCount);
   const assistantGreeting = getWelcomeMessage(config?.qa.welcome_message);
   const qaHotQuestions = (config?.qa.hot_questions || []).map((question) => question.trim()).filter(Boolean);
   const primaryQaQuestion = qaHotQuestions[0] || '振动纹通常如何排查？';
 
+  const expertHotQuestions = qaHotQuestions.length
+    ? qaHotQuestions.slice(0, 3)
+    : [
+        '连铸坯角部裂纹有哪些常见判定标准？',
+        '高炉煤气含氧量超标可能由哪些原因引起？',
+        '轧机液压系统压力波动如何诊断？',
+      ];
+
+  const appEntryItems = homeApps.length > 0
+    ? homeApps.slice(0, 4).map((app) => ({
+      id: String(app.id),
+      name: app.name,
+      desc: app.desc,
+      iconKey: app.icon,
+      iconBg: app.color,
+      iconColor: '#fff',
+      url: app.url,
+    }))
+    : APP_ENTRY_DEFAULTS.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      desc: entry.desc,
+      iconKey: entry.icon,
+      iconBg: entry.iconBg,
+      iconColor: entry.iconColor,
+      url: undefined as string | undefined,
+    }));
+
   return (
     <PageShell>
+      {welcomeToast ? (
+        <div className={s.welcomeToast} role="status">
+          <CheckCircle size={14} />
+          <span>{welcomeToast}</span>
+        </div>
+      ) : null}
+
       {/* Hero */}
       <section className={s.hero}>
         <div
@@ -205,7 +277,7 @@ export default function HomePage() {
             </div>
             <div className={s.hotTags}>
               <span className={s.hotLabel}>热门搜索：</span>
-              {rankedHotTags.map((t) => (
+              {heroHotTags.map((t) => (
                 <button key={t} className={s.hotTag} onClick={() => navigate(`/search?q=${encodeURIComponent(t)}`)}>
                   {t}
                 </button>
@@ -216,22 +288,22 @@ export default function HomePage() {
             <div className={s.statsPanel}>
               <div className={s.statsGrid}>
                 <div className={s.statCard}>
-                  <FileText size={24} className={s.statIcon} />
+                  <FileText size={22} className={s.statIcon} />
                   <div className={s.statNumber}>{totalFiles}</div>
                   <div className={s.statLabel}>知识文档</div>
                 </div>
                 <div className={s.statCard}>
-                  <AlertTriangle size={24} className={s.statIcon} />
+                  <AlertTriangle size={22} className={s.statIcon} />
                   <div className={s.statNumber}>{caseCount}</div>
                   <div className={s.statLabel}>技术案例</div>
                 </div>
                 <div className={s.statCard}>
-                  <Tag size={24} className={s.statIcon} />
+                  <Tag size={22} className={s.statIcon} />
                   <div className={s.statNumber}>{tagCount}</div>
                   <div className={s.statLabel}>业务标签</div>
                 </div>
                 <div className={s.statCard}>
-                  <FolderOpen size={24} className={s.statIcon} />
+                  <FolderOpen size={22} className={s.statIcon} />
                   <div className={s.statNumber}>{spaceCount}</div>
                   <div className={s.statLabel}>知识空间</div>
                 </div>
@@ -258,7 +330,10 @@ export default function HomePage() {
         {/* Domain navigation */}
         <div className={`${s.section} ${s.domainSection}`}>
           <SectionHeader icon={Building} title="业务域导航" moreLink="/domains" moreText="全部业务域" size="large" />
-          <div className={s.domainGrid}>
+          <div
+            className={s.domainGrid}
+            style={{ gridTemplateColumns: `repeat(${domainColumns}, minmax(0, 1fr))` }}
+          >
             {homeDomains.map((d) => {
               const Icon = DOMAIN_ICONS[d.icon] || Settings;
               const visualPreset = getDomainVisualPreset(d);
@@ -273,7 +348,7 @@ export default function HomePage() {
                 >
                   {usesBannerThumb ? null : (
                     <div className={s.domainIcon} style={{ background: d.bg, color: d.color }}>
-                      <Icon size={24} />
+                      <Icon size={22} />
                     </div>
                   )}
                   <div className={s.domainName}>{d.name}</div>
@@ -286,7 +361,7 @@ export default function HomePage() {
         {/* Two-column layout */}
         <div className={s.columns}>
           {/* Left: knowledge list panels */}
-          <div>
+          <div className={s.leftColumn}>
             {enabledSections.map((sec) => {
               const Icon = SECTION_ICONS[sec.icon] || Star;
               const visual = resolveSectionVisual(sec);
@@ -349,19 +424,44 @@ export default function HomePage() {
                 </div>
               );
             })}
+
+            {/* 股份百科 · 知识产品 */}
+            <div className={s.panel}>
+              <div className={s.panelHeader}>
+                <div className={s.panelHeaderLeft}>
+                  <div className={`${s.panelIcon} ${s.panelIconWiki}`}>
+                    <BookOpen size={14} />
+                  </div>
+                  <span className={s.panelTitle}>股份百科 · 知识产品</span>
+                </div>
+                <Link to="/wiki" className={s.panelMore}>
+                  更多词条 <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className={s.wikiList}>
+                {WIKI_LIST_ITEMS.slice(0, 5).map((item) => (
+                  <Link key={item.id} to={`/wiki/${item.id}`} className={s.wikiRow}>
+                    <Package size={22} className={s.wikiRowIcon} />
+                    <span className={s.wikiRowName}>{item.name}</span>
+                    <span className={s.wikiCatTag}>{item.domain}</span>
+                    <span className={s.wikiRowKind}>{item.kind}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Right column */}
           <div className={s.sideColumn}>
-            {/* QA */}
+            {/* AI 问答 */}
             <div className={s.qaPanel}>
               <div className={s.qaHeader}>
                 <div className={s.qaHeaderLeft}>
                   <div className={s.panelIcon}><Bot size={14} /></div>
-                  <span className={s.panelTitle}>{config?.qa.panel_title?.trim() || '技术问答·专家在线'}</span>
+                  <span className={s.panelTitle}>AI 问答</span>
                 </div>
                 <Link to="/qa" className={s.panelMore}>
-                  提问 <ChevronRight size={14} />
+                  进入 <ChevronRight size={14} />
                 </Link>
               </div>
               <div className={s.qaComposerWrap}>
@@ -374,34 +474,60 @@ export default function HomePage() {
                       {assistantGreeting}
                     </div>
                   </div>
-                    <div className={`${s.qaPreviewRow} ${s.qaPreviewRowUser}`}>
-                      <div className={s.qaUserBubble}>{primaryQaQuestion}</div>
-                      <div className={`${s.qaComposerAvatar} ${s.qaComposerAvatarUser}`}>
-                        <User size={16} />
-                      </div>
+                  <div className={`${s.qaPreviewRow} ${s.qaPreviewRowUser}`}>
+                    <div className={s.qaUserBubble}>{primaryQaQuestion}</div>
+                    <div className={`${s.qaComposerAvatar} ${s.qaComposerAvatarUser}`}>
+                      <User size={16} />
                     </div>
+                  </div>
                 </div>
                 <button
                   type="button"
                   className={s.qaComposerButton}
                   onClick={() => navigate('/qa')}
                 >
-                  进入智能问答
+                  与 Agent 对话
                 </button>
               </div>
-              {qaHotQuestions.slice(0, displayConfig.home.qaHotCount).map((q, i) => (
+              <div className={s.qaCallout}>
+                <Sparkles size={13} />
+                <span>支持流式回复 · 引用知识库来源 · 多轮追问</span>
+              </div>
+            </div>
+
+            {/* 专家问答 */}
+            <div className={s.qaPanel}>
+              <div className={s.qaHeader}>
+                <div className={s.qaHeaderLeft}>
+                  <div className={`${s.panelIcon} ${s.panelIconExpert}`}><Award size={14} /></div>
+                  <span className={s.panelTitle}>专家问答</span>
+                </div>
+                <Link to="/expert-qa" className={s.panelMore}>
+                  更多 <ChevronRight size={14} />
+                </Link>
+              </div>
+              <Link to="/expert-qa" className={s.expertCta}>
+                <MessageSquarePlus size={22} />
+                <div className={s.expertCtaBody}>
+                  <div className={s.expertCtaTitle}>向专家提问</div>
+                  <div className={s.expertCtaDesc}>126 位认证专家在线 · 平均 4 小时响应</div>
+                </div>
+                <ChevronRight size={16} className={s.expertCtaCaret} />
+              </Link>
+              {expertHotQuestions.map((question, index) => (
                 <div
-                  key={i}
-                  className={s.qaItem}
-                  onClick={() => navigate('/qa')}
+                  key={index}
+                  className={s.expertItem}
+                  onClick={() => navigate('/expert-qa')}
                 >
-                  <span className={s.qaBadge}>Q</span>
-                  <span className={s.qaText}>{q}</span>
+                  <span className={s.expertBadge}>Q</span>
+                  <span className={s.expertText}>{question}</span>
                 </div>
               ))}
               <div className={s.qaFooter}>本周活跃专家：12人</div>
             </div>
 
+            {/* 热门标签 */}
             <div className={`${s.qaPanel} ${s.rankPanel}`}>
               <div className={s.qaHeader}>
                 <div className={s.qaHeaderLeft}>
@@ -410,7 +536,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={s.tagRankGrid}>
-                {rankedHotTags.map((tagName, index) => (
+                {tagRankList.map((tagName, index) => (
                   <button
                     key={tagName}
                     type="button"
@@ -425,6 +551,32 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* 受控知识空间 — visible only for unauthenticated visitors */}
+            {!user ? (
+              <div className={s.qaPanel}>
+                <div className={s.qaHeader}>
+                  <div className={s.qaHeaderLeft}>
+                    <div className={`${s.panelIcon} ${s.panelIconLock}`}><Lock size={14} /></div>
+                    <span className={s.panelTitle}>受控知识空间</span>
+                  </div>
+                </div>
+                <div className={s.lockBody}>
+                  登录后可访问 <b>{spaceCount}</b> 个内部知识空间，含设备点检规范、内部事故复盘、部门技术分享等受控内容。
+                </div>
+                <div className={s.lockTeaser}>
+                  <div className={s.lockIcon}>
+                    <FolderLock size={18} />
+                  </div>
+                  <div className={s.lockBlock}>
+                    <div className={s.lockTitle}>仅登录可见</div>
+                    <div className={s.lockDesc}>含 12 篇本周新增受控文档</div>
+                  </div>
+                  <Link to="/login?redirect=%2F" className={s.lockBtn}>登录</Link>
+                </div>
+              </div>
+            ) : null}
+
+            {/* 知识广场 */}
             <div className={s.qaPanel}>
               <div className={s.qaHeader}>
                 <div className={s.qaHeaderLeft}>
@@ -433,7 +585,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={s.squareGrid}>
-                {enabledSpaces.slice(0, displayConfig.home.spacesCount).map((sp) => (
+                {homeSpaces.map((sp) => (
                   <div
                     key={sp.id}
                     className={s.squareCard}
@@ -449,32 +601,53 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* 应用入口 */}
+            <div className={s.qaPanel}>
+              <div className={s.qaHeader}>
+                <div className={s.qaHeaderLeft}>
+                  <div className={s.panelIcon}><LayoutGrid size={14} /></div>
+                  <span className={s.panelTitle}>应用入口</span>
+                </div>
+                <Link to="/apps" className={s.panelMore}>
+                  全部 <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className={s.appEntryGrid}>
+                {appEntryItems.map((entry) => {
+                  const Icon = APP_ICONS[entry.iconKey] || FileText;
+                  const handleClick = () => {
+                    if (entry.url) {
+                      window.open(entry.url, '_blank', 'noopener,noreferrer');
+                    } else {
+                      navigate('/apps');
+                    }
+                  };
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className={s.appEntryCard}
+                      onClick={handleClick}
+                    >
+                      <span
+                        className={s.appEntryIcon}
+                        style={{ background: entry.iconBg, color: entry.iconColor }}
+                      >
+                        <Icon size={16} />
+                      </span>
+                      <span className={s.appEntryBody}>
+                        <span className={s.appEntryName}>{entry.name}</span>
+                        <span className={s.appEntryDesc}>{entry.desc}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
         {error || loadError ? <div className={s.bottomPad}>{error || loadError}</div> : null}
-
-        {/* App market */}
-        <div className={s.section}>
-          <SectionHeader icon={LayoutGrid} title="应用市场" moreLink="/apps" moreText="全部应用" size="large" />
-          <div className={s.appGrid}>
-            {enabledApps.slice(0, displayConfig.home.appsCount).map((app) => {
-              const Icon = APP_ICONS[app.icon] || FileText;
-              return (
-                <div key={app.id} className={s.appCard}>
-                  <div className={s.appIcon} style={{ background: app.color }}>
-                    <Icon size={22} />
-                  </div>
-                  <div className={s.appName}>{app.name}</div>
-                  <div className={s.appDesc}>{app.desc}</div>
-                  <button className={s.appBtn} onClick={() => app.url && window.open(app.url, '_blank', 'noopener,noreferrer')} disabled={!app.url}>
-                    {app.url ? '打开' : '未配置地址'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         <div className={s.bottomPad} />
       </div>

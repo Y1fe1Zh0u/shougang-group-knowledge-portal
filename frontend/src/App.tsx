@@ -8,6 +8,10 @@ import QAPage from './pages/QAPage';
 import AppsPage from './pages/AppsPage';
 import AdminPage from './pages/AdminPage';
 import DomainsPage from './pages/DomainsPage';
+import LoginPage from './pages/LoginPage';
+import ExpertQAPage from './pages/ExpertQAPage';
+import WikiPage from './pages/WikiPage';
+import WikiDetailPage from './pages/WikiDetailPage';
 
 function RouteScrollReset() {
   const location = useLocation();
@@ -52,8 +56,12 @@ export default function App() {
         <Route path="/list" element={<ListPage />} />
         <Route path="/space/:spaceId/file/:fileId" element={<DetailPage />} />
         <Route path="/qa" element={<QAPage />} />
+        <Route path="/expert-qa" element={<ExpertQAPage />} />
+        <Route path="/wiki" element={<WikiPage />} />
+        <Route path="/wiki/:wikiId" element={<WikiDetailPage />} />
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/login" element={<LoginPage />} />
       </Routes>
     </>
   );

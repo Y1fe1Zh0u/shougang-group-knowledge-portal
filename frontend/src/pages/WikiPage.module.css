@@ -1,0 +1,136 @@
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(135deg, #6d28d9 0%, #2563eb 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  color: #fff;
+  margin-bottom: 24px;
+}
+
+.headLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.55;
+  max-width: 520px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  padding: 18px 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.panelTitle {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.panelCount {
+  font-size: 0.78rem;
+  color: var(--neutral-400);
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  border-top: 1px solid var(--neutral-100);
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.row:hover {
+  background: var(--primary-50);
+}
+
+.row:hover .rowName {
+  color: var(--primary-700);
+}
+
+.rowIcon {
+  color: var(--neutral-700);
+  flex-shrink: 0;
+}
+
+.rowName {
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  transition: color 0.15s ease;
+}
+
+.catTag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--primary-50);
+  color: var(--primary-600);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  margin-left: 8px;
+}
+
+.rowKind {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
