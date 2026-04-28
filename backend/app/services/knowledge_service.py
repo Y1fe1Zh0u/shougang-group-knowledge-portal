@@ -297,8 +297,8 @@ class KnowledgeService:
             return None
         normalized = {
             **data,
-            "original_url": self._bisheng.resolve_url(str(data.get("original_url") or "")),
-            "preview_url": self._bisheng.resolve_url(str(data.get("preview_url") or "")),
+            "original_url": self._bisheng.resolve_asset_url(str(data.get("original_url") or "")),
+            "preview_url": self._bisheng.resolve_asset_url(str(data.get("preview_url") or "")),
         }
         return FilePreviewData.model_validate(normalized)
 
@@ -411,7 +411,7 @@ class KnowledgeService:
         values = self._collect_nested_values(payload.get("data") or {}, {"file_url", "preview_url", "url"})
         for value in values:
             if isinstance(value, str) and value.strip():
-                return self._bisheng.resolve_url(value.strip())
+                return self._bisheng.resolve_asset_url(value.strip())
         return ""
 
     def _is_preview_task_failed(self, payload: dict[str, Any]) -> bool:

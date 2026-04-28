@@ -51,6 +51,7 @@ export interface QAModelOptionsResponse {
 
 export interface BishengRuntimeConfig {
   base_url: string;
+  asset_base_url: string;
   username: string;
   timeout_seconds: number;
   has_token: boolean;
@@ -202,6 +203,7 @@ export function fetchBishengRuntimeConfig() {
 
 export function updateBishengRuntimeConfig(payload: {
   base_url: string;
+  asset_base_url: string;
   username: string;
   password: string;
   timeout_seconds: number;

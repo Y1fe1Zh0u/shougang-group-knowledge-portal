@@ -68,10 +68,18 @@ class FakeBishengClient:
 
 
 class FakeRuntimeBishengClient:
-    def __init__(self, base_url: str, timeout_seconds: float, api_token: str | None = None):
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float,
+        api_token: str | None = None,
+        *,
+        asset_base_url: str | None = None,
+    ):
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
         self.api_token = api_token
+        self.asset_base_url = asset_base_url
 
     async def get_json(self, path: str, params=None):
         if path == "/api/v1/user/get_captcha":

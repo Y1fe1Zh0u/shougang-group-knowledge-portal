@@ -18,8 +18,16 @@ PRESIGNED_QUERY_KEYS = frozenset(
 
 
 class BishengClient:
-    def __init__(self, base_url: str, timeout_seconds: float, api_token: Optional[str] = None):
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float,
+        api_token: Optional[str] = None,
+        asset_base_url: Optional[str] = None,
+    ):
         self._base_url = base_url.rstrip("/") + "/"
+        normalized_asset = (asset_base_url or "").strip().rstrip("/")
+        self._asset_base_url = (normalized_asset + "/") if normalized_asset else self._base_url
         headers: dict[str, str] = {}
         if api_token:
             headers["Authorization"] = f"Bearer {api_token}"
@@ -42,7 +50,7 @@ class BishengClient:
         return response
 
     async def get_preview_asset(self, path_or_url: str, params: Optional[dict] = None) -> httpx.Response:
-        url = self.resolve_url(path_or_url)
+        url = self.resolve_asset_url(path_or_url)
         client = self._plain_client if self._should_bypass_auth(url) else self._client
         response = await client.get(url, params=params)
         response.raise_for_status()
@@ -65,6 +73,13 @@ class BishengClient:
         if not path_or_url:
             return ""
         return urljoin(self._base_url, path_or_url)
+
+    def resolve_asset_url(self, path_or_url: str) -> str:
+        if not path_or_url:
+            return ""
+        if urlparse(path_or_url).scheme:
+            return path_or_url
+        return urljoin(self._asset_base_url, path_or_url)
 
     @asynccontextmanager
     async def stream_get(self, path_or_url: str, params: Optional[dict] = None):

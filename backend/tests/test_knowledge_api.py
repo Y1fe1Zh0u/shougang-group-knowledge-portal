@@ -29,6 +29,9 @@ class FakeBishengClient:
     def resolve_url(self, path_or_url: str) -> str:
         return path_or_url
 
+    def resolve_asset_url(self, path_or_url: str) -> str:
+        return path_or_url
+
     async def get(self, path: str, params=None):
         if path == "https://example.com/preview/1580.pdf":
             return httpx.Response(
@@ -319,7 +322,7 @@ def test_get_file_preview_normalizes_relative_urls(tmp_path: Path):
                 }
             return await super().get_json(path, params=params)
 
-        def resolve_url(self, path_or_url: str) -> str:
+        def resolve_asset_url(self, path_or_url: str) -> str:
             return f"https://bisheng.example.com{path_or_url}" if path_or_url.startswith("/") else path_or_url
 
         async def get(self, path: str, params=None):

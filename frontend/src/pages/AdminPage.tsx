@@ -105,6 +105,7 @@ interface AppDraft {
 
 interface BishengDraft {
   base_url: string;
+  asset_base_url: string;
   username: string;
   password: string;
   timeout_seconds: string;
@@ -1496,6 +1497,11 @@ function BishengConfigTable({
             <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
           </tr>
           <tr>
+            <td>资源域名（预览代理）</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.asset_base_url || '与 BISHENG 地址相同'}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
+          </tr>
+          <tr>
             <td>登录账号</td>
             <td><div className={s.valueStack}><span className={s.valueTitle}>{config?.username || '未配置'}</span></div></td>
             <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : config ? '编辑' : '创建'}</button></div></td>
@@ -1553,6 +1559,11 @@ function BishengEditorDialog({
             <label className={`${s.formField} ${s.formFieldWide}`}>
               <span className={s.fieldLabel}>BISHENG 地址</span>
               <input className={s.formInput} value={draft.base_url} onChange={(event) => onChange({ base_url: event.target.value })} placeholder="例如：http://192.168.106.114:7860（BiSheng 后端 API，不是浏览器入口）" />
+            </label>
+            <label className={`${s.formField} ${s.formFieldWide}`}>
+              <span className={s.fieldLabel}>资源域名（asset_base_url）</span>
+              <input className={s.formInput} value={draft.asset_base_url} onChange={(event) => onChange({ asset_base_url: event.target.value })} placeholder="例如：http://192.168.106.120:3002（用于解析 BiSheng 预签名相对 URL，留空则沿用 BISHENG 地址）" />
+              <span className={s.fieldHint}>BiSheng 返回的预览/下载 URL 是相对路径，需要它指向能反代 MinIO 的 nginx 入口。若 BISHENG 后端 API 同时具备 MinIO 反代，可留空。</span>
             </label>
             <label className={s.formField}>
               <span className={s.fieldLabel}>登录账号</span>
@@ -2608,6 +2619,7 @@ function setDisplayValue(display: DisplayConfig, key: string, value: number): Di
 function createBishengDraft(current?: BishengRuntimeConfig): BishengDraft {
   return {
     base_url: current?.base_url ?? '',
+    asset_base_url: current?.asset_base_url ?? '',
     username: current?.username ?? '',
     password: '',
     timeout_seconds: current ? String(current.timeout_seconds) : '30',
@@ -2617,6 +2629,7 @@ function createBishengDraft(current?: BishengRuntimeConfig): BishengDraft {
 function validateBishengDraft(draft: BishengDraft): {
   payload?: {
     base_url: string;
+    asset_base_url: string;
     username: string;
     password: string;
     timeout_seconds: number;
@@ -2626,6 +2639,11 @@ function validateBishengDraft(draft: BishengDraft): {
   const base_url = draft.base_url.trim();
   if (!/^https?:\/\//i.test(base_url)) return { error: '请输入有效的 BISHENG 地址，必须以 http:// 或 https:// 开头' };
 
+  const asset_base_url = draft.asset_base_url.trim();
+  if (asset_base_url && !/^https?:\/\//i.test(asset_base_url)) {
+    return { error: '资源域名（asset_base_url）必须以 http:// 或 https:// 开头，留空则与 BISHENG 地址相同' };
+  }
+
   const timeout_seconds = Number(draft.timeout_seconds.trim());
   if (!Number.isFinite(timeout_seconds) || timeout_seconds <= 0) {
     return { error: '请输入有效的超时时间（秒）' };
@@ -2634,6 +2652,7 @@ function validateBishengDraft(draft: BishengDraft): {
   return {
     payload: {
       base_url,
+      asset_base_url,
       username: draft.username.trim(),
       password: draft.password,
       timeout_seconds,

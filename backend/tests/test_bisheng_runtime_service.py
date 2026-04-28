@@ -12,10 +12,18 @@ from app.services.bisheng_runtime_service import (
 
 
 class FakeRuntimeBishengClient:
-    def __init__(self, base_url: str, timeout_seconds: float, api_token: str | None = None):
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float,
+        api_token: str | None = None,
+        *,
+        asset_base_url: str | None = None,
+    ):
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
         self.api_token = api_token
+        self.asset_base_url = asset_base_url
 
     async def get_json(self, path: str, params=None):
         if path == "/api/v1/user/get_captcha":
@@ -125,10 +133,18 @@ def _make_fake_jwt(exp_delta_seconds: float) -> str:
 
 
 class _ScriptedBishengClient:
-    def __init__(self, base_url: str, timeout_seconds: float, api_token: str | None, state: dict):
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float,
+        api_token: str | None,
+        state: dict,
+        asset_base_url: str | None = None,
+    ):
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
         self.api_token = api_token
+        self.asset_base_url = asset_base_url
         self._state = state
 
     async def get_json(self, path, params=None):
@@ -162,8 +178,14 @@ def _make_scripted_factory(*, login_tokens=None, login_errors=None):
         "errors": list(login_errors or []),
     }
 
-    def factory(base_url, timeout_seconds, api_token=None):
-        return _ScriptedBishengClient(base_url, timeout_seconds, api_token, state)
+    def factory(base_url, timeout_seconds, api_token=None, *, asset_base_url=None):
+        return _ScriptedBishengClient(
+            base_url,
+            timeout_seconds,
+            api_token,
+            state,
+            asset_base_url=asset_base_url,
+        )
 
     return factory, state
 

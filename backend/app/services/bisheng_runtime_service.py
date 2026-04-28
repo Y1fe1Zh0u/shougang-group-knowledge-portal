@@ -17,6 +17,8 @@ from app.schemas.bisheng_runtime import (
     BishengRuntimeConfigView,
 )
 
+ClientFactory = Callable[..., BishengClient]
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +40,8 @@ class BishengRuntimeService:
         default_api_token: str | None = None,
         default_username: str | None = None,
         default_password: str | None = None,
-        client_factory: Callable[[str, float, str | None], BishengClient] = BishengClient,
+        default_asset_base_url: str | None = None,
+        client_factory: ClientFactory = BishengClient,
         password_encryptor: Callable[[str, str], str] = encrypt_bisheng_password,
         refresh_interval_seconds: float = DEFAULT_REFRESH_INTERVAL_SECONDS,
         refresh_threshold_seconds: float = DEFAULT_REFRESH_THRESHOLD_SECONDS,
@@ -50,6 +53,7 @@ class BishengRuntimeService:
         self._default_api_token = default_api_token or ""
         self._default_username = (default_username or "").strip()
         self._default_password = default_password or ""
+        self._default_asset_base_url = (default_asset_base_url or "").strip().rstrip("/")
         self._client_factory = client_factory
         self._password_encryptor = password_encryptor
         self._refresh_interval_seconds = refresh_interval_seconds
@@ -98,6 +102,7 @@ class BishengRuntimeService:
             current = self._read_config()
             password = payload.password.get_secret_value().strip() if payload.password else ""
             next_base_url = str(payload.base_url)
+            next_asset_base_url = payload.asset_base_url
             next_username = payload.username.strip()
             next_timeout = float(payload.timeout_seconds)
 
@@ -125,6 +130,7 @@ class BishengRuntimeService:
 
             updated = BishengRuntimeConfig(
                 base_url=payload.base_url,
+                asset_base_url=next_asset_base_url,
                 username=next_username,
                 timeout_seconds=next_timeout,
                 api_token=next_token,
@@ -171,6 +177,7 @@ class BishengRuntimeService:
 
             updated = BishengRuntimeConfig(
                 base_url=current.base_url,
+                asset_base_url=current.asset_base_url,
                 username=username,
                 timeout_seconds=current.timeout_seconds,
                 api_token=next_token,
@@ -239,6 +246,7 @@ class BishengRuntimeService:
             return
         seeded = BishengRuntimeConfig(
             base_url=self._default_base_url,
+            asset_base_url=self._default_asset_base_url,
             username=self._default_username,
             timeout_seconds=self._default_timeout_seconds,
             api_token=self._default_api_token,
@@ -260,7 +268,12 @@ class BishengRuntimeService:
         os.chmod(self._config_path, 0o600)
 
     async def _replace_client(self, config: BishengRuntimeConfig) -> None:
-        next_client = self._client_factory(str(config.base_url), config.timeout_seconds, config.api_token or None)
+        next_client = self._client_factory(
+            str(config.base_url),
+            config.timeout_seconds,
+            config.api_token or None,
+            asset_base_url=config.asset_base_url or None,
+        )
         previous = self._client
         self._client = next_client
         if previous is not None:
@@ -270,6 +283,7 @@ class BishengRuntimeService:
     def _to_public_view(config: BishengRuntimeConfig) -> BishengRuntimeConfigView:
         return BishengRuntimeConfigView(
             base_url=config.base_url,
+            asset_base_url=config.asset_base_url,
             username=config.username,
             timeout_seconds=config.timeout_seconds,
             has_token=bool(config.api_token),

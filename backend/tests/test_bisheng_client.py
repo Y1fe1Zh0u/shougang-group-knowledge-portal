@@ -49,6 +49,38 @@ def test_get_preview_asset_uses_plain_client_for_presigned_urls():
     assert authed_client.calls == []
 
 
+def test_resolve_asset_url_uses_asset_base_url_for_relative_paths():
+    client = BishengClient(
+        "https://bisheng.example.com",
+        5,
+        api_token="secret",
+        asset_base_url="https://nginx.example.com:3002",
+    )
+    try:
+        assert (
+            client.resolve_asset_url("/bisheng/original/86139.pdf?signature=demo")
+            == "https://nginx.example.com:3002/bisheng/original/86139.pdf?signature=demo"
+        )
+        # 已经是绝对 URL 时保持不变
+        absolute = "https://other.example.com/foo.pdf?token=1"
+        assert client.resolve_asset_url(absolute) == absolute
+        # 空字符串返回空
+        assert client.resolve_asset_url("") == ""
+    finally:
+        asyncio.run(client.aclose())
+
+
+def test_resolve_asset_url_falls_back_to_base_url_when_asset_not_set():
+    client = BishengClient("https://bisheng.example.com", 5)
+    try:
+        assert (
+            client.resolve_asset_url("/bisheng/original/1.pdf?x=1")
+            == "https://bisheng.example.com/bisheng/original/1.pdf?x=1"
+        )
+    finally:
+        asyncio.run(client.aclose())
+
+
 def test_get_preview_asset_keeps_authenticated_client_for_regular_urls():
     client = BishengClient("https://bisheng.example.com", 5, api_token="secret")
     original_client = client._client

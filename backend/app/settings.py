@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     app_name: str = "Shougang Knowledge Portal Backend"
     app_env: str = "development"
     bisheng_base_url: AnyHttpUrl = Field(default="http://localhost:7860")
+    bisheng_asset_base_url: str = ""
     bisheng_timeout_seconds: float = 30.0
     bisheng_api_token: Optional[str] = None
     bisheng_username: Optional[str] = None

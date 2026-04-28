@@ -1,8 +1,20 @@
 from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, field_validator
 
 
+def _validate_asset_base_url(value: str | None) -> str:
+    if not value:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    if not text.lower().startswith(("http://", "https://")):
+        raise ValueError("asset_base_url must start with http:// or https://")
+    return text.rstrip("/")
+
+
 class BishengRuntimeConfig(BaseModel):
     base_url: AnyHttpUrl
+    asset_base_url: str = ""
     username: str = ""
     timeout_seconds: float = 30.0
     api_token: str = ""
@@ -15,9 +27,15 @@ class BishengRuntimeConfig(BaseModel):
             raise ValueError("timeout_seconds must be positive")
         return value
 
+    @field_validator("asset_base_url", mode="before")
+    @classmethod
+    def normalize_asset_base_url(cls, value: str | None) -> str:
+        return _validate_asset_base_url(value)
+
 
 class BishengRuntimeConfigView(BaseModel):
     base_url: AnyHttpUrl
+    asset_base_url: str = ""
     username: str = ""
     timeout_seconds: float = 30.0
     has_token: bool = False
@@ -26,6 +44,7 @@ class BishengRuntimeConfigView(BaseModel):
 
 class BishengRuntimeConfigUpdate(BaseModel):
     base_url: AnyHttpUrl
+    asset_base_url: str = ""
     username: str = ""
     password: SecretStr | None = None
     timeout_seconds: float = 30.0
@@ -36,6 +55,11 @@ class BishengRuntimeConfigUpdate(BaseModel):
         if value <= 0:
             raise ValueError("timeout_seconds must be positive")
         return value
+
+    @field_validator("asset_base_url", mode="before")
+    @classmethod
+    def normalize_asset_base_url(cls, value: str | None) -> str:
+        return _validate_asset_base_url(value)
 
 
 class BishengRuntimeStatus(BaseModel):
