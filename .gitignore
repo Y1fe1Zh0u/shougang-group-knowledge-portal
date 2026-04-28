@@ -4,12 +4,18 @@
 .DS_Store
 
 # Editor metadata
-.claude/
+# Ignore everything under .claude/ except the team-facing handover doc that
+# CLAUDE.md §0 links to. Using .claude/* (not .claude/) so the ! re-include works.
+.claude/*
+!.claude/HANDOVER.md
 .idea/
 .vscode/
 
 # Root-level local captures
 screenshots/
+
+# Asset source libraries (curated raw assets, do not pack into build)
+assets/sggf-source/
 
 # Backend
 backend/.env

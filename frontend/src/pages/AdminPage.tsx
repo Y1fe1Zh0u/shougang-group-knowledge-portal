@@ -1536,7 +1536,7 @@ function BishengEditorDialog({
         <div className={s.modalHeader}>
           <div>
             <h3 className={s.modalTitle}>编辑数据源配置</h3>
-            <p className={s.modalNote}>保存时后端会直接调用 BISHENG 登录接口验证账号密码。密码不会回显；如果只改超时，可以留空继续沿用当前登录态。</p>
+            <p className={s.modalNote}>请填 BISHENG <strong>后端 API</strong> 地址（端口通常是 :7860/:7861/:8098），<strong>不是</strong> :4001/:3001/:3002 这种带 nginx 静态托管的浏览器入口。保存时后端会直接调用 BISHENG 登录接口验证账号密码。密码不会回显；如果只改超时，可以留空继续沿用当前登录态。</p>
           </div>
           <button className={s.subtleBtn} onClick={onClose}>关闭</button>
         </div>
@@ -1545,7 +1545,7 @@ function BishengEditorDialog({
           <div className={s.formGrid}>
             <label className={`${s.formField} ${s.formFieldWide}`}>
               <span className={s.fieldLabel}>BISHENG 地址</span>
-              <input className={s.formInput} value={draft.base_url} onChange={(event) => onChange({ base_url: event.target.value })} placeholder="例如：http://192.168.106.114:4001" />
+              <input className={s.formInput} value={draft.base_url} onChange={(event) => onChange({ base_url: event.target.value })} placeholder="例如：http://192.168.106.114:7860（BiSheng 后端 API，不是浏览器入口）" />
             </label>
             <label className={s.formField}>
               <span className={s.fieldLabel}>登录账号</span>
