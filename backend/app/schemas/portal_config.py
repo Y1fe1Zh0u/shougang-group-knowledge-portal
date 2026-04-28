@@ -130,6 +130,10 @@ class BannerSlide(BaseModel):
     enabled: bool = True
 
 
+class IntegrationsConfig(BaseModel):
+    bisheng_admin_entry_url: str = ""
+
+
 class PortalConfig(BaseModel):
     spaces: list[SpaceConfig] = Field(default_factory=list)
     domains: list[DomainConfig] = Field(default_factory=list)
@@ -139,6 +143,7 @@ class PortalConfig(BaseModel):
     display: DisplayConfig
     apps: list[AppConfig] = Field(default_factory=list)
     banners: list[BannerSlide] = Field(default_factory=list)
+    integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
 
 
 class SpacesConfigUpdate(BaseModel):

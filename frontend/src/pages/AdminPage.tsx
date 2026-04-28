@@ -1,7 +1,7 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
-  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server, Image as ImageIcon, Upload, X,
+  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server, Image as ImageIcon, Upload, X, Plug,
 } from 'lucide-react';
 import DomainIcon from '../components/DomainIcon';
 import Header from '../components/Header';
@@ -15,6 +15,7 @@ import {
   fetchBishengRuntimeConfig,
   fetchQaModelOptions,
   fetchSpaceOptions,
+  type IntegrationsConfig,
   type PortalConfig,
   type QAModelOption,
   type RecommendationConfig,
@@ -27,6 +28,7 @@ import {
   updateBishengRuntimeConfig,
   updateDisplayConfig,
   updateDomainsConfig,
+  updateIntegrationsConfig,
   updateQaConfig,
   updateRecommendationConfig,
   updateSectionsConfig,
@@ -79,6 +81,7 @@ const NAV_ITEMS = [
   { key: 'display', label: '展示配置', icon: SlidersHorizontal },
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
   { key: 'bisheng', label: '数据源配置', icon: Server },
+  { key: 'integrations', label: '集成配置', icon: Plug },
 ];
 
 type NavKey = typeof NAV_ITEMS[number]['key'];
@@ -166,6 +169,9 @@ export default function AdminPage() {
   const [bannerDraft, setBannerDraft] = useState<BannerDraft>(createBannerDraft());
   const [bannerFormError, setBannerFormError] = useState('');
   const [bannerDeleteIndex, setBannerDeleteIndex] = useState<number | null>(null);
+  const [integrationsDialogOpen, setIntegrationsDialogOpen] = useState(false);
+  const [integrationsDraft, setIntegrationsDraft] = useState('');
+  const [integrationsDialogError, setIntegrationsDialogError] = useState('');
 
   async function loadConfig() {
     setLoading(true);
@@ -479,6 +485,17 @@ export default function AdminPage() {
               onDelete={(index) => setBannerDeleteIndex(index)}
               onMoveUp={(index) => void handleMoveBanner(config.banners, index, -1, runSave, setConfig)}
               onMoveDown={(index) => void handleMoveBanner(config.banners, index, 1, runSave, setConfig)}
+            />
+          )}
+          {config && active === 'integrations' && (
+            <IntegrationsConfigTable
+              integrations={config.integrations}
+              saving={saving}
+              onEdit={() => {
+                setIntegrationsDraft(config.integrations.bisheng_admin_entry_url || '');
+                setIntegrationsDialogError('');
+                setIntegrationsDialogOpen(true);
+              }}
             />
           )}
         </main>
@@ -833,6 +850,34 @@ export default function AdminPage() {
             void runSave(async () => {
               await persistBanners(config.banners.filter((_, index) => index !== bannerDeleteIndex), setConfig);
               setBannerDeleteIndex(null);
+            });
+          }}
+        />
+      ) : null}
+      {config && integrationsDialogOpen ? (
+        <TextEditorDialog
+          open
+          title="编辑 BiSheng 嵌入入口 URL"
+          note={'管理员点击右上角「知识管理后台」时跳转到此 URL；留空则不显示该入口。需 BiSheng 侧已按 docs/bisheng-portal-admin-integration.md 完成补丁部署。'}
+          label="BiSheng 嵌入入口 URL"
+          value={integrationsDraft}
+          saving={saving}
+          error={integrationsDialogError}
+          placeholder="例如：http://192.168.106.120:3002/workspace/shougang-portal-admin"
+          onClose={() => setIntegrationsDialogOpen(false)}
+          onChange={(value) => {
+            setIntegrationsDraft(value);
+            setIntegrationsDialogError('');
+          }}
+          onSubmit={() => {
+            const trimmed = integrationsDraft.trim();
+            if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+              setIntegrationsDialogError('URL 需以 http:// 或 https:// 开头；如要清空请删除全部内容。');
+              return;
+            }
+            void runSave(async () => {
+              await persistIntegrations({ bisheng_admin_entry_url: trimmed }, setConfig);
+              setIntegrationsDialogOpen(false);
             });
           }}
         />
@@ -1846,6 +1891,57 @@ function RecommendConfigTable({
   );
 }
 
+function IntegrationsConfigTable({
+  integrations,
+  saving,
+  onEdit,
+}: {
+  integrations: IntegrationsConfig;
+  saving: boolean;
+  onEdit: () => void;
+}) {
+  const url = integrations.bisheng_admin_entry_url?.trim() || '';
+  return (
+    <>
+      <div className={s.titleBar}>
+        <h2 className={s.pageTitle}>集成配置</h2>
+      </div>
+      <p className={s.pageNote}>
+        门户与 BiSheng 工作台的集成入口。配置后，右上角用户菜单出现「知识管理后台」入口，点击在新标签打开 BiSheng 内嵌的门户后台页面；留空则不显示该入口。BiSheng 侧需按 docs/bisheng-portal-admin-integration.md 部署对应补丁。
+      </p>
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>项</th>
+            <th>当前值</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BiSheng 嵌入入口 URL</td>
+            <td>
+              <div className={s.valueStack}>
+                <span className={s.valueTitle}>{url || '（未配置 — 入口隐藏）'}</span>
+                <span className={s.valueMeta}>
+                  示例：http://bisheng.example.com/workspace/shougang-portal-admin
+                </span>
+              </div>
+            </td>
+            <td>
+              <div className={s.actionGroup}>
+                <button className={s.inlineBtn} onClick={onEdit} disabled={saving}>
+                  {saving ? '保存中...' : '编辑'}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 function DisplayConfigTable({
   items,
   saving,
@@ -2473,6 +2569,11 @@ async function persistDisplay(display: DisplayConfig, setConfig: Dispatch<SetSta
 async function persistApps(apps: AppConfig[], setConfig: Dispatch<SetStateAction<PortalConfig | null>>) {
   const data = await updateAppsConfig(apps);
   setConfig((current) => (current ? { ...current, apps: data.apps } : current));
+}
+
+async function persistIntegrations(integrations: IntegrationsConfig, setConfig: Dispatch<SetStateAction<PortalConfig | null>>) {
+  const data = await updateIntegrationsConfig(integrations);
+  setConfig((current) => (current ? { ...current, integrations: data } : current));
 }
 
 type SaveRunner = (task: () => Promise<void>) => Promise<void>;

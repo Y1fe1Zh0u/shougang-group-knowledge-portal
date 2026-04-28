@@ -127,6 +127,10 @@ export interface BannerSlide {
   enabled: boolean;
 }
 
+export interface IntegrationsConfig {
+  bisheng_admin_entry_url: string;
+}
+
 export interface PortalConfig {
   spaces: SpaceConfig[];
   domains: DomainConfig[];
@@ -136,6 +140,7 @@ export interface PortalConfig {
   display: DisplayConfig;
   apps: AppConfig[];
   banners: BannerSlide[];
+  integrations: IntegrationsConfig;
 }
 
 interface ApiEnvelope<T> {
@@ -249,6 +254,13 @@ export function updateBannersConfig(banners: BannerSlide[]) {
   return request<{ banners: BannerSlide[] }>('/api/v1/admin/config/banners', {
     method: 'PUT',
     body: JSON.stringify({ banners }),
+  });
+}
+
+export function updateIntegrationsConfig(integrations: IntegrationsConfig) {
+  return request<IntegrationsConfig>('/api/v1/admin/config/integrations', {
+    method: 'PUT',
+    body: JSON.stringify(integrations),
   });
 }
 

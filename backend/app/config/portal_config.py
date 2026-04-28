@@ -168,4 +168,7 @@ DEFAULT_PORTAL_CONFIG = {
             "enabled": True,
         },
     ],
+    "integrations": {
+        "bisheng_admin_entry_url": "",
+    },
 }

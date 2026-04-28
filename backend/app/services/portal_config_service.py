@@ -9,6 +9,7 @@ from app.schemas.portal_config import (
     AppsConfigUpdate,
     BannersConfigUpdate,
     DomainsConfigUpdate,
+    IntegrationsConfig,
     PortalConfig,
     QAModelOption,
     QAModelOptionsResponse,
@@ -37,6 +38,11 @@ class PortalConfigService:
             data["banners"] = list(DEFAULT_PORTAL_CONFIG.get("banners") or [])
             if data["banners"]:
                 self._atomic_write(data)
+        if "integrations" not in data:
+            data["integrations"] = dict(
+                DEFAULT_PORTAL_CONFIG.get("integrations") or {"bisheng_admin_entry_url": ""}
+            )
+            self._atomic_write(data)
         return PortalConfig.model_validate(data)
 
     def with_live_space_data(
@@ -141,6 +147,11 @@ class PortalConfigService:
     def update_banners(self, payload: BannersConfigUpdate) -> PortalConfig:
         data = self.get_config().model_dump()
         data["banners"] = payload.model_dump()["banners"]
+        return self._write_config(PortalConfig.model_validate(data))
+
+    def update_integrations(self, payload: IntegrationsConfig) -> PortalConfig:
+        data = self.get_config().model_dump()
+        data["integrations"] = payload.model_dump()
         return self._write_config(PortalConfig.model_validate(data))
 
     def _ensure_seeded(self) -> None:

@@ -10,6 +10,7 @@ from app.schemas.portal_config import (
     AppsConfigUpdate,
     BannersConfigUpdate,
     DomainsConfigUpdate,
+    IntegrationsConfig,
     PortalConfig,
     QAConfig,
     RecommendationConfig,
@@ -244,6 +245,21 @@ async def update_banners_config(
     service: PortalConfigService = Depends(get_portal_config_service),
 ):
     return response_ok({"banners": service.update_banners(payload).banners})
+
+
+@router.get("/integrations")
+async def get_integrations_config(
+    service: PortalConfigService = Depends(get_portal_config_service),
+):
+    return response_ok(service.get_config().integrations)
+
+
+@router.put("/integrations")
+async def update_integrations_config(
+    payload: IntegrationsConfig,
+    service: PortalConfigService = Depends(get_portal_config_service),
+):
+    return response_ok(service.update_integrations(payload).integrations)
 
 
 @router.get("/bisheng")

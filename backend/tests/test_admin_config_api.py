@@ -447,3 +447,80 @@ def test_put_admin_bisheng_config_updates_runtime_without_echoing_secret(tmp_pat
     assert body["username"] == "portal-admin"
     assert body["has_token"] is True
     assert "password" not in body
+
+
+def test_get_admin_integrations_defaults_to_empty(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.get("/api/v1/admin/config/integrations")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"bisheng_admin_entry_url": ""}
+
+
+def test_put_admin_integrations_persists_url(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    url = "http://192.168.106.120:3002/workspace/shougang-portal-admin"
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        put_response = client.put(
+            "/api/v1/admin/config/integrations",
+            json={"bisheng_admin_entry_url": url},
+        )
+        get_response = client.get("/api/v1/admin/config/integrations")
+
+    assert put_response.status_code == 200
+    assert put_response.json()["data"]["bisheng_admin_entry_url"] == url
+    assert get_response.json()["data"]["bisheng_admin_entry_url"] == url
+    assert service.get_config().integrations.bisheng_admin_entry_url == url
+
+
+def test_put_admin_integrations_accepts_empty_to_clear(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    service.update_integrations(
+        type(service.get_config().integrations)(bisheng_admin_entry_url="http://example.com/admin")
+    )
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.put(
+            "/api/v1/admin/config/integrations",
+            json={"bisheng_admin_entry_url": ""},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["bisheng_admin_entry_url"] == ""
+    assert service.get_config().integrations.bisheng_admin_entry_url == ""
+
+
+def test_get_admin_config_seeds_integrations_when_missing_from_legacy_json(tmp_path: Path):
+    config_path = tmp_path / "portal_config.json"
+    config_path.write_text(
+        '{"spaces": [], "domains": [], "sections": [], '
+        '"qa": {"knowledge_space_ids": [], "welcome_message": "", '
+        '"hot_questions": [], "ai_search_system_prompt": "", "qa_system_prompt": "", "selected_model": ""}, '
+        '"recommendation": {"provider": "tag_feed", "home_strategy": "x", "detail_strategy": "y"}, '
+        '"display": {"home": {}, "list": {}, "search": {}, "detail": {}}, '
+        '"apps": []}',
+        encoding="utf-8",
+    )
+    service = PortalConfigService(config_path=config_path)
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = FakeBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.get("/api/v1/admin/config/integrations")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"bisheng_admin_entry_url": ""}

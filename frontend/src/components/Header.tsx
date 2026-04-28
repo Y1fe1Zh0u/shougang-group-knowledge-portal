@@ -8,12 +8,13 @@ import {
   Search,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { usePortalConfig } from '../hooks/usePortalConfig';
 import s from './Header.module.css';
 
 const NAV_ITEMS = [
   { label: '首页', to: '/' },
-  { label: '我的知识空间', to: '/knowledge-spaces' },
-  { label: 'AI 问答', to: '/qa' },
+  { label: '我的知识', to: '/knowledge-spaces' },
+  { label: '智能问答', to: '/qa' },
   { label: '专家问答', to: '/expert-qa' },
 ];
 
@@ -21,6 +22,8 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { config } = usePortalConfig();
+  const bishengAdminUrl = config?.integrations?.bisheng_admin_entry_url?.trim() || '';
   const [menuKey, setMenuKey] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuOpen = menuKey === location.pathname;
@@ -106,18 +109,22 @@ export default function Header() {
                     <div className={s.userMenuRole}>{role}</div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className={s.userMenuItem}
-                  onClick={() => {
-                    closeMenu();
-                    navigate('/admin');
-                  }}
-                >
-                  <LayoutDashboard size={15} />
-                  后台管理
-                </button>
-                <div className={s.userMenuDivider} />
+                {bishengAdminUrl ? (
+                  <>
+                    <button
+                      type="button"
+                      className={s.userMenuItem}
+                      onClick={() => {
+                        closeMenu();
+                        window.open(bishengAdminUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      <LayoutDashboard size={15} />
+                      知识管理后台
+                    </button>
+                    <div className={s.userMenuDivider} />
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className={`${s.userMenuItem} ${s.userMenuItemDanger}`}
