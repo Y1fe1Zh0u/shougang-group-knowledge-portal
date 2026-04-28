@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export interface PortalUser {
-  account: string;
-  name: string;
-  initial?: string;
-  role?: string;
-  loginAt?: number;
-}
+import { logoutPortal, type PortalUser } from '../api/auth';
+
+export type { PortalUser };
 
 const STORAGE_KEY = 'sg_portal_user';
 
@@ -51,6 +47,7 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
+    void logoutPortal().catch(() => undefined);
     clearPortalUser();
     setUser(null);
   }, []);

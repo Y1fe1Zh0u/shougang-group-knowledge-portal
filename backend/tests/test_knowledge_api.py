@@ -139,6 +139,71 @@ class FakeBishengClient:
                     "total": 2,
                 }
             }
+        if path == "/api/v1/knowledge/space/mine":
+            return {
+                "status_code": 200,
+                "data": [
+                    {
+                        "id": 7101,
+                        "name": "冷轧设备故障复盘库",
+                        "description": "沉淀冷轧产线设备异常。",
+                        "auth_type": "private",
+                        "file_count": 38,
+                        "member_count": 6,
+                        "is_pinned": True,
+                        "update_time": "2026-04-26T09:20:00",
+                    },
+                    {
+                        "id": 7105,
+                        "name": "公开制度库",
+                        "auth_type": "public",
+                        "file_count": 12,
+                        "update_time": "2026-04-20T09:20:00",
+                    },
+                ],
+            }
+        if path == "/api/v1/knowledge/space/joined":
+            return {
+                "status_code": 200,
+                "data": {
+                    "data": [
+                        {
+                            "knowledge_id": 7102,
+                            "knowledge_name": "质量异议处置工作组",
+                            "role": "admin",
+                            "file_num": 24,
+                            "update_time": "2026-04-24T16:45:00",
+                        }
+                    ],
+                    "total": 1,
+                },
+            }
+        if path == "/api/v1/knowledge/space/department":
+            return {
+                "status_code": 200,
+                "data": [
+                    {
+                        "id": 7103,
+                        "name": "设备管理部内部知识空间",
+                        "department_name": "设备管理部",
+                        "file_count": 57,
+                        "update_time": "2026-04-22T11:10:00",
+                    }
+                ],
+            }
+        if path == "/api/v1/knowledge/space/managed":
+            return {
+                "status_code": 200,
+                "data": [
+                    {
+                        "id": 7102,
+                        "name": "质量异议处置工作组",
+                        "role": "admin",
+                        "file_count": 25,
+                        "update_time": "2026-04-24T17:00:00",
+                    }
+                ],
+            }
         raise AssertionError(f"Unexpected path: {path}")
 
     async def post_json(self, path: str, json=None):
@@ -160,6 +225,41 @@ def make_client(tmp_path: Path):
         client.app.state.portal_config_service = config_service
         client.app.state.bisheng_client = fake_bisheng
         yield client, config_service, fake_bisheng
+
+
+class FakePortalAuthService:
+    def __init__(self, client):
+        self._client = client
+
+    def require_session(self, _request):
+        return object()
+
+    def create_bisheng_client(self, _session):
+        return self._client
+
+
+def test_list_visible_spaces_aggregates_user_scoped_bisheng_lists(tmp_path: Path):
+    config_service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    fake_bisheng = FakeBishengClient()
+    with TestClient(app) as client:
+        previous_auth = getattr(client.app.state, "portal_auth_service", None)
+        client.app.state.portal_config_service = config_service
+        client.app.state.portal_auth_service = FakePortalAuthService(fake_bisheng)
+        try:
+            response = client.get("/api/v1/knowledge/spaces")
+        finally:
+            if previous_auth is not None:
+                client.app.state.portal_auth_service = previous_auth
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["total"] == 4
+    assert body["data"][0]["id"] == 7101
+    joined = next(item for item in body["data"] if item["id"] == 7102)
+    assert joined["file_count"] == 25
+    assert joined["sources"] == ["joined", "managed"]
+    public_space = next(item for item in body["data"] if item["id"] == 7105)
+    assert public_space["auth_type"] == "public"
 
 
 def test_list_space_files_maps_bisheng_results(tmp_path: Path):

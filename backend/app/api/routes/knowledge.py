@@ -1,14 +1,15 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 
-from app.api.dependencies import get_bisheng_client, get_portal_config_service
+from app.api.dependencies import get_bisheng_client, get_portal_auth_service, get_portal_config_service
+from app.clients.bisheng import BishengClient
 from app.schemas.common import response_ok
 from app.schemas.knowledge import FilePreviewSourceKind
 from app.services.knowledge_service import KnowledgeService
+from app.services.portal_auth_service import PortalAuthError, PortalAuthService
 from app.services.portal_config_service import PortalConfigService
-from app.clients.bisheng import BishengClient
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 
@@ -53,6 +54,28 @@ async def get_aggregated_tags(
     service: KnowledgeService = Depends(get_knowledge_service),
 ):
     return response_ok(await service.get_aggregated_tags(requested_space_ids=space_ids))
+
+
+@router.get("/spaces")
+async def list_visible_spaces(
+    request: Request,
+    auth_service: PortalAuthService = Depends(get_portal_auth_service),
+    portal_config_service: PortalConfigService = Depends(get_portal_config_service),
+):
+    try:
+        session = auth_service.require_session(request)
+    except PortalAuthError as err:
+        raise HTTPException(status_code=err.status_code, detail=err.message) from err
+
+    bisheng_client = auth_service.create_bisheng_client(session)
+    try:
+        service = KnowledgeService(
+            bisheng_client=bisheng_client,
+            portal_config_service=portal_config_service,
+        )
+        return response_ok(await service.list_visible_spaces())
+    finally:
+        await bisheng_client.aclose()
 
 
 @router.get("/space/{space_id}/files")

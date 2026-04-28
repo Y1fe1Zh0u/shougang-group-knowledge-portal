@@ -15,7 +15,8 @@ import {
   User,
   Users,
 } from 'lucide-react';
-import { loadPortalUser, savePortalUser, type PortalUser } from '../hooks/useAuth';
+import { fetchPortalMe, loginPortal } from '../api/auth';
+import { loadPortalUser, savePortalUser } from '../hooks/useAuth';
 import s from './LoginPage.module.css';
 
 const FALLBACK_REDIRECT = '/';
@@ -34,7 +35,22 @@ export default function LoginPage() {
   const redirect = resolveRedirect(params.get('redirect'));
 
   useEffect(() => {
-    if (loadPortalUser()) navigate(redirect, { replace: true });
+    const storedUser = loadPortalUser();
+    if (storedUser) {
+      navigate(redirect, { replace: true });
+      return;
+    }
+    let active = true;
+    void fetchPortalMe()
+      .then((user) => {
+        if (!active) return;
+        savePortalUser(user);
+        navigate(redirect, { replace: true });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [navigate, redirect]);
 
   const [account, setAccount] = useState('');
@@ -52,7 +68,7 @@ export default function LoginPage() {
     setFormError('');
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearErrors();
     const a = account.trim();
@@ -69,29 +85,12 @@ export default function LoginPage() {
     if (bad) return;
 
     setSubmitting(true);
-    window.setTimeout(() => {
-      const okDemo = a === 'demo' && p === 'shougang';
-      const okAny = a.length >= 2 && p.length >= 2;
-      if (!okDemo && !okAny) {
-        setSubmitting(false);
-        setFormError('账号或密码不正确，请重试。');
-        return;
-      }
-      const isDemo = okDemo;
-      const displayName = isDemo
-        ? '韩志远'
-        : a.includes('@')
-          ? a.split('@')[0]
-          : a;
-      const initial = displayName.slice(0, 1).toUpperCase();
-      const role = isDemo ? '冷轧厂 · 设备工程师' : '内部员工';
-      const user: PortalUser = {
+    try {
+      const user = await loginPortal({
         account: a,
-        name: displayName,
-        initial,
-        role,
-        loginAt: Date.now(),
-      };
+        password: p,
+        remember,
+      });
       savePortalUser(user);
       try {
         if (remember) window.sessionStorage.setItem(WELCOME_FLAG, '1');
@@ -99,7 +98,12 @@ export default function LoginPage() {
         // ignore session storage errors
       }
       navigate(redirect, { replace: true });
-    }, 600);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '登录失败，请重试。';
+      setFormError(message || '登录失败，请重试。');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -172,7 +176,7 @@ export default function LoginPage() {
         <section className={s.formSide}>
           <div className={s.formInner}>
             <h2 className={s.formTitle}>账号登录</h2>
-            <p className={s.formSub}>输入企业账号与密码，登录后将返回知识门户首页。</p>
+            <p className={s.formSub}>输入 BiSheng 账号与密码，登录后将返回知识门户首页。</p>
 
             <form noValidate onSubmit={handleSubmit}>
               {formError ? (
@@ -281,7 +285,7 @@ export default function LoginPage() {
             </div>
 
             <div className={s.demoHint}>
-              <b>演示账号：</b>账号 <code>demo</code> · 密码 <code>shougang</code>，或输入任意非空账号密码即可登录。
+              账号密码由门户后端提交到管理员配置的 BiSheng 地址，浏览器只保存门户会话。
             </div>
 
             <div className={s.footnote}>

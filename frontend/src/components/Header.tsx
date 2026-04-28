@@ -12,6 +12,7 @@ import s from './Header.module.css';
 
 const NAV_ITEMS = [
   { label: '首页', to: '/' },
+  { label: '我的知识空间', to: '/knowledge-spaces' },
   { label: 'AI 问答', to: '/qa' },
   { label: '专家问答', to: '/expert-qa' },
 ];

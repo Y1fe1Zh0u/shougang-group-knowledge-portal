@@ -15,6 +15,21 @@ export interface FileDetail extends FileItem {
   space: { id: number; name: string };
 }
 
+export interface KnowledgeSpace {
+  id: number;
+  name: string;
+  description: string;
+  authType: string;
+  userRole: string;
+  spaceKind: string;
+  departmentName: string;
+  fileCount: number;
+  memberCount: number;
+  isPinned: boolean;
+  updatedAt: string;
+  sources: string[];
+}
+
 export type FilePreviewMode = 'pdf' | 'docx' | 'spreadsheet' | 'markdown' | 'html' | 'text' | 'image' | 'unsupported' | 'chunks';
 export type FilePreviewSourceKind = 'preview_url' | 'original_url' | 'preview_task' | 'none';
 
@@ -36,6 +51,17 @@ interface ApiEnvelope<T> {
   status_code: number;
   status_message: string;
   data: T;
+  detail?: string;
+}
+
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+  }
 }
 
 interface KnowledgeFileItemDto {
@@ -58,6 +84,29 @@ interface PagedKnowledgeFileDataDto {
   total: number;
   page: number;
   page_size: number;
+}
+
+interface KnowledgeSpaceDto {
+  id: number;
+  name: string;
+  description?: string;
+  auth_type?: string;
+  user_role?: string;
+  space_kind?: string;
+  department_name?: string;
+  file_count?: number;
+  file_num?: number;
+  member_count?: number;
+  follower_num?: number;
+  is_pinned?: boolean;
+  updated_at?: string;
+  update_time?: string;
+  sources?: string[];
+}
+
+interface KnowledgeSpaceListDataDto {
+  data: KnowledgeSpaceDto[];
+  total: number;
 }
 
 interface RelatedKnowledgeFileDataDto {
@@ -99,16 +148,33 @@ function mapKnowledgeFileDetail(dto: KnowledgeFileDetailDto): FileDetail {
   };
 }
 
+function mapKnowledgeSpace(dto: KnowledgeSpaceDto): KnowledgeSpace {
+  return {
+    id: dto.id,
+    name: dto.name,
+    description: dto.description ?? '',
+    authType: dto.auth_type ?? '',
+    userRole: dto.user_role ?? '',
+    spaceKind: dto.space_kind ?? 'normal',
+    departmentName: dto.department_name ?? '',
+    fileCount: dto.file_count ?? dto.file_num ?? 0,
+    memberCount: dto.member_count ?? dto.follower_num ?? 0,
+    isPinned: Boolean(dto.is_pinned),
+    updatedAt: dto.updated_at ?? dto.update_time ?? '',
+    sources: dto.sources ?? [],
+  };
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok) {
-    throw new Error(payload?.status_message || '请求失败');
+    throw new ApiRequestError(payload?.status_message || payload?.detail || '请求失败', response.status);
   }
   return payload.data;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await fetch(path, { credentials: 'include', ...init });
   return parseResponse<T>(response);
 }
 
@@ -175,6 +241,14 @@ export async function fetchSpaceFiles(params: {
     total: data.total,
     page: data.page,
     pageSize: data.page_size,
+  };
+}
+
+export async function fetchKnowledgeSpaces(): Promise<{ data: KnowledgeSpace[]; total: number }> {
+  const data = await request<KnowledgeSpaceListDataDto>('/api/v1/knowledge/spaces');
+  return {
+    data: data.data.map(mapKnowledgeSpace),
+    total: data.total,
   };
 }
 

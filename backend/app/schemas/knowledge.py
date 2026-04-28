@@ -35,6 +35,26 @@ class RelatedKnowledgeFileData(BaseModel):
     total: int = 0
 
 
+class KnowledgeSpaceItem(BaseModel):
+    id: int
+    name: str
+    description: str = ""
+    auth_type: str = ""
+    user_role: str = ""
+    space_kind: str = "normal"
+    department_name: str = ""
+    file_count: int = 0
+    member_count: int = 0
+    is_pinned: bool = False
+    updated_at: str = ""
+    sources: list[str] = Field(default_factory=list)
+
+
+class KnowledgeSpaceListData(BaseModel):
+    data: list[KnowledgeSpaceItem] = Field(default_factory=list)
+    total: int = 0
+
+
 class FilePreviewData(BaseModel):
     original_url: str
     preview_url: str

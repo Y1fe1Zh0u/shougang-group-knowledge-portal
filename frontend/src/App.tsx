@@ -10,6 +10,7 @@ import AdminPage from './pages/AdminPage';
 import DomainsPage from './pages/DomainsPage';
 import LoginPage from './pages/LoginPage';
 import ExpertQAPage from './pages/ExpertQAPage';
+import KnowledgeSpacesPage from './pages/KnowledgeSpacesPage';
 import WikiPage from './pages/WikiPage';
 import WikiDetailPage from './pages/WikiDetailPage';
 
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/space/:spaceId" element={<ListPage />} />
         <Route path="/list" element={<ListPage />} />
         <Route path="/space/:spaceId/file/:fileId" element={<DetailPage />} />
+        <Route path="/knowledge-spaces" element={<KnowledgeSpacesPage />} />
         <Route path="/qa" element={<QAPage />} />
         <Route path="/expert-qa" element={<ExpertQAPage />} />
         <Route path="/wiki" element={<WikiPage />} />

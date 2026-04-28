@@ -17,6 +17,8 @@ from app.schemas.knowledge import (
     KnowledgeFileDetail,
     KnowledgeFileItem,
     KnowledgeFileSpace,
+    KnowledgeSpaceItem,
+    KnowledgeSpaceListData,
     PagedKnowledgeFileData,
     RelatedKnowledgeFileData,
 )
@@ -34,6 +36,13 @@ PREVIEW_TASK_CACHE_TTL_SECONDS = 900.0
 PREVIEW_TASK_POLL_ATTEMPTS = 6
 PREVIEW_TASK_POLL_DELAY_SECONDS = 0.4
 PREVIEW_TASK_FAILURE_STATUSES = {"cancelled", "canceled", "error", "failed", "failure", "timeout"}
+SPACE_LIST_ENDPOINTS = (
+    ("mine", "/api/v1/knowledge/space/mine"),
+    ("joined", "/api/v1/knowledge/space/joined"),
+    ("department", "/api/v1/knowledge/space/department"),
+    ("managed", "/api/v1/knowledge/space/managed"),
+)
+ROLE_PRIORITY = {"creator": 3, "admin": 2, "member": 1}
 
 
 @dataclass
@@ -75,6 +84,29 @@ class KnowledgeService:
     def get_space_name_map(self) -> dict[int, str]:
         config = self._config_service.get_config()
         return {space.id: space.name for space in config.spaces}
+
+    async def list_visible_spaces(self) -> KnowledgeSpaceListData:
+        results = await asyncio.gather(
+            *[self._fetch_space_endpoint(source, path) for source, path in SPACE_LIST_ENDPOINTS],
+            return_exceptions=True,
+        )
+        merged: dict[int, KnowledgeSpaceItem] = {}
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+            source, rows = result
+            for row in rows:
+                item = self._map_space(row, source)
+                if item is None:
+                    continue
+                current = merged.get(item.id)
+                if current is None:
+                    merged[item.id] = item
+                else:
+                    self._merge_space(current, item)
+
+        data = self._sort_spaces(list(merged.values()))
+        return KnowledgeSpaceListData(data=data, total=len(data))
 
     async def get_space_tags(self, space_id: int) -> list[str]:
         if space_id not in self.get_enabled_space_ids():
@@ -670,3 +702,143 @@ class KnowledgeService:
         if isinstance(value, str):
             return value
         return ""
+
+    async def _fetch_space_endpoint(self, source: str, path: str) -> tuple[str, list[dict[str, Any]]]:
+        try:
+            response = await self._bisheng.get_json(path)
+        except (httpx.HTTPError, ValueError):
+            return source, []
+        if response.get("status_code") not in (None, 200):
+            return source, []
+        return source, self._extract_space_rows(response.get("data", response))
+
+    def _extract_space_rows(self, payload: Any) -> list[dict[str, Any]]:
+        if isinstance(payload, list):
+            return [item for item in payload if isinstance(item, dict)]
+        if not isinstance(payload, dict):
+            return []
+        for key in ("data", "list", "records", "items", "results", "knowledge_list", "spaces"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+            if isinstance(value, dict):
+                nested = self._extract_space_rows(value)
+                if nested:
+                    return nested
+        return []
+
+    def _map_space(self, row: dict[str, Any], source: str) -> KnowledgeSpaceItem | None:
+        space_id = self._int_value(row, "id", "knowledge_id", "knowledgeId", "space_id", "spaceId")
+        if space_id <= 0:
+            return None
+        name = self._str_value(row, "name", "space_name", "knowledge_name", "title")
+        if not name:
+            name = str(space_id)
+        role = self._normalize_role(self._str_value(row, "user_role", "role", "permission", "operate_role"), source)
+        auth_type = self._resolve_auth_type(row)
+        space_kind = self._str_value(row, "space_kind", "kind", "space_type") or "normal"
+        if source == "department":
+            space_kind = "department"
+        return KnowledgeSpaceItem(
+            id=space_id,
+            name=name,
+            description=self._str_value(row, "description", "desc", "remark", "summary"),
+            auth_type=auth_type,
+            user_role=role,
+            space_kind=space_kind,
+            department_name=self._str_value(row, "department_name", "department", "dept_name", "deptName"),
+            file_count=self._int_value(
+                row,
+                "file_count",
+                "file_num",
+                "fileNum",
+                "document_count",
+                "doc_count",
+                "doc_num",
+            ),
+            member_count=self._int_value(row, "member_count", "member_num", "user_count", "user_num", "follower_num"),
+            is_pinned=self._bool_value(row, "is_pinned", "pinned", "is_top", "isTop"),
+            updated_at=self._serialize_datetime(
+                self._first_value(row, "updated_at", "update_time", "updateTime", "gmt_modified", "modify_time")
+            ),
+            sources=[source],
+        )
+
+    def _merge_space(self, current: KnowledgeSpaceItem, incoming: KnowledgeSpaceItem) -> None:
+        for source in incoming.sources:
+            if source not in current.sources:
+                current.sources.append(source)
+        if ROLE_PRIORITY.get(incoming.user_role, 0) > ROLE_PRIORITY.get(current.user_role, 0):
+            current.user_role = incoming.user_role
+        current.file_count = max(current.file_count, incoming.file_count)
+        current.member_count = max(current.member_count, incoming.member_count)
+        current.is_pinned = current.is_pinned or incoming.is_pinned
+        if not current.description and incoming.description:
+            current.description = incoming.description
+        if not current.department_name and incoming.department_name:
+            current.department_name = incoming.department_name
+        if incoming.updated_at > current.updated_at:
+            current.updated_at = incoming.updated_at
+        if current.space_kind == "normal" and incoming.space_kind != "normal":
+            current.space_kind = incoming.space_kind
+
+    @staticmethod
+    def _sort_spaces(spaces: list[KnowledgeSpaceItem]) -> list[KnowledgeSpaceItem]:
+        data = sorted(spaces, key=lambda item: item.name)
+        data = sorted(data, key=lambda item: item.updated_at, reverse=True)
+        return sorted(data, key=lambda item: item.is_pinned, reverse=True)
+
+    @staticmethod
+    def _resolve_auth_type(row: dict[str, Any]) -> str:
+        is_public = row.get("is_public")
+        if isinstance(is_public, bool) and is_public:
+            return "public"
+        if isinstance(row.get("is_private"), bool) and row["is_private"]:
+            return "private"
+        return KnowledgeService._str_value(row, "auth_type", "authType", "authority", "visibility", "access_type")
+
+    @staticmethod
+    def _normalize_role(raw_role: str, source: str) -> str:
+        normalized = raw_role.strip().lower()
+        if normalized in {"creator", "owner", "create", "created", "mine", "拥有者", "创建者"}:
+            return "creator"
+        if normalized in {"admin", "manager", "managed", "manage", "管理员", "可管理"}:
+            return "admin"
+        if normalized in {"member", "joined", "viewer", "read", "成员", "已加入"}:
+            return "member"
+        if source == "mine":
+            return "creator"
+        if source == "managed":
+            return "admin"
+        return "member"
+
+    @staticmethod
+    def _first_value(row: dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            if key in row and row[key] not in (None, ""):
+                return row[key]
+        return None
+
+    @staticmethod
+    def _str_value(row: dict[str, Any], *keys: str) -> str:
+        value = KnowledgeService._first_value(row, *keys)
+        return str(value).strip() if value not in (None, "") else ""
+
+    @staticmethod
+    def _int_value(row: dict[str, Any], *keys: str) -> int:
+        value = KnowledgeService._first_value(row, *keys)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _bool_value(row: dict[str, Any], *keys: str) -> bool:
+        value = KnowledgeService._first_value(row, *keys)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "y", "置顶"}
+        return False

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     bisheng_password: Optional[SecretStr] = None
     bisheng_default_model: Optional[str] = None
     bisheng_page_size_limit: int = 100
+    portal_session_cookie_name: str = "sg_portal_session"
+    portal_session_ttl_seconds: int = 7 * 24 * 60 * 60
+    portal_session_cookie_secure: bool = False
     bisheng_runtime_config_path: Path = Field(
         default=Path(__file__).resolve().parent / "config" / "data" / "bisheng_runtime.json"
     )

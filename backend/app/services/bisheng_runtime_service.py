@@ -89,6 +89,10 @@ class BishengRuntimeService:
     def get_public_config(self) -> BishengRuntimeConfigView:
         return self._to_public_view(self._read_config())
 
+    def get_connection_settings(self) -> tuple[str, float]:
+        config = self._read_config()
+        return str(config.base_url), config.timeout_seconds
+
     async def update_config(self, payload: BishengRuntimeConfigUpdate) -> BishengRuntimeConfigView:
         async with self._lock:
             current = self._read_config()

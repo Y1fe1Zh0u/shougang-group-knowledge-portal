@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.router import api_router
 from app.services.bisheng_runtime_service import BishengRuntimeService
+from app.services.portal_auth_service import PortalAuthService
 from app.services.portal_config_service import PortalConfigService
 from app.settings import get_settings
 
@@ -23,6 +24,12 @@ async def lifespan(app: FastAPI):
         ),
     )
     await app.state.bisheng_runtime_service.initialize()
+    app.state.portal_auth_service = PortalAuthService(
+        runtime_service=app.state.bisheng_runtime_service,
+        cookie_name=settings.portal_session_cookie_name,
+        ttl_seconds=settings.portal_session_ttl_seconds,
+        cookie_secure=settings.portal_session_cookie_secure,
+    )
     app.state.portal_config_service = PortalConfigService(
         config_path=settings.portal_config_path,
     )
