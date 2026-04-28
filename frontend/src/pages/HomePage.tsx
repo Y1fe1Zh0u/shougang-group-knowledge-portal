@@ -45,7 +45,7 @@ function buildBannerBackground(imageUrl: string): string {
 const APP_ENTRY_DEFAULTS = [
   { id: 'app-write', name: '智能写作', desc: '辅助生成报告', iconBg: '#eff6ff', iconColor: '#2563eb', icon: 'PenLine' as const },
   { id: 'app-search', name: '全域检索', desc: '跨空间定位', iconBg: '#ecfeff', iconColor: '#0891b2', icon: 'Search' as const },
-  { id: 'app-qa', name: 'AI 问答', desc: 'AI 即时解答', iconBg: '#f5f3ff', iconColor: '#7c3aed', icon: 'MessageSquare' as const },
+  { id: 'app-qa', name: '智能问答', desc: 'AI 即时解答', iconBg: '#f5f3ff', iconColor: '#7c3aed', icon: 'MessageSquare' as const },
   { id: 'app-bi', name: '数据看板', desc: '关键指标可视化', iconBg: '#ecfdf5', iconColor: '#059669', icon: 'BarChart3' as const },
 ];
 
@@ -418,7 +418,7 @@ export default function HomePage() {
                   </div>
                   <span className={s.panelTitle}>专业课程 · 岗位赋能</span>
                 </div>
-                <Link to="/apps" className={s.panelMore}>
+                <Link to="/course" className={s.panelMore}>
                   全部课程 <ChevronRight size={14} />
                 </Link>
               </div>
@@ -428,7 +428,7 @@ export default function HomePage() {
                     key={c.id}
                     type="button"
                     className={s.courseRow}
-                    onClick={() => navigate('/apps')}
+                    onClick={() => navigate(`/course/${c.id}`)}
                   >
                     <Video size={22} className={s.courseRowIcon} />
                     <span className={s.courseRowTitle}>{c.title}</span>
@@ -472,12 +472,12 @@ export default function HomePage() {
 
           {/* Right column */}
           <div className={s.sideColumn}>
-            {/* AI 问答 */}
+            {/* 智能问答 */}
             <div className={s.qaPanel}>
               <div className={s.qaHeader}>
                 <div className={s.qaHeaderLeft}>
                   <div className={s.panelIcon}><Bot size={14} /></div>
-                  <span className={s.panelTitle}>AI 问答</span>
+                  <span className={s.panelTitle}>智能问答</span>
                 </div>
                 <Link to="/qa" className={s.panelMore}>
                   进入 <ChevronRight size={14} />

@@ -1,13 +1,23 @@
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Calendar, FileText, User } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText } from 'lucide-react';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import PageShell from '../components/PageShell';
-import { getWikiEntry, WIKI_ENTRIES } from '../data/wikiMock';
+import { getWikiEntry, WIKI_ENTRIES } from '../data/wikiData';
 import s from './WikiDetailPage.module.css';
 
 export default function WikiDetailPage() {
   const { wikiId } = useParams<{ wikiId: string }>();
   const entry = useMemo(() => getWikiEntry(wikiId) ?? WIKI_ENTRIES[0], [wikiId]);
+
+  const bodyHtml = useMemo(() => {
+    const raw = marked.parse(entry.body, { async: false }) as string;
+    return DOMPurify.sanitize(raw, {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ['iframe', 'object', 'embed', 'script', 'style'],
+    });
+  }, [entry.body]);
 
   return (
     <PageShell>
@@ -27,20 +37,9 @@ export default function WikiDetailPage() {
 
         <section className={s.titleBlock}>
           <div className={s.tagRow}>
-            <span className={s.kindBadge}>{entry.kind}</span>
             <span className={s.domainBadge}>{entry.domain}</span>
           </div>
           <h1 className={s.entryTitle}>{entry.name}</h1>
-          <div className={s.metaRow}>
-            <span className={s.metaItem}>
-              <User size={13} />
-              主编 <b>{entry.editor}</b> · {entry.editorDept}
-            </span>
-            <span className={s.metaItem}>
-              <Calendar size={13} />
-              {entry.updatedAt} 更新
-            </span>
-          </div>
         </section>
 
         <section className={s.panel}>
@@ -50,45 +49,27 @@ export default function WikiDetailPage() {
             </div>
             <div className={s.panelTitle}>基本内容</div>
           </div>
-          <div className={s.prose}>
-            {entry.paragraphs.map((p, i) => (
-              <p key={i}>{p}</p>
-            ))}
-
-            {entry.applications.length ? (
-              <>
-                <h3>主要应用</h3>
-                <ul>
-                  {entry.applications.map((app) => (
-                    <li key={app.title}>
-                      <b>{app.title}</b> — {app.desc}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
+          <div className={s.prose} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         </section>
 
-        <section className={s.panel}>
-          <div className={s.panelHead}>
-            <div className={`${s.panelIcon} ${s.panelIconBlue}`}>
-              <FileText size={14} />
+        {entry.references.length ? (
+          <section className={s.panel}>
+            <div className={s.panelHead}>
+              <div className={`${s.panelIcon} ${s.panelIconBlue}`}>
+                <FileText size={14} />
+              </div>
+              <div className={s.panelTitle}>引用文档</div>
             </div>
-            <div className={s.panelTitle}>引用文档</div>
-          </div>
-          <div className={s.refList}>
-            {entry.references.map((ref, i) => (
-              <a key={i} className={s.refRow}>
-                <FileText size={20} className={s.refIcon} />
-                <span className={s.refTitle}>{ref.title}</span>
-                <span className={s.refMeta}>
-                  {ref.format} · {ref.date}
-                </span>
-              </a>
-            ))}
-          </div>
-        </section>
+            <div className={s.refList}>
+              {entry.references.map((ref, i) => (
+                <a key={i} className={s.refRow}>
+                  <FileText size={20} className={s.refIcon} />
+                  <span className={s.refTitle}>{ref}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </PageShell>
   );

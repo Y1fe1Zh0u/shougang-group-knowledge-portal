@@ -17,6 +17,9 @@ screenshots/
 # Asset source libraries (curated raw assets, do not pack into build)
 assets/sggf-source/
 
+# Wiki ETL 源 xlsx 不入库；产物 frontend/src/data/wikiData.json 入 git
+assets/*.xlsx
+
 # Backend
 backend/.env
 backend/.pytest_cache/

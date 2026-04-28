@@ -4,6 +4,7 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "commonjs",
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "ignoreDeprecations": "6.0",
     "outDir": "./.test-dist",
     "rootDir": ".",
