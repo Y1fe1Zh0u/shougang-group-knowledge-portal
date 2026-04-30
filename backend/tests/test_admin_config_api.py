@@ -150,14 +150,14 @@ def test_get_admin_config_uses_portal_config_service(tmp_path: Path):
     assert body["data"]["spaces"][0]["file_count"] == 13
 
 
-def test_put_admin_domains_updates_persisted_config(tmp_path: Path):
+def test_post_admin_domains_updates_persisted_config(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/domains",
             json={
                 "domains": [
@@ -181,14 +181,14 @@ def test_put_admin_domains_updates_persisted_config(tmp_path: Path):
     assert service.get_config().domains[0].name == "炼钢"
 
 
-def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
+def test_post_admin_qa_updates_prompt_fields(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/qa",
             json={
                 "knowledge_space_ids": [12, 18],
@@ -212,14 +212,14 @@ def test_put_admin_qa_updates_prompt_fields(tmp_path: Path):
     assert service.get_config().qa.selected_model == "1"
 
 
-def test_put_admin_sections_persists_icon_and_color_fields(tmp_path: Path):
+def test_post_admin_sections_persists_icon_and_color_fields(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/sections",
             json={
                 "sections": [
@@ -351,14 +351,14 @@ def test_admin_config_endpoints_fail_soft_when_bisheng_is_unauthorized(tmp_path:
     assert space_files_response.json()["data"]["files"] == []
 
 
-def test_put_admin_banners_persists_full_payload(tmp_path: Path):
+def test_post_admin_banners_persists_full_payload(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/banners",
             json={
                 "banners": [
@@ -385,14 +385,14 @@ def test_put_admin_banners_persists_full_payload(tmp_path: Path):
     assert persisted[0].image_url == "/uploads/banners/abc123.jpg"
 
 
-def test_put_admin_banners_rejects_missing_required_fields(tmp_path: Path):
+def test_post_admin_banners_rejects_missing_required_fields(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/banners",
             json={"banners": [{"id": 1, "label": "缺标题"}]},
         )
@@ -426,12 +426,12 @@ def test_get_admin_banners_seeds_defaults_when_missing(tmp_path: Path):
     assert banners[0]["title"]
 
 
-def test_put_admin_bisheng_config_updates_runtime_without_echoing_secret(tmp_path: Path):
+def test_post_admin_bisheng_config_updates_runtime_without_echoing_secret(tmp_path: Path):
     runtime_service = create_runtime_service(tmp_path)
 
     with TestClient(app) as client:
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/bisheng",
             json={
                 "base_url": "http://example.com",
@@ -462,7 +462,7 @@ def test_get_admin_integrations_defaults_to_empty(tmp_path: Path):
     assert response.json()["data"] == {"bisheng_admin_entry_url": ""}
 
 
-def test_put_admin_integrations_persists_url(tmp_path: Path):
+def test_post_admin_integrations_persists_url(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     runtime_service = create_runtime_service(tmp_path)
 
@@ -470,19 +470,19 @@ def test_put_admin_integrations_persists_url(tmp_path: Path):
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        put_response = client.put(
+        post_response = client.post(
             "/api/v1/admin/config/integrations",
             json={"bisheng_admin_entry_url": url},
         )
         get_response = client.get("/api/v1/admin/config/integrations")
 
-    assert put_response.status_code == 200
-    assert put_response.json()["data"]["bisheng_admin_entry_url"] == url
+    assert post_response.status_code == 200
+    assert post_response.json()["data"]["bisheng_admin_entry_url"] == url
     assert get_response.json()["data"]["bisheng_admin_entry_url"] == url
     assert service.get_config().integrations.bisheng_admin_entry_url == url
 
 
-def test_put_admin_integrations_accepts_empty_to_clear(tmp_path: Path):
+def test_post_admin_integrations_accepts_empty_to_clear(tmp_path: Path):
     service = PortalConfigService(config_path=tmp_path / "portal_config.json")
     service.update_integrations(
         type(service.get_config().integrations)(bisheng_admin_entry_url="http://example.com/admin")
@@ -492,7 +492,7 @@ def test_put_admin_integrations_accepts_empty_to_clear(tmp_path: Path):
     with TestClient(app) as client:
         client.app.state.portal_config_service = service
         client.app.state.bisheng_runtime_service = runtime_service
-        response = client.put(
+        response = client.post(
             "/api/v1/admin/config/integrations",
             json={"bisheng_admin_entry_url": ""},
         )

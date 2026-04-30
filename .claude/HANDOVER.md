@@ -140,12 +140,12 @@ curl http://127.0.0.1:8010/api/v1/knowledge/tags
 | 2 | 共享 BiSheng 数据互相影响 | 109 / 115 / 116 都是团队共享，写操作互相影响；想看完整效果可对接 114 个人 bisheng（**缺点**：lilu 重启 bisheng 会断套壳） |
 | 3 | **BiSheng URL 填错（高频踩坑）** | 把浏览器入口 `:4001/:3001/:3002` 当 API 地址填进 admin UI，所有 `/api/*` 被前端 SPA fallback 到 `index.html`，BFF 调上游收到 HTML 而不是 JSON，`parseResponse` 抛 `JSONDecodeError`。识别：`tail -f /tmp/bff.log` 看到 JSON 解析错。**正确**：BFF `base_url` 永远填 `:7860/:7861/:8098` 这种**后端 API 端口**，详见 [`CLAUDE.md` §6](../CLAUDE.md#6-bisheng-多环境与接入)。 |
 | 4 | 切换 BiSheng 实例后 spaces id 错位 | `portal_config.json` 持久化的 `spaces[].id` 是上一个实例的内部 ID；换实例后多半指向不同空间或不存在。处置：进 `/admin` → 知识空间，把旧条目停用 / 删除，从新候选列表（`type=3` 视图）重新绑。 |
-| 5 | bisheng_runtime.json 优先级高于 .env | `BishengRuntimeService` 加载顺序：先 `.env` 默认值 → 再 `bisheng_runtime.json` 覆盖。运行时被 admin/config/bisheng PUT 改过的话，重启不会回退到 .env，要看 JSON 里实际值（这个 JSON 已 gitignore）。 |
+| 5 | bisheng_runtime.json 优先级高于 .env | `BishengRuntimeService` 加载顺序：先 `.env` 默认值 → 再 `bisheng_runtime.json` 覆盖。运行时被 admin/config/bisheng POST 改过的话，重启不会回退到 .env，要看 JSON 里实际值（这个 JSON 已 gitignore）。 |
 | 6 | 114:3001 现是门户生产入口 | 旧 HANDOVER 说"114:3001 是死站"已过时；现部署了门户全栈（systemd + nginx /api 反代 + BFF 127.0.0.1:8010），同事都用，**改前提前通知**。详见 [`CLAUDE.md` §7](../CLAUDE.md#7-生产部署-1143001-速查)。 |
 
 ## 9. 业务域 / 封面图来源（高频问题）
 
-- **数据**：BFF `GET /api/v1/admin/config/domains` 提供 → BFF 持久化在 `backend/app/config/data/portal_config.json`（仓库默认 5 条占位"域2/4"等）。admin UI 通过 PUT 写回。
+- **数据**：BFF `GET /api/v1/admin/config/domains` 提供 → BFF 持久化在 `backend/app/config/data/portal_config.json`（仓库默认 5 条占位"域2/4"等）。admin UI 通过 POST 写回。
 - **图片**：每条 domain 的 `background_image` 是相对路径（如 `/rolling-domain-bg.jpg`），实际文件在 `frontend/public/`（rolling-domain-bg / cold-domain-bg / energy-domain-bg / device-domain-bg），build 时拷到 nginx root，浏览器同源静态取。
 
 ## 10. 还没做的事 / 下一步候选（lilu 自己开发计划）

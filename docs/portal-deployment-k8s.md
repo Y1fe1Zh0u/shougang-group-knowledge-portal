@@ -11,7 +11,7 @@
 | 维度 | 改动 |
 |---|---|
 | 后端 schema | `PortalConfig` 新增 `integrations: IntegrationsConfig` 节，含字段 `bisheng_admin_entry_url: str = ""` |
-| 后端 API | 新增 `GET /api/v1/admin/config/integrations`、`PUT /api/v1/admin/config/integrations` |
+| 后端 API | 新增 `GET /api/v1/admin/config/integrations`、`POST /api/v1/admin/config/integrations` |
 | 后端持久化 | `portal_config.json` 顶层多出 `integrations` 节；旧 JSON 缺该节时 BFF 启动后首次 `get_config()` 自动 backfill 默认空值 |
 | 前端 Header | 用户菜单内原「后台管理」按钮改为「知识管理后台」；URL 已配置时点击 `window.open(url, '_blank', 'noopener,noreferrer')`；URL 为空时**入口隐藏**（不再回退本地 `/admin`） |
 | 前端 Admin 页 | 左侧新增「集成配置」分类，含一个 URL 输入项 + 编辑对话框 |

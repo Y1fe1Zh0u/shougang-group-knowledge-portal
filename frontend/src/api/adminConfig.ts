@@ -174,7 +174,7 @@ export function fetchAdminConfig() {
 
 export function updateSpacesConfig(spaces: SpaceConfig[]) {
   return request<{ spaces: SpaceConfig[] }>('/api/v1/admin/config/spaces', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ spaces }),
   });
 }
@@ -189,21 +189,21 @@ export function fetchAdminSpaceFiles(spaceId: number) {
 
 export function updateDomainsConfig(domains: DomainConfig[]) {
   return request<{ domains: DomainConfig[] }>('/api/v1/admin/config/domains', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ domains }),
   });
 }
 
 export function updateSectionsConfig(sections: SectionConfig[]) {
   return request<{ sections: SectionConfig[] }>('/api/v1/admin/config/sections', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ sections }),
   });
 }
 
 export function updateQaConfig(qa: QAConfig) {
   return request<QAConfig>('/api/v1/admin/config/qa', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(qa),
   });
 }
@@ -224,42 +224,42 @@ export function updateBishengRuntimeConfig(payload: {
   timeout_seconds: number;
 }) {
   return request<BishengRuntimeConfig>('/api/v1/admin/config/bisheng', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export function updateRecommendationConfig(recommendation: RecommendationConfig) {
   return request<RecommendationConfig>('/api/v1/admin/config/recommendation', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(recommendation),
   });
 }
 
 export function updateDisplayConfig(display: DisplayConfig) {
   return request<DisplayConfig>('/api/v1/admin/config/display', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(display),
   });
 }
 
 export function updateAppsConfig(apps: AppConfig[]) {
   return request<{ apps: AppConfig[] }>('/api/v1/admin/config/apps', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ apps }),
   });
 }
 
 export function updateBannersConfig(banners: BannerSlide[]) {
   return request<{ banners: BannerSlide[] }>('/api/v1/admin/config/banners', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ banners }),
   });
 }
 
 export function updateIntegrationsConfig(integrations: IntegrationsConfig) {
   return request<IntegrationsConfig>('/api/v1/admin/config/integrations', {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(integrations),
   });
 }

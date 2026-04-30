@@ -127,30 +127,30 @@ backend/
 ### 6.1 总配置读取 / 替换
 
 - `GET /api/v1/admin/config`
-- `PUT /api/v1/admin/config`
+- `POST /api/v1/admin/config`
 
 ### 6.2 分组配置读写
 
 - `GET /api/v1/admin/config/spaces`
-- `PUT /api/v1/admin/config/spaces`
+- `POST /api/v1/admin/config/spaces`
 
 - `GET /api/v1/admin/config/domains`
-- `PUT /api/v1/admin/config/domains`
+- `POST /api/v1/admin/config/domains`
 
 - `GET /api/v1/admin/config/sections`
-- `PUT /api/v1/admin/config/sections`
+- `POST /api/v1/admin/config/sections`
 
 - `GET /api/v1/admin/config/qa`
-- `PUT /api/v1/admin/config/qa`
+- `POST /api/v1/admin/config/qa`
 
 - `GET /api/v1/admin/config/recommendation`
-- `PUT /api/v1/admin/config/recommendation`
+- `POST /api/v1/admin/config/recommendation`
 
 - `GET /api/v1/admin/config/display`
-- `PUT /api/v1/admin/config/display`
+- `POST /api/v1/admin/config/display`
 
 - `GET /api/v1/admin/config/apps`
-- `PUT /api/v1/admin/config/apps`
+- `POST /api/v1/admin/config/apps`
 
 ## 7. 当前配置数据范围
 

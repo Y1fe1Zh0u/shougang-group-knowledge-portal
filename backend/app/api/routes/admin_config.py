@@ -44,7 +44,7 @@ async def get_portal_config(
     return response_ok(service.with_live_space_data(config, live_space_data))
 
 
-@router.put("")
+@router.post("")
 async def replace_portal_config(
     payload: PortalConfig,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -59,7 +59,7 @@ async def get_spaces_config(
     return response_ok({"spaces": service.get_config().spaces})
 
 
-@router.put("/spaces")
+@router.post("/spaces")
 async def update_spaces_config(
     payload: SpacesConfigUpdate,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -133,7 +133,7 @@ async def get_domains_config(
     return response_ok({"domains": service.get_config().domains})
 
 
-@router.put("/domains")
+@router.post("/domains")
 async def update_domains_config(
     payload: DomainsConfigUpdate,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -148,7 +148,7 @@ async def get_sections_config(
     return response_ok({"sections": service.get_config().sections})
 
 
-@router.put("/sections")
+@router.post("/sections")
 async def update_sections_config(
     payload: SectionsConfigUpdate,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -163,7 +163,7 @@ async def get_qa_config(
     return response_ok(service.get_config().qa)
 
 
-@router.put("/qa")
+@router.post("/qa")
 async def update_qa_config(
     payload: QAConfig,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -194,7 +194,7 @@ async def get_recommendation_config(
     return response_ok(service.get_config().recommendation)
 
 
-@router.put("/recommendation")
+@router.post("/recommendation")
 async def update_recommendation_config(
     payload: RecommendationConfig,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -209,7 +209,7 @@ async def get_display_config(
     return response_ok(service.get_config().display)
 
 
-@router.put("/display")
+@router.post("/display")
 async def update_display_config(
     payload: DisplayConfig,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -224,7 +224,7 @@ async def get_apps_config(
     return response_ok({"apps": service.get_config().apps})
 
 
-@router.put("/apps")
+@router.post("/apps")
 async def update_apps_config(
     payload: AppsConfigUpdate,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -239,7 +239,7 @@ async def get_banners_config(
     return response_ok({"banners": service.get_config().banners})
 
 
-@router.put("/banners")
+@router.post("/banners")
 async def update_banners_config(
     payload: BannersConfigUpdate,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -254,7 +254,7 @@ async def get_integrations_config(
     return response_ok(service.get_config().integrations)
 
 
-@router.put("/integrations")
+@router.post("/integrations")
 async def update_integrations_config(
     payload: IntegrationsConfig,
     service: PortalConfigService = Depends(get_portal_config_service),
@@ -269,7 +269,7 @@ async def get_bisheng_runtime_config(
     return response_ok(service.get_public_config())
 
 
-@router.put("/bisheng")
+@router.post("/bisheng")
 async def update_bisheng_runtime_config(
     payload: BishengRuntimeConfigUpdate,
     service: BishengRuntimeService = Depends(get_bisheng_runtime_service),
