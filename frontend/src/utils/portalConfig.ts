@@ -11,9 +11,9 @@ export interface RuntimeBanner {
 
 export const FALLBACK_HOME_BANNERS: RuntimeBanner[] = [
   {
-    label: '平台概览',
-    title: '首钢知库 — 钢铁行业知识共享平台',
-    desc: '汇聚设备、轧线、冷轧、能源全域知识，助力技术传承与创新',
+    label: '能力升级',
+    title: '技术问答全新升级',
+    desc: 'AI驱动的智能问答系统，快速定位知识、精准解答技术难题',
     imageUrl: '/banner-hero-1.jpg',
     linkUrl: '',
   },

@@ -36,7 +36,7 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 };
 
 const BANNER_OVERLAY_GRADIENT =
-  'linear-gradient(120deg, rgba(6, 18, 42, 0.55) 0%, rgba(12, 38, 84, 0.36) 38%, rgba(18, 50, 108, 0.15) 100%), radial-gradient(circle at 78% 28%, rgba(97, 150, 255, 0.15) 0%, rgba(97, 150, 255, 0) 26%)';
+  'linear-gradient(180deg, rgba(43, 118, 246, 0.52) 0%, rgba(59, 143, 246, 0.36) 38%, rgba(22, 98, 178, 0.34) 100%), linear-gradient(90deg, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0.04) 46%, rgba(37, 99, 235, 0.16) 100%)';
 
 function buildBannerBackground(imageUrl: string): string {
   return `${BANNER_OVERLAY_GRADIENT}, url("${imageUrl}")`;
@@ -66,7 +66,6 @@ export default function HomePage() {
   const [bannerIdx, setBannerIdx] = useState(0);
   const [sectionData, setSectionData] = useState<Record<string, FileItem[]>>({});
   const [hotTags, setHotTags] = useState<string[]>([]);
-  const [caseCount, setCaseCount] = useState(0);
   const [loadError, setLoadError] = useState('');
   const [welcomeToast, setWelcomeToast] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
@@ -135,7 +134,7 @@ export default function HomePage() {
 
     void (async () => {
       try {
-        const [sectionResults, tagResults, caseResult] = await Promise.all([
+        const [sectionResults, tagResults] = await Promise.all([
           Promise.all(
             enabledSections.map(async (section) => [
               section.tag,
@@ -147,18 +146,12 @@ export default function HomePage() {
             ] as const),
           ),
           fetchAggregatedTags(enabledSpaceIds),
-          searchFiles({
-            tag: '典型案例',
-            spaceIds: enabledSpaceIds,
-            pageSize: 1,
-          }),
         ]);
         if (!active) return;
         setSectionData(
           Object.fromEntries(sectionResults.map(([tag, result]) => [tag, result.data])),
         );
         setHotTags(tagResults);
-        setCaseCount(caseResult.total);
         setLoadError('');
       } catch (err) {
         if (!active) return;
@@ -172,15 +165,12 @@ export default function HomePage() {
   }, [config, displayConfig.home.sectionPageSize, enabledSections, enabledSpaceIds]);
 
   /* Stats */
-  const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
-  const tagCount = hotTags.length;
   const spaceCount = enabledSpaces.length;
   const activeBanner = homeBanners[safeBannerIdx] ?? homeBanners[0];
   const activeBannerBackground = buildBannerBackground(activeBanner.imageUrl);
   const homeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
   const domainColumns = Math.max(homeDomains.length || 1, 1);
   const rankedHotTags = hotTags.slice(0, displayConfig.home.hotTagsCount);
-  const heroHotTags = rankedHotTags.slice(0, 5);
   const tagRankList = rankedHotTags.slice(0, 6);
   const homeSpaces = enabledSpaces.slice(0, displayConfig.home.spacesCount);
   const homeApps = enabledApps.slice(0, displayConfig.home.appsCount);
@@ -215,6 +205,12 @@ export default function HomePage() {
       iconColor: entry.iconColor,
       url: undefined as string | undefined,
     }));
+  const heroStats = [
+    { value: '2877万', label: '篇文档' },
+    { value: '1.17亿', label: '次阅读' },
+    { value: '163万', label: '次点赞' },
+    { value: '1101万', label: '条评论' },
+  ];
 
   return (
     <PageShell>
@@ -242,55 +238,72 @@ export default function HomePage() {
         >
           <div className={s.heroGlow} />
           <div className={s.heroInner}>
-            <span className={s.bannerLabel}>{activeBanner.label}</span>
-            <h1 className={s.heroTitle}>{activeBanner.title}</h1>
+            <div className={s.heroTitleRow}>
+              <span className={s.bannerLabel}>{activeBanner.label}</span>
+              <h1 className={s.heroTitle}>{activeBanner.title}</h1>
+            </div>
             <p className={s.heroSub}>{activeBanner.desc}</p>
           </div>
-          <div className={s.heroSearchPanel}>
+          <div className={s.heroSearchPanel} onClick={(event) => event.stopPropagation()}>
             <div className={s.searchBox}>
+              <button type="button" className={s.searchModeBtn}>
+                <Flame size={13} />
+                <span>热门搜索</span>
+                <ChevronRight size={12} />
+              </button>
               <input
                 className={s.searchInput}
-                placeholder="输入关键词搜索知识文档..."
+                placeholder="输入关键词搜索知识文档"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKey}
               />
-              <button className={s.searchBtn} onClick={handleSearch}>
+              <button
+                type="button"
+                className={s.searchBtn}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleSearch();
+                }}
+              >
                 <Search size={18} />
               </button>
             </div>
-            <div className={s.hotTags}>
-              <span className={s.hotLabel}>热门搜索：</span>
-              {heroHotTags.map((t) => (
-                <button key={t} className={s.hotTag} onClick={() => navigate(`/search?q=${encodeURIComponent(t)}`)}>
-                  {t}
-                </button>
-              ))}
-            </div>
           </div>
-          <div className={s.heroStatsWrap}>
-            <div className={s.statsPanel}>
+          <div className={s.heroBottomRow} onClick={(event) => event.stopPropagation()}>
+            <div className={s.appShortcutList}>
+              {appEntryItems.map((app) => {
+                const AppIcon = APP_ICONS[app.iconKey] || Bot;
+                return (
+                  <button
+                    key={app.id}
+                    type="button"
+                    className={s.appShortcut}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (app.url) {
+                        window.open(app.url, '_blank', 'noopener,noreferrer');
+                      } else {
+                        navigate('/apps');
+                      }
+                    }}
+                  >
+                    <span className={s.appShortcutIcon}>
+                      <AppIcon size={13} />
+                    </span>
+                    <span className={s.appShortcutText}>{app.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className={s.heroStatsPanel}>
               <div className={s.statsGrid}>
-                <div className={s.statCard}>
-                  <FileText size={22} className={s.statIcon} />
-                  <div className={s.statNumber}>{totalFiles}</div>
-                  <div className={s.statLabel}>知识文档</div>
-                </div>
-                <div className={s.statCard}>
-                  <AlertTriangle size={22} className={s.statIcon} />
-                  <div className={s.statNumber}>{caseCount}</div>
-                  <div className={s.statLabel}>技术案例</div>
-                </div>
-                <div className={s.statCard}>
-                  <Tag size={22} className={s.statIcon} />
-                  <div className={s.statNumber}>{tagCount}</div>
-                  <div className={s.statLabel}>业务标签</div>
-                </div>
-                <div className={s.statCard}>
-                  <FolderOpen size={22} className={s.statIcon} />
-                  <div className={s.statNumber}>{spaceCount}</div>
-                  <div className={s.statLabel}>知识空间</div>
-                </div>
+                {heroStats.map((stat) => (
+                  <div key={`${stat.value}-${stat.label}`} className={s.statCard}>
+                    <span className={s.statNumber}>{stat.value}</span>
+                    <span className={s.statLabel}>{stat.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
