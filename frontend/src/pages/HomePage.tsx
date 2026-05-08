@@ -57,6 +57,14 @@ function getWelcomeMessage(welcomeMessage?: string) {
   return welcomeMessage?.trim() || '你好，我是首钢知库智能助手，请问有什么可以帮您？';
 }
 
+function formatCount(value: number): string {
+  if (value >= 10000) {
+    const wan = value / 10000;
+    return `${Number.isInteger(wan) ? wan.toFixed(0) : wan.toFixed(1)}万`;
+  }
+  return String(value);
+}
+
 export default function HomePage() {
   const navigate = useNavigate();
   const { config, error } = usePortalConfig();
@@ -165,6 +173,7 @@ export default function HomePage() {
   }, [config, displayConfig.home.sectionPageSize, enabledSections, enabledSpaceIds]);
 
   /* Stats */
+  const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
   const spaceCount = enabledSpaces.length;
   const activeBanner = homeBanners[safeBannerIdx] ?? homeBanners[0];
   const activeBannerBackground = buildBannerBackground(activeBanner.imageUrl);
@@ -206,7 +215,7 @@ export default function HomePage() {
       url: undefined as string | undefined,
     }));
   const heroStats = [
-    { value: '2877万', label: '篇文档' },
+    { value: formatCount(totalFiles), label: '篇文档' },
     { value: '1.17亿', label: '次阅读' },
     { value: '163万', label: '次点赞' },
     { value: '1101万', label: '条评论' },
