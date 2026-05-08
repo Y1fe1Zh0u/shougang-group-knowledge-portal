@@ -11,11 +11,15 @@ import { useAuth } from '../hooks/useAuth';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import s from './Header.module.css';
 
-const NAV_ITEMS = [
+type HeaderNavItem =
+  | { label: string; to: string; placeholder?: false }
+  | { label: string; placeholder: true };
+
+const NAV_ITEMS: HeaderNavItem[] = [
   { label: '首页', to: '/' },
   { label: '我的知识', to: '/knowledge-spaces' },
-  { label: '智能问答', to: '/qa' },
-  { label: '专家问答', to: '/expert-qa' },
+  { label: '知识商城', placeholder: true },
+  { label: '应用市场', to: '/apps' },
 ];
 
 export default function Header() {
@@ -27,6 +31,7 @@ export default function Header() {
   const [menuKey, setMenuKey] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuOpen = menuKey === location.pathname;
+  const isHome = location.pathname === '/';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -55,37 +60,50 @@ export default function Header() {
         <div className={s.logo} onClick={() => navigate('/')}>
           <img
             className={s.logoImage}
-            src="/shougang-stock-logo.png"
+            src="/site-logo.png"
             alt="首钢股份"
           />
-          <span>首钢知库</span>
+          <span>首钢股份知库</span>
         </div>
 
         <nav className={s.nav}>
           {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `${s.navLink} ${isActive ? s.navLinkActive : ''}`
-              }
-            >
-              {item.label}
-            </NavLink>
+            item.placeholder ? (
+              <button
+                key={item.label}
+                type="button"
+                className={s.navLink}
+                aria-disabled="true"
+              >
+                {item.label}
+              </button>
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) =>
+                  `${s.navLink} ${isActive ? s.navLinkActive : ''}`
+                }
+              >
+                {item.label}
+              </NavLink>
+            )
           ))}
         </nav>
 
         <div className={s.spacer} />
 
-        <button
-          type="button"
-          className={s.searchFab}
-          onClick={() => navigate('/search')}
-          aria-label="搜索"
-        >
-          <Search size={16} />
-        </button>
+        {!isHome ? (
+          <button
+            type="button"
+            className={s.searchFab}
+            onClick={() => navigate('/search')}
+            aria-label="搜索"
+          >
+            <Search size={16} />
+          </button>
+        ) : null}
 
         {user ? (
           <div className={s.userMenuWrap} ref={menuRef}>
@@ -96,7 +114,7 @@ export default function Header() {
               aria-expanded={menuOpen}
               onClick={() => setMenuKey((current) => (current === location.pathname ? null : location.pathname))}
             >
-              <span className={s.userTriggerAvatar}>{initial}</span>
+              <LayoutDashboard size={13} className={s.userTriggerIcon} />
               <span className={s.userTriggerName}>{user.name}</span>
               <ChevronDown size={12} className={s.userTriggerCaret} />
             </button>

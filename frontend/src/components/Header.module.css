@@ -2,39 +2,42 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  height: var(--header-h);
-  background: var(--primary-900);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  height: 48px;
+  background: #223f96;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0;
   font-family: var(--font-sans);
 }
 
 .inner {
-  max-width: var(--max-w);
+  max-width: 1120px;
   width: 100%;
   margin: 0 auto;
+  height: 48px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 28px;
+  padding: 0 24px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .logoImage {
-  height: 26px;
-  width: auto;
+  width: 44px;
+  height: 34px;
   display: block;
   object-fit: contain;
 }
@@ -42,19 +45,22 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
+  height: 100%;
 }
 
 .navLink {
   position: relative;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 13px;
+  font-weight: 500;
   padding: 0 14px;
-  height: var(--header-h);
+  height: 48px;
   display: flex;
   align-items: center;
   transition: color 0.15s ease;
   white-space: nowrap;
+  line-height: 48px;
 }
 
 .navLink:hover {
@@ -69,10 +75,11 @@
   content: '';
   position: absolute;
   bottom: 0;
-  left: 14px;
-  right: 14px;
-  height: 2px;
-  background: var(--primary-400);
+  left: 13px;
+  right: 13px;
+  height: 3px;
+  background: #69a6ff;
+  border-radius: 3px 3px 0 0;
 }
 
 .spacer {
@@ -80,8 +87,8 @@
 }
 
 .searchFab {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.84);
@@ -100,14 +107,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 8px;
-  padding: 0 14px;
-  height: 32px;
+  margin-left: 0;
+  padding: 0 13px;
+  height: 28px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(82, 150, 220, 0.82);
+  border: 1px solid rgba(142, 190, 238, 0.36);
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 12px;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -118,50 +125,46 @@
 
 .userMenuWrap {
   position: relative;
-  margin-left: 8px;
+  margin-left: 0;
 }
 
 .userTrigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px 4px 4px;
-  height: 36px;
+  gap: 6px;
+  padding: 0 10px;
+  height: 28px;
+  min-width: 88px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(82, 150, 220, 0.82);
+  border: 1px solid rgba(142, 190, 238, 0.36);
   color: #fff;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .userTrigger:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(93, 163, 232, 0.92);
+  border-color: rgba(176, 210, 244, 0.48);
 }
 
-.userTriggerAvatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--primary-600);
-  color: #fff;
-  font-size: 0.76rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.userTriggerIcon {
+  color: rgba(255, 255, 255, 0.92);
+  flex: 0 0 auto;
 }
 
 .userTriggerName {
-  font-size: 0.82rem;
-  max-width: 96px;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 68px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1;
 }
 
 .userTriggerCaret {
-  opacity: 0.65;
+  opacity: 0.8;
+  flex: 0 0 auto;
 }
 
 .userMenu {
