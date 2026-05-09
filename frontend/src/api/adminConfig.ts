@@ -14,6 +14,12 @@ export interface DomainConfig {
   icon: string;
   background_image: string;
   enabled: boolean;
+  public_label?: string;
+  public_folder_ids?: number[];
+  public_count?: number;
+  professional_label?: string;
+  professional_folder_ids?: number[];
+  professional_count?: number;
 }
 
 export interface SectionConfig {
@@ -67,6 +73,12 @@ export interface SpaceOption {
 export interface SpaceFileItem {
   id: number;
   name: string;
+}
+
+export interface SpaceFolderItem {
+  id: number;
+  name: string;
+  path: string;
 }
 
 export interface RecommendationConfig {
@@ -205,6 +217,10 @@ export function fetchSpaceOptions() {
 
 export function fetchAdminSpaceFiles(spaceId: number) {
   return request<{ space_id: number; files: SpaceFileItem[] }>(`/api/v1/admin/config/spaces/${spaceId}/files`);
+}
+
+export function fetchAdminSpaceFolders(spaceId: number) {
+  return request<{ space_id: number; folders: SpaceFolderItem[] }>(`/api/v1/admin/config/spaces/${spaceId}/folders`);
 }
 
 export function updateDomainsConfig(domains: DomainConfig[]) {

@@ -671,6 +671,44 @@
   grid-column: 1 / -1;
 }
 
+.domainStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.domainStatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--neutral-100);
+  border-radius: 8px;
+  background: #fcfdff;
+}
+
+.domainFolderList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.domainFolderOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--neutral-100);
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+}
+
 .fieldLabel {
   font-size: 0.8rem;
   font-weight: 600;
@@ -831,6 +869,10 @@
   }
 
   .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .domainStatsGrid {
     grid-template-columns: 1fr;
   }
 

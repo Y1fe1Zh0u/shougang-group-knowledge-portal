@@ -17,6 +17,12 @@ class DomainConfig(BaseModel):
     icon: str
     background_image: str = ""
     enabled: bool = True
+    public_label: str = "公共知识"
+    public_folder_ids: list[int] = Field(default_factory=list)
+    public_count: int = 0
+    professional_label: str = "专业知识"
+    professional_folder_ids: list[int] = Field(default_factory=list)
+    professional_count: int = 0
 
 
 class SectionConfig(BaseModel):
@@ -70,6 +76,17 @@ class SpaceFileItem(BaseModel):
 class SpaceFilesResponse(BaseModel):
     space_id: int
     files: list[SpaceFileItem] = Field(default_factory=list)
+
+
+class SpaceFolderItem(BaseModel):
+    id: int
+    name: str
+    path: str = ""
+
+
+class SpaceFoldersResponse(BaseModel):
+    space_id: int
+    folders: list[SpaceFolderItem] = Field(default_factory=list)
 
 
 class RecommendationConfig(BaseModel):

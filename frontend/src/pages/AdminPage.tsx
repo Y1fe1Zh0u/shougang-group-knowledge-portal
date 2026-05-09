@@ -12,6 +12,7 @@ import {
   type DisplayConfig,
   type DomainConfig,
   fetchAdminConfig,
+  fetchAdminSpaceFolders,
   fetchBishengRuntimeConfig,
   fetchQaModelOptions,
   fetchSpaceOptions,
@@ -21,6 +22,7 @@ import {
   type RecommendationConfig,
   type SectionConfig,
   type SiteConfig,
+  type SpaceFolderItem,
   type SpaceOption,
   type SpaceConfig,
   type QAConfig,
@@ -1299,7 +1301,50 @@ function DomainEditorDialog({
   onChange: (patch: Partial<DomainDraft>) => void;
   onSubmit: () => void;
 }) {
+  const selectedSpaceId = Number(draft.spaceId);
+  const canLoadFolders = Number.isInteger(selectedSpaceId) && selectedSpaceId > 0;
+  const [folders, setFolders] = useState<SpaceFolderItem[]>([]);
+  const [foldersLoading, setFoldersLoading] = useState(false);
+  const [foldersError, setFoldersError] = useState('');
+
+  useEffect(() => {
+    if (!open || !canLoadFolders) {
+      setFolders([]);
+      setFoldersError('');
+      setFoldersLoading(false);
+      return;
+    }
+    let active = true;
+    setFoldersLoading(true);
+    setFoldersError('');
+    void (async () => {
+      try {
+        const data = await fetchAdminSpaceFolders(selectedSpaceId);
+        if (!active) return;
+        setFolders(data.folders);
+      } catch (err) {
+        if (!active) return;
+        setFolders([]);
+        setFoldersError(err instanceof Error ? err.message : '文件夹加载失败');
+      } finally {
+        if (active) setFoldersLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [open, canLoadFolders, selectedSpaceId]);
+
   if (!open) return null;
+
+  const toggleFolder = (field: 'publicFolderIds' | 'professionalFolderIds', folderId: number) => {
+    const current = draft[field];
+    onChange({
+      [field]: current.includes(folderId)
+        ? current.filter((id) => id !== folderId)
+        : [...current, folderId],
+    });
+  };
 
   return (
     <div className={s.modalBackdrop} onClick={onClose}>
@@ -1327,7 +1372,11 @@ function DomainEditorDialog({
             <select
               className={s.formInput}
               value={draft.spaceId}
-              onChange={(event) => onChange({ spaceId: event.target.value })}
+              onChange={(event) => onChange({
+                spaceId: event.target.value,
+                publicFolderIds: [],
+                professionalFolderIds: [],
+              })}
             >
               <option value="">未绑定（暂不上首页）</option>
               {spaces.map((space) => (
@@ -1338,6 +1387,36 @@ function DomainEditorDialog({
             </select>
             <span className={s.fieldHint}>未绑定的业务域只在后台可见，绑定知识空间后会按数组顺序出现在首页业务域导航。</span>
           </label>
+          <div className={`${s.formField} ${s.formFieldWide}`}>
+            <span className={s.fieldLabel}>首页统计配置</span>
+            <div className={s.domainStatsGrid}>
+              <DomainStatEditor
+                label="第一行统计"
+                value={draft.publicLabel}
+                selectedIds={draft.publicFolderIds}
+                folders={folders}
+                loading={foldersLoading}
+                error={foldersError}
+                disabled={!canLoadFolders}
+                onLabelChange={(publicLabel) => onChange({ publicLabel })}
+                onToggle={(folderId) => toggleFolder('publicFolderIds', folderId)}
+              />
+              <DomainStatEditor
+                label="第二行统计"
+                value={draft.professionalLabel}
+                selectedIds={draft.professionalFolderIds}
+                folders={folders}
+                loading={foldersLoading}
+                error={foldersError}
+                disabled={!canLoadFolders}
+                onLabelChange={(professionalLabel) => onChange({ professionalLabel })}
+                onToggle={(folderId) => toggleFolder('professionalFolderIds', folderId)}
+              />
+            </div>
+            <span className={s.fieldHint}>
+              选择文件夹后，首页按该文件夹及其子文件夹中的成功文件实时统计；未选择文件夹时沿用绑定空间总文件数兜底。
+            </span>
+          </div>
           <label className={s.formField}>
             <span className={s.fieldLabel}>背景图</span>
             <input
@@ -1390,6 +1469,72 @@ function DomainEditorDialog({
           <button className={s.subtleBtn} onClick={onClose}>取消</button>
           <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DomainStatEditor({
+  label,
+  value,
+  selectedIds,
+  folders,
+  loading,
+  error,
+  disabled,
+  onLabelChange,
+  onToggle,
+}: {
+  label: string;
+  value: string;
+  selectedIds: number[];
+  folders: SpaceFolderItem[];
+  loading: boolean;
+  error: string;
+  disabled: boolean;
+  onLabelChange: (value: string) => void;
+  onToggle: (folderId: number) => void;
+}) {
+  return (
+    <div className={s.domainStatCard}>
+      <label className={s.formField}>
+        <span className={s.fieldLabel}>{label}名称</span>
+        <input
+          className={s.formInput}
+          value={value}
+          onChange={(event) => onLabelChange(event.target.value)}
+          placeholder="例如：公共知识"
+        />
+      </label>
+      <div className={s.domainFolderList}>
+        {disabled ? <div className={s.emptyState}>先选择绑定空间后再配置文件夹统计。</div> : null}
+        {!disabled && loading ? <div className={s.emptyState}>正在加载文件夹...</div> : null}
+        {!disabled && !loading && error ? <div className={s.errorBox}>{error}</div> : null}
+        {!disabled && !loading && !error && folders.length === 0 ? (
+          <div className={s.emptyState}>该知识空间暂无可选文件夹。</div>
+        ) : null}
+        {!disabled && !loading && !error && folders.map((folder) => {
+          const checked = selectedIds.includes(folder.id);
+          return (
+            <button
+              key={folder.id}
+              type="button"
+              className={s.domainFolderOption}
+              onClick={() => onToggle(folder.id)}
+            >
+              <span className={s.checkboxMeta}>
+                <span className={s.optionName}>{folder.name}</span>
+                <span className={s.optionMeta}>
+                  <span className={s.optionMetaItem}>ID {folder.id}</span>
+                  {folder.path ? <span className={s.optionMetaItem}>{folder.path}</span> : null}
+                </span>
+              </span>
+              <span className={`${s.checkboxMark} ${checked ? s.checkboxMarkActive : ''}`}>
+                {checked ? '已选' : '选择'}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

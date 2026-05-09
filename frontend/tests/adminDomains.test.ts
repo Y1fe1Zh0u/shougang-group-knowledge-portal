@@ -21,6 +21,10 @@ test('createDomainDraft maps existing domain values to editable strings', () => 
     color: '#059669',
     bg: '#d1fae5',
     enabled: false,
+    publicLabel: '公共知识',
+    publicFolderIds: [],
+    professionalLabel: '专业知识',
+    professionalFolderIds: [],
   });
 });
 
@@ -33,6 +37,10 @@ test('validateDomainDraft returns a domain config for valid input', () => {
     color: '#6366f1',
     bg: '#ede9fe',
     enabled: true,
+    publicLabel: '制度知识',
+    publicFolderIds: [101],
+    professionalLabel: '专业资料',
+    professionalFolderIds: [102, 103],
   }, [
     { id: 18, name: '冷轧技术手册', file_count: 10, tag_count: 0, enabled: true },
   ]);
@@ -46,6 +54,12 @@ test('validateDomainDraft returns a domain config for valid input', () => {
       color: '#6366f1',
       bg: '#ede9fe',
       enabled: true,
+      public_label: '制度知识',
+      public_folder_ids: [101],
+      public_count: 0,
+      professional_label: '专业资料',
+      professional_folder_ids: [102, 103],
+      professional_count: 0,
     },
   });
 });
@@ -59,6 +73,10 @@ test('validateDomainDraft accepts empty spaceId as unbound (treated as 待补绑
     color: '#d97706',
     bg: '#fef3c7',
     enabled: true,
+    publicLabel: '',
+    publicFolderIds: [],
+    professionalLabel: '',
+    professionalFolderIds: [],
   }, []);
 
   assert.deepEqual(result, {
@@ -70,6 +88,12 @@ test('validateDomainDraft accepts empty spaceId as unbound (treated as 待补绑
       color: '#d97706',
       bg: '#fef3c7',
       enabled: true,
+      public_label: '公共知识',
+      public_folder_ids: [],
+      public_count: 0,
+      professional_label: '专业知识',
+      professional_folder_ids: [],
+      professional_count: 0,
     },
   });
 });
@@ -83,6 +107,10 @@ test('validateDomainDraft still rejects unknown spaces', () => {
     color: '#d97706',
     bg: '#fef3c7',
     enabled: true,
+    publicLabel: '公共知识',
+    publicFolderIds: [],
+    professionalLabel: '专业知识',
+    professionalFolderIds: [],
   }, [
     { id: 12, name: '轧线技术案例库', file_count: 10, tag_count: 0, enabled: true },
   ]);

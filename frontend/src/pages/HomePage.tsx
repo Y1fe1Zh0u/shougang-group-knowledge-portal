@@ -62,6 +62,12 @@ const MOCK_DOMAIN_NAV_ITEMS: DomainConfig[] = [
     icon: 'Factory',
     background_image: '/production-domain-bg.jpg',
     enabled: true,
+    public_label: '公共知识',
+    public_folder_ids: [],
+    public_count: 236,
+    professional_label: '专业知识',
+    professional_folder_ids: [],
+    professional_count: 38,
   },
   {
     name: '设备工程',
@@ -71,6 +77,12 @@ const MOCK_DOMAIN_NAV_ITEMS: DomainConfig[] = [
     icon: 'Wrench',
     background_image: '/device-domain-bg.png',
     enabled: true,
+    public_label: '公共知识',
+    public_folder_ids: [],
+    public_count: 184,
+    professional_label: '专业知识',
+    professional_folder_ids: [],
+    professional_count: 27,
   },
   {
     name: '安全环保',
@@ -80,6 +92,12 @@ const MOCK_DOMAIN_NAV_ITEMS: DomainConfig[] = [
     icon: 'Shield',
     background_image: '/safety-domain-bg.png',
     enabled: true,
+    public_label: '公共知识',
+    public_folder_ids: [],
+    public_count: 156,
+    professional_label: '专业知识',
+    professional_folder_ids: [],
+    professional_count: 24,
   },
   {
     name: '经营管理',
@@ -89,6 +107,12 @@ const MOCK_DOMAIN_NAV_ITEMS: DomainConfig[] = [
     icon: 'Briefcase',
     background_image: '/management-domain-bg.png',
     enabled: true,
+    public_label: '公共知识',
+    public_folder_ids: [],
+    public_count: 128,
+    professional_label: '专业知识',
+    professional_folder_ids: [],
+    professional_count: 19,
   },
   {
     name: '能源动力',
@@ -98,6 +122,12 @@ const MOCK_DOMAIN_NAV_ITEMS: DomainConfig[] = [
     icon: 'Zap',
     background_image: '/energy-domain-bg.jpg',
     enabled: true,
+    public_label: '公共知识',
+    public_folder_ids: [],
+    public_count: 92,
+    professional_label: '专业知识',
+    professional_folder_ids: [],
+    professional_count: 16,
   },
 ];
 
@@ -306,8 +336,12 @@ export default function HomePage() {
     return [
       domain.name,
       {
-        files: spaces.reduce((total, space) => total + space.file_count, 0),
-        tags: spaces.reduce((total, space) => total + space.tag_count, 0),
+        files: domain.public_folder_ids?.length
+          ? (domain.public_count ?? 0)
+          : spaces.reduce((total, space) => total + space.file_count, 0),
+        tags: domain.professional_folder_ids?.length
+          ? (domain.professional_count ?? 0)
+          : spaces.reduce((total, space) => total + space.tag_count, 0),
       },
     ];
   }));
@@ -550,8 +584,8 @@ export default function HomePage() {
                     )}
                     <div className={s.domainCardContent}>
                       <div className={s.domainName}>{d.name}</div>
-                      <div className={s.domainMeta}>{stats.files} 公共知识</div>
-                      <div className={s.domainMeta}>{stats.tags} 专业知识</div>
+                      <div className={s.domainMeta}>{stats.files} {d.public_label || '公共知识'}</div>
+                      <div className={s.domainMeta}>{stats.tags} {d.professional_label || '专业知识'}</div>
                     </div>
                   </div>
                 );

@@ -18,6 +18,8 @@ from app.schemas.portal_config import (
     SectionsConfigUpdate,
     SpaceFileItem,
     SpaceFilesResponse,
+    SpaceFolderItem,
+    SpaceFoldersResponse,
     SpaceOption,
     SpaceOptionsResponse,
     SpacesConfigUpdate,
@@ -159,6 +161,44 @@ class PortalConfigService:
             if item.get("id") is not None and (item.get("file_name") or item.get("title"))
         ]
         return SpaceFilesResponse(space_id=space_id, files=files)
+
+    @staticmethod
+    def build_space_folders(space_id: int, raw_items: list[dict[str, Any]]) -> SpaceFoldersResponse:
+        folder_rows = [
+            item
+            for item in raw_items
+            if item.get("id") is not None and int(item.get("file_type") or -1) == 0
+        ]
+        folder_name_by_id = {
+            int(item["id"]): str(item.get("file_name") or item.get("title") or item.get("name") or item["id"])
+            for item in folder_rows
+        }
+
+        def build_path(item: dict[str, Any]) -> str:
+            raw_path = str(item.get("file_level_path") or "").strip("/")
+            names = []
+            for part in raw_path.split("/"):
+                if not part:
+                    continue
+                try:
+                    folder_id = int(part)
+                except ValueError:
+                    continue
+                names.append(folder_name_by_id.get(folder_id, str(folder_id)))
+            current_name = str(item.get("file_name") or item.get("title") or item.get("name") or "")
+            if current_name:
+                names.append(current_name)
+            return " / ".join(names)
+
+        folders = [
+            SpaceFolderItem(
+                id=int(item["id"]),
+                name=str(item.get("file_name") or item.get("title") or item.get("name") or ""),
+                path=build_path(item),
+            )
+            for item in folder_rows
+        ]
+        return SpaceFoldersResponse(space_id=space_id, folders=folders)
 
     def update_recommendation(self, payload: RecommendationConfig) -> PortalConfig:
         data = self.get_config().model_dump()
