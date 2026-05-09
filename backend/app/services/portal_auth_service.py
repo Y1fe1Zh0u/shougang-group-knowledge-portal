@@ -35,6 +35,8 @@ class PortalSession:
 
 
 class PortalAuthService:
+    _bisheng_cookie_name = "access_token_cookie"
+
     def __init__(
         self,
         runtime_service: BishengRuntimeService,
@@ -107,10 +109,26 @@ class PortalAuthService:
             max_age=max_age,
             path="/",
         )
+        response.set_cookie(
+            key=self._bisheng_cookie_name,
+            value=session.access_token,
+            httponly=True,
+            secure=self._cookie_secure,
+            samesite="lax",
+            max_age=max_age,
+            path="/",
+        )
 
     def clear_session_cookie(self, response: Response) -> None:
         response.delete_cookie(
             key=self._cookie_name,
+            httponly=True,
+            secure=self._cookie_secure,
+            samesite="lax",
+            path="/",
+        )
+        response.delete_cookie(
+            key=self._bisheng_cookie_name,
             httponly=True,
             secure=self._cookie_secure,
             samesite="lax",
