@@ -28,6 +28,8 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { config } = usePortalConfig();
   const bishengAdminUrl = config?.integrations?.bisheng_admin_entry_url?.trim() || '';
+  const headerBrandName = config?.site?.header_brand_name?.trim() || '首钢股份知库';
+  const headerLogoUrl = config?.site?.header_logo_url?.trim() || '/site-logo.png';
   const [menuKey, setMenuKey] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuOpen = menuKey === location.pathname;
@@ -60,10 +62,10 @@ export default function Header() {
         <div className={s.logo} onClick={() => navigate('/')}>
           <img
             className={s.logoImage}
-            src="/site-logo.png"
-            alt="首钢股份"
+            src={headerLogoUrl}
+            alt={headerBrandName}
           />
-          <span>首钢股份知库</span>
+          <span>{headerBrandName}</span>
         </div>
 
         <nav className={s.nav}>

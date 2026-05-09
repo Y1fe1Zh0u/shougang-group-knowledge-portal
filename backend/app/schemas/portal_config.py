@@ -135,6 +135,15 @@ class IntegrationsConfig(BaseModel):
     bisheng_knowledge_entry_url: str = ""
 
 
+class SiteConfig(BaseModel):
+    header_brand_name: str = "首钢股份知库"
+    header_logo_url: str = "/site-logo.png"
+    login_brand_name: str = "首钢知库"
+    login_logo_url: str = "/shougang-stock-logo.png"
+    browser_title: str = "首钢股份知库"
+    favicon_url: str = "/favicon.svg"
+
+
 class PortalConfig(BaseModel):
     spaces: list[SpaceConfig] = Field(default_factory=list)
     domains: list[DomainConfig] = Field(default_factory=list)
@@ -145,6 +154,7 @@ class PortalConfig(BaseModel):
     apps: list[AppConfig] = Field(default_factory=list)
     banners: list[BannerSlide] = Field(default_factory=list)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
+    site: SiteConfig = Field(default_factory=SiteConfig)
 
 
 class SpacesConfigUpdate(BaseModel):

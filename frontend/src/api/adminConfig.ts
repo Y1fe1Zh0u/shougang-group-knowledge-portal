@@ -132,6 +132,15 @@ export interface IntegrationsConfig {
   bisheng_knowledge_entry_url: string;
 }
 
+export interface SiteConfig {
+  header_brand_name: string;
+  header_logo_url: string;
+  login_brand_name: string;
+  login_logo_url: string;
+  browser_title: string;
+  favicon_url: string;
+}
+
 export interface PortalConfig {
   spaces: SpaceConfig[];
   domains: DomainConfig[];
@@ -142,6 +151,7 @@ export interface PortalConfig {
   apps: AppConfig[];
   banners: BannerSlide[];
   integrations: IntegrationsConfig;
+  site: SiteConfig;
 }
 
 interface ApiEnvelope<T> {
@@ -151,7 +161,16 @@ interface ApiEnvelope<T> {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  const payload = (await response.json()) as ApiEnvelope<T>;
+  const text = await response.text();
+  if (!text) {
+    throw new Error(response.ok ? '响应内容为空' : `请求失败：${response.status}`);
+  }
+  let payload: ApiEnvelope<T>;
+  try {
+    payload = JSON.parse(text) as ApiEnvelope<T>;
+  } catch {
+    throw new Error(response.ok ? '响应不是有效 JSON' : `请求失败：${response.status}`);
+  }
   if (!response.ok) {
     throw new Error(payload?.status_message || '请求失败');
   }
@@ -262,6 +281,13 @@ export function updateIntegrationsConfig(integrations: IntegrationsConfig) {
   return request<IntegrationsConfig>('/api/v1/admin/config/integrations', {
     method: 'POST',
     body: JSON.stringify(integrations),
+  });
+}
+
+export function updateSiteConfig(site: SiteConfig) {
+  return request<SiteConfig>('/api/v1/admin/config/site', {
+    method: 'POST',
+    body: JSON.stringify(site),
   });
 }
 

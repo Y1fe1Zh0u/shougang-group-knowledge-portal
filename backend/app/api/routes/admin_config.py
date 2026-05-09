@@ -15,6 +15,7 @@ from app.schemas.portal_config import (
     QAConfig,
     RecommendationConfig,
     SectionsConfigUpdate,
+    SiteConfig,
     SpacesConfigUpdate,
     DisplayConfig,
 )
@@ -260,6 +261,21 @@ async def update_integrations_config(
     service: PortalConfigService = Depends(get_portal_config_service),
 ):
     return response_ok(service.update_integrations(payload).integrations)
+
+
+@router.get("/site")
+async def get_site_config(
+    service: PortalConfigService = Depends(get_portal_config_service),
+):
+    return response_ok(service.get_config().site)
+
+
+@router.post("/site")
+async def update_site_config(
+    payload: SiteConfig,
+    service: PortalConfigService = Depends(get_portal_config_service),
+):
+    return response_ok(service.update_site(payload).site)
 
 
 @router.get("/bisheng")

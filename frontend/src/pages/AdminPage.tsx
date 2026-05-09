@@ -1,7 +1,7 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
-  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server, Image as ImageIcon, Upload, X, Plug,
+  FolderOpen, Building, Tag, Bot, Star, LayoutGrid, Plus, SlidersHorizontal, RefreshCw, ArrowUp, ArrowDown, Server, Image as ImageIcon, Upload, X, Plug, Settings,
 } from 'lucide-react';
 import DomainIcon from '../components/DomainIcon';
 import Header from '../components/Header';
@@ -20,6 +20,7 @@ import {
   type QAModelOption,
   type RecommendationConfig,
   type SectionConfig,
+  type SiteConfig,
   type SpaceOption,
   type SpaceConfig,
   type QAConfig,
@@ -32,6 +33,7 @@ import {
   updateQaConfig,
   updateRecommendationConfig,
   updateSectionsConfig,
+  updateSiteConfig,
   updateSpacesConfig,
   uploadBannerImage,
 } from '../api/adminConfig';
@@ -82,6 +84,7 @@ const NAV_ITEMS = [
   { key: 'apps', label: '应用市场', icon: LayoutGrid },
   { key: 'bisheng', label: '数据源配置', icon: Server },
   { key: 'integrations', label: '集成配置', icon: Plug },
+  { key: 'site', label: '站点配置', icon: Settings },
 ];
 
 type NavKey = typeof NAV_ITEMS[number]['key'];
@@ -125,6 +128,15 @@ interface BishengDraft {
 interface IntegrationsDraft {
   bisheng_admin_entry_url: string;
   bisheng_knowledge_entry_url: string;
+}
+
+interface SiteDraft {
+  header_brand_name: string;
+  header_logo_url: string;
+  login_brand_name: string;
+  login_logo_url: string;
+  browser_title: string;
+  favicon_url: string;
 }
 
 export default function AdminPage() {
@@ -177,6 +189,9 @@ export default function AdminPage() {
   const [integrationsDialogOpen, setIntegrationsDialogOpen] = useState(false);
   const [integrationsDraft, setIntegrationsDraft] = useState<IntegrationsDraft>(createIntegrationsDraft());
   const [integrationsDialogError, setIntegrationsDialogError] = useState('');
+  const [siteDialogOpen, setSiteDialogOpen] = useState(false);
+  const [siteDraft, setSiteDraft] = useState<SiteDraft>(createSiteDraft());
+  const [siteDialogError, setSiteDialogError] = useState('');
 
   async function loadConfig() {
     setLoading(true);
@@ -500,6 +515,17 @@ export default function AdminPage() {
                 setIntegrationsDraft(createIntegrationsDraft(config.integrations));
                 setIntegrationsDialogError('');
                 setIntegrationsDialogOpen(true);
+              }}
+            />
+          )}
+          {config && active === 'site' && (
+            <SiteConfigTable
+              site={createSiteDraft(config.site)}
+              saving={saving}
+              onEdit={() => {
+                setSiteDraft(createSiteDraft(config.site));
+                setSiteDialogError('');
+                setSiteDialogOpen(true);
               }}
             />
           )}
@@ -883,6 +909,31 @@ export default function AdminPage() {
             void runSave(async () => {
               await persistIntegrations(nextIntegrations, setConfig);
               setIntegrationsDialogOpen(false);
+            });
+          }}
+        />
+      ) : null}
+      {config && siteDialogOpen ? (
+        <SiteEditorDialog
+          open
+          draft={siteDraft}
+          saving={saving}
+          error={siteDialogError}
+          onClose={() => setSiteDialogOpen(false)}
+          onChange={(value) => {
+            setSiteDraft(value);
+            setSiteDialogError('');
+          }}
+          onSubmit={() => {
+            const result = validateSiteDraft(siteDraft);
+            if (result.error || !result.site) {
+              setSiteDialogError(result.error || '站点配置无效');
+              return;
+            }
+            const nextSite = result.site;
+            void runSave(async () => {
+              await persistSite(nextSite, setConfig);
+              setSiteDialogOpen(false);
             });
           }}
         />
@@ -1966,6 +2017,80 @@ function IntegrationsConfigTable({
   );
 }
 
+function SiteConfigTable({
+  site,
+  saving,
+  onEdit,
+}: {
+  site: SiteDraft;
+  saving: boolean;
+  onEdit: () => void;
+}) {
+  return (
+    <>
+      <div className={s.titleBar}>
+        <h2 className={s.pageTitle}>站点配置</h2>
+      </div>
+      <p className={s.pageNote}>
+        这里维护门户品牌展示，包括顶部品牌、登录页品牌，以及浏览器标签页标题和图标。
+      </p>
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>配置项</th>
+            <th>当前值</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>顶部品牌名</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{site.header_brand_name}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>顶部 Header Logo</td>
+            <td>
+              <div className={s.valueStack}>
+                <img src={site.header_logo_url} alt="顶部 Header Logo" className={s.siteLogoPreview} />
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>登录页品牌名</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{site.login_brand_name}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>登录页 Logo</td>
+            <td>
+              <div className={s.valueStack}>
+                <img src={site.login_logo_url} alt="登录页 Logo" className={s.siteLogoPreview} />
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>浏览器标签页文字</td>
+            <td><div className={s.valueStack}><span className={s.valueTitle}>{site.browser_title}</span></div></td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+          <tr>
+            <td>浏览器标签页图标</td>
+            <td>
+              <div className={s.valueStack}>
+                <img src={site.favicon_url} alt="浏览器标签页图标" className={s.siteFaviconPreview} />
+              </div>
+            </td>
+            <td><div className={s.actionGroup}><button className={s.inlineBtn} onClick={onEdit} disabled={saving}>{saving ? '保存中...' : '编辑'}</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 function DisplayConfigTable({
   items,
   saving,
@@ -2209,6 +2334,73 @@ function IntegrationsEditorDialog({
               onChange={(event) => onChange({ ...draft, bisheng_knowledge_entry_url: event.target.value })}
               placeholder="例如：http://192.168.106.120:3002/workspace/knowledge"
             />
+          </label>
+        </div>
+        <div className={s.confirmActions}>
+          <button className={s.subtleBtn} onClick={onClose}>取消</button>
+          <button className={s.addBtn} onClick={onSubmit} disabled={saving}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SiteEditorDialog({
+  open,
+  draft,
+  saving,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  draft: SiteDraft;
+  saving: boolean;
+  error?: string;
+  onClose: () => void;
+  onChange: (value: SiteDraft) => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className={s.modalBackdrop} onClick={onClose}>
+      <div className={s.modalCard} onClick={(event) => event.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <div>
+            <h3 className={s.modalTitle}>编辑站点配置</h3>
+            <p className={s.modalNote}>
+              Logo 和 favicon 支持站内本地路径（如 /site-logo.png 或 site-logo.png）和 http(s) 线上图片地址。
+            </p>
+          </div>
+          <button className={s.subtleBtn} onClick={onClose}>关闭</button>
+        </div>
+        {error ? <div className={s.errorBox}>{error}</div> : null}
+        <div className={s.formGrid}>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>顶部品牌名</span>
+            <input className={s.formInput} value={draft.header_brand_name} onChange={(event) => onChange({ ...draft, header_brand_name: event.target.value })} placeholder="例如：首钢股份知库" />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>顶部 Header Logo</span>
+            <input className={s.formInput} value={draft.header_logo_url} onChange={(event) => onChange({ ...draft, header_logo_url: event.target.value })} placeholder="例如：/site-logo.png 或 https://example.com/logo.png" />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>登录页品牌名</span>
+            <input className={s.formInput} value={draft.login_brand_name} onChange={(event) => onChange({ ...draft, login_brand_name: event.target.value })} placeholder="例如：首钢知库" />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>登录页 Logo</span>
+            <input className={s.formInput} value={draft.login_logo_url} onChange={(event) => onChange({ ...draft, login_logo_url: event.target.value })} placeholder="例如：/shougang-stock-logo.png 或 https://example.com/login-logo.png" />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>浏览器标签页文字</span>
+            <input className={s.formInput} value={draft.browser_title} onChange={(event) => onChange({ ...draft, browser_title: event.target.value })} placeholder="例如：首钢股份知库" />
+          </label>
+          <label className={s.formField}>
+            <span className={s.fieldLabel}>浏览器标签页图标</span>
+            <input className={s.formInput} value={draft.favicon_url} onChange={(event) => onChange({ ...draft, favicon_url: event.target.value })} placeholder="例如：/favicon.svg 或 https://example.com/favicon.ico" />
           </label>
         </div>
         <div className={s.confirmActions}>
@@ -2661,6 +2853,11 @@ async function persistIntegrations(integrations: IntegrationsConfig, setConfig: 
   setConfig((current) => (current ? { ...current, integrations: data } : current));
 }
 
+async function persistSite(site: SiteConfig, setConfig: Dispatch<SetStateAction<PortalConfig | null>>) {
+  const data = await updateSiteConfig(site);
+  setConfig((current) => (current ? { ...current, site: data } : current));
+}
+
 type SaveRunner = (task: () => Promise<void>) => Promise<void>;
 type ConfigSetter = Dispatch<SetStateAction<PortalConfig | null>>;
 
@@ -2879,6 +3076,50 @@ function createIntegrationsDraft(current?: IntegrationsConfig): IntegrationsDraf
     bisheng_admin_entry_url: current?.bisheng_admin_entry_url ?? '',
     bisheng_knowledge_entry_url: current?.bisheng_knowledge_entry_url ?? '',
   };
+}
+
+function createSiteDraft(current?: SiteConfig): SiteDraft {
+  return {
+    header_brand_name: current?.header_brand_name ?? '首钢股份知库',
+    header_logo_url: current?.header_logo_url ?? '/site-logo.png',
+    login_brand_name: current?.login_brand_name ?? '首钢知库',
+    login_logo_url: current?.login_logo_url ?? '/shougang-stock-logo.png',
+    browser_title: current?.browser_title ?? '首钢股份知库',
+    favicon_url: current?.favicon_url ?? '/favicon.svg',
+  };
+}
+
+function validateSiteDraft(draft: SiteDraft): { site?: SiteConfig; error?: string } {
+  const site: SiteConfig = {
+    header_brand_name: draft.header_brand_name.trim(),
+    header_logo_url: normalizeAssetUrl(draft.header_logo_url),
+    login_brand_name: draft.login_brand_name.trim(),
+    login_logo_url: normalizeAssetUrl(draft.login_logo_url),
+    browser_title: draft.browser_title.trim(),
+    favicon_url: normalizeAssetUrl(draft.favicon_url),
+  };
+  if (!site.header_brand_name) return { error: '请输入顶部品牌名' };
+  if (!site.login_brand_name) return { error: '请输入登录页品牌名' };
+  if (!site.browser_title) return { error: '请输入浏览器标签页文字' };
+  for (const [label, value] of [
+    ['顶部 Header Logo', site.header_logo_url],
+    ['登录页 Logo', site.login_logo_url],
+    ['浏览器标签页图标', site.favicon_url],
+  ] as const) {
+    if (!value) return { error: `请输入${label}` };
+    if (!isValidAssetUrl(value)) return { error: `${label} 需填写站内本地路径或 http(s) 线上图片地址` };
+  }
+  return { site };
+}
+
+function normalizeAssetUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || /^https?:\/\//i.test(trimmed) || trimmed.startsWith('/')) return trimmed;
+  return `/${trimmed.replace(/^\.?\//, '')}`;
+}
+
+function isValidAssetUrl(value: string): boolean {
+  return value.startsWith('/') || /^https?:\/\//i.test(value);
 }
 
 function validateBishengDraft(draft: BishengDraft): {

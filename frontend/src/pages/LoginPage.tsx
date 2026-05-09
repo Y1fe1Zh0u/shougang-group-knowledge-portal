@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { fetchPortalMe, loginPortal } from '../api/auth';
 import { loadPortalUser, savePortalUser } from '../hooks/useAuth';
+import { usePortalConfig } from '../hooks/usePortalConfig';
 import s from './LoginPage.module.css';
 
 const FALLBACK_REDIRECT = '/';
@@ -30,8 +31,11 @@ function resolveRedirect(target: string | null): string {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { config } = usePortalConfig();
   const params = new URLSearchParams(location.search);
   const redirect = resolveRedirect(params.get('redirect'));
+  const loginBrandName = config?.site?.login_brand_name?.trim() || '首钢知库';
+  const loginLogoUrl = config?.site?.login_logo_url?.trim() || '/shougang-stock-logo.png';
 
   useEffect(() => {
     const storedUser = loadPortalUser();
@@ -110,8 +114,8 @@ export default function LoginPage() {
       <header className={s.header}>
         <div className={s.headerInner}>
           <Link to="/" className={s.brand}>
-            <img src="/shougang-stock-logo.png" alt="首钢股份" />
-            <span>首钢知库</span>
+            <img src={loginLogoUrl} alt={loginBrandName} />
+            <span>{loginBrandName}</span>
           </Link>
           <div className={s.headerSpacer} />
           <Link to="/" className={s.backHome}>

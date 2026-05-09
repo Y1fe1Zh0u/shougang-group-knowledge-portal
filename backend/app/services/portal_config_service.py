@@ -22,6 +22,7 @@ from app.schemas.portal_config import (
     SpaceOptionsResponse,
     SpacesConfigUpdate,
     DisplayConfig,
+    SiteConfig,
     SpaceConfig,
 )
 
@@ -56,6 +57,21 @@ class PortalConfigService:
                 data["integrations"] = {
                     **default_integrations,
                     **data["integrations"],
+                }
+                self._atomic_write(data)
+        if "site" not in data:
+            data["site"] = dict(DEFAULT_PORTAL_CONFIG.get("site") or {})
+            self._atomic_write(data)
+        else:
+            default_site = DEFAULT_PORTAL_CONFIG.get("site") or {}
+            missing_site_keys = [
+                key for key in default_site
+                if key not in data["site"]
+            ]
+            if missing_site_keys:
+                data["site"] = {
+                    **default_site,
+                    **data["site"],
                 }
                 self._atomic_write(data)
         return PortalConfig.model_validate(data)
@@ -167,6 +183,11 @@ class PortalConfigService:
     def update_integrations(self, payload: IntegrationsConfig) -> PortalConfig:
         data = self.get_config().model_dump()
         data["integrations"] = payload.model_dump()
+        return self._write_config(PortalConfig.model_validate(data))
+
+    def update_site(self, payload: SiteConfig) -> PortalConfig:
+        data = self.get_config().model_dump()
+        data["site"] = payload.model_dump()
         return self._write_config(PortalConfig.model_validate(data))
 
     def _ensure_seeded(self) -> None:

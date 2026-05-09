@@ -566,3 +566,72 @@ def test_get_admin_config_backfills_missing_integration_keys(tmp_path: Path):
         "bisheng_admin_entry_url": "http://example.com/admin",
         "bisheng_knowledge_entry_url": "",
     }
+
+
+def test_get_admin_site_defaults_to_brand_values(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.get("/api/v1/admin/config/site")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {
+        "header_brand_name": "首钢股份知库",
+        "header_logo_url": "/site-logo.png",
+        "login_brand_name": "首钢知库",
+        "login_logo_url": "/shougang-stock-logo.png",
+        "browser_title": "首钢股份知库",
+        "favicon_url": "/favicon.svg",
+    }
+
+
+def test_post_admin_site_persists_brand_values(tmp_path: Path):
+    service = PortalConfigService(config_path=tmp_path / "portal_config.json")
+    runtime_service = create_runtime_service(tmp_path)
+
+    payload = {
+        "header_brand_name": "集团知识门户",
+        "header_logo_url": "/custom-header.png",
+        "login_brand_name": "集团知库",
+        "login_logo_url": "https://assets.example.com/login.png",
+        "browser_title": "集团知识门户",
+        "favicon_url": "/custom-favicon.svg",
+    }
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_runtime_service = runtime_service
+        post_response = client.post("/api/v1/admin/config/site", json=payload)
+        get_response = client.get("/api/v1/admin/config/site")
+
+    assert post_response.status_code == 200
+    assert post_response.json()["data"] == payload
+    assert get_response.json()["data"] == payload
+    assert service.get_config().site.browser_title == "集团知识门户"
+
+
+def test_get_admin_config_backfills_missing_site_from_legacy_json(tmp_path: Path):
+    config_path = tmp_path / "portal_config.json"
+    config_path.write_text(
+        '{"spaces": [], "domains": [], "sections": [], '
+        '"qa": {"knowledge_space_ids": [], "welcome_message": "", '
+        '"hot_questions": [], "ai_search_system_prompt": "", "qa_system_prompt": "", "selected_model": ""}, '
+        '"recommendation": {"provider": "tag_feed", "home_strategy": "x", "detail_strategy": "y"}, '
+        '"display": {"home": {}, "list": {}, "search": {}, "detail": {}}, '
+        '"apps": [], "integrations": {"bisheng_admin_entry_url": "", "bisheng_knowledge_entry_url": ""}}',
+        encoding="utf-8",
+    )
+    service = PortalConfigService(config_path=config_path)
+    runtime_service = create_runtime_service(tmp_path)
+
+    with TestClient(app) as client:
+        client.app.state.portal_config_service = service
+        client.app.state.bisheng_client = FakeBishengClient()
+        client.app.state.bisheng_runtime_service = runtime_service
+        response = client.get("/api/v1/admin/config/site")
+
+    assert response.status_code == 200
+    assert response.json()["data"]["header_brand_name"] == "首钢股份知库"
+    assert response.json()["data"]["favicon_url"] == "/favicon.svg"

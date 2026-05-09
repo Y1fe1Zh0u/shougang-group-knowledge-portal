@@ -16,6 +16,7 @@ import KnowledgeSpacesPage from './pages/KnowledgeSpacesPage';
 import WikiPage from './pages/WikiPage';
 import WikiDetailPage from './pages/WikiDetailPage';
 import CoursePage from './pages/CoursePage';
+import { usePortalConfig } from './hooks/usePortalConfig';
 
 function RouteScrollReset() {
   const location = useLocation();
@@ -47,9 +48,32 @@ function RouteScrollReset() {
   return null;
 }
 
+function SiteHeadConfig() {
+  const { config } = usePortalConfig();
+
+  useEffect(() => {
+    const title = config?.site?.browser_title?.trim() || '首钢股份知库';
+    document.title = title;
+  }, [config?.site?.browser_title]);
+
+  useEffect(() => {
+    const faviconUrl = config?.site?.favicon_url?.trim() || '/favicon.svg';
+    let icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) {
+      icon = document.createElement('link');
+      icon.rel = 'icon';
+      document.head.appendChild(icon);
+    }
+    icon.href = faviconUrl;
+  }, [config?.site?.favicon_url]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <>
+      <SiteHeadConfig />
       <RouteScrollReset />
       <Routes>
         <Route path="/" element={<HomePage />} />
