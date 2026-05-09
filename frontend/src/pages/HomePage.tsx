@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, type KeyboardEvent } from 'r
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Search, Building, Star, AlertTriangle, LayoutGrid,
-  ArrowUp, BarChart3, Bot, ChevronLeft, ChevronRight, FileText, Tag,
+  ArrowUp, BarChart3, Bot, ChevronLeft, ChevronRight, FileText,
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
   PenLine, MessageSquare, Globe, Network, User, Leaf, Truck, Wrench, GraduationCap,
   Award, MessageSquarePlus, Sparkles,
@@ -318,7 +318,6 @@ export default function HomePage() {
     ];
   }));
   const rankedHotTags = (hotTags.length > 0 ? hotTags : MOCK_HOT_TAGS).slice(0, displayConfig.home.hotTagsCount);
-  const tagRankList = rankedHotTags.slice(0, 6);
   const homeSections = enabledSections.slice(0, 3);
   const hasSectionContent = homeSections.some((section) => (sectionData[section.tag] || []).length > 0);
   const isUsingMockSections = homeSections.length === 0 || !hasSectionContent;
@@ -778,32 +777,6 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-
-            {/* 热门标签 */}
-            {tagRankList.length > 0 ? (
-              <div className={`${s.qaPanel} ${s.rankPanel}`}>
-                <div className={s.qaHeader}>
-                  <div className={s.qaHeaderLeft}>
-                    <div className={s.panelIcon}><Tag size={14} /></div>
-                    <span className={s.panelTitle}>热门标签</span>
-                  </div>
-                </div>
-                <div className={s.tagRankGrid}>
-                  {tagRankList.map((tagName, index) => (
-                    <button
-                      key={tagName}
-                      type="button"
-                      className={s.tagRankItem}
-                      onClick={() => navigate(`/list?tag=${encodeURIComponent(tagName)}`)}
-                    >
-                      <span className={s.tagRankIndex}>#{index + 1}</span>
-                      <span className={s.tagRankName}>{tagName}</span>
-                      <span className={s.tagRankCount}>标签</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
           </div>
         </div>

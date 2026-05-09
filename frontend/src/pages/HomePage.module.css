@@ -1010,55 +1010,6 @@
   line-height: 1.55;
 }
 
-/* ===== Tag rank panel ===== */
-.rankPanel .qaHeader {
-  margin-bottom: 12px;
-}
-
-.tagRankGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.tagRankItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--neutral-200);
-  border-radius: 8px;
-  background: #fff;
-  text-align: left;
-  transition: border-color 0.15s ease;
-}
-
-.tagRankItem:hover {
-  border-color: var(--primary-300);
-}
-
-.tagRankIndex {
-  font-size: 0.76rem;
-  font-family: var(--font-mono, "SFMono-Regular", monospace);
-  color: var(--primary-600);
-  width: 22px;
-  flex-shrink: 0;
-}
-
-.tagRankName {
-  flex: 1;
-  font-size: 0.84rem;
-  color: var(--neutral-800);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tagRankCount {
-  font-size: 0.72rem;
-  color: var(--neutral-400);
-}
-
 /* ===== Lock panel ===== */
 .lockBody {
   font-size: 0.86rem;
@@ -1457,7 +1408,4 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
-  .tagRankGrid {
-    grid-template-columns: 1fr;
-  }
 }
