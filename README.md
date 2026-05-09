@@ -5,20 +5,15 @@
 - `frontend/`：React + Vite 前端站点，覆盖首页、搜索、业务域列表、详情页、问答页、应用页和后台配置页
 - `backend/`：FastAPI BFF，提供门户配置、知识检索、详情、预览、相关推荐和问答代理接口
 
-## 当前主文档
-
-- 功能与 API 主规格：[knowledge-portal-api-spec-bisheng-review.md](/Users/zhou/Code/shougang-group-knowledge-portal/knowledge-portal-api-spec-bisheng-review.md)
-- 历史方案与排查记录：`archive/`
-
 ## 目录结构
 
 ```text
 .
-├── frontend/
-├── backend/
-├── deploy/
-├── archive/
-└── knowledge-portal-api-spec-bisheng-review.md
+├── backend/   # FastAPI BFF
+├── frontend/  # React + Vite 前端
+├── deploy/    # 前后端 Dockerfile 与 nginx 配置
+├── scripts/   # 辅助脚本
+└── README.md
 ```
 
 ## 本地运行
@@ -105,5 +100,3 @@ docker run -d --name frontend --network portal-net -p 3001:80 \
 - 前端 nginx 配置：`-v /path/to/my-nginx.conf:/etc/nginx/conf.d/default.conf:ro` —— upstream 后端地址变化时改 conf 不重 build
 - 后端运行时数据：`-v /opt/portal-data:/app/app/config/data` —— 持久化 `portal_config.json` + `bisheng_runtime.json` + `uploads/`，容器重建不丢 admin 配置
 - 后端环境变量：通过 `-e PORTAL_*=...` 注入 BiSheng 接入参数（完整变量见 `backend/app/settings.py`）
-
-K8s 部署样例见 [`docs/portal-deployment-k8s.md`](docs/portal-deployment-k8s.md)。
