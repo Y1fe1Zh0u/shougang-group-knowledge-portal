@@ -33,11 +33,33 @@
   overflow: hidden;
   cursor: pointer;
   background-color: var(--primary-900);
+  isolation: isolate;
+}
+
+.heroSlides {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.heroSlide {
+  position: absolute;
+  inset: 0;
   background-position: center 48%;
   background-size: cover;
   background-repeat: no-repeat;
-  isolation: isolate;
-  transition: background-image 0.4s ease;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 720ms ease,
+    transform 1800ms ease;
+  will-change: opacity, transform;
+}
+
+.heroSlideActive {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .heroGlow {
@@ -60,6 +82,19 @@
   padding: 34px 24px 0;
   z-index: 1;
   text-align: center;
+  animation: bannerCopyIn 420ms ease both;
+}
+
+@keyframes bannerCopyIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .heroTitleRow {
@@ -109,6 +144,10 @@
   z-index: 1;
 }
 
+.heroSearchPanelOpen {
+  z-index: 4;
+}
+
 .searchBox {
   position: relative;
   display: flex;
@@ -133,8 +172,21 @@
   border-right: 1px solid #eef2f7;
 }
 
+.searchModeBtnActive {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
 .searchModeBtn svg {
   flex: 0 0 auto;
+}
+
+.searchModeCaret {
+  transition: transform 0.18s ease;
+}
+
+.searchModeBtnActive .searchModeCaret {
+  transform: rotate(90deg);
 }
 
 .searchInput {
@@ -152,6 +204,71 @@
 
 .searchInput::placeholder {
   color: var(--neutral-400);
+}
+
+.hotSearchMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 22px rgba(25, 82, 151, 0.16);
+  backdrop-filter: blur(6px);
+  z-index: 5;
+  animation: hotSearchMenuIn 160ms ease both;
+}
+
+@keyframes hotSearchMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hotSearchTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 64px;
+  overflow: hidden;
+}
+
+.hotSearchTag {
+  min-width: 0;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid #e5eaf2;
+  border-radius: 9999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.hotSearchTag:hover {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.hotSearchEmpty {
+  padding: 2px;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .searchBtn {

@@ -180,6 +180,7 @@ export default function HomePage() {
   const [domainPage, setDomainPage] = useState(0);
   const [sectionData, setSectionData] = useState<Record<string, FileItem[]>>({});
   const [hotTags, setHotTags] = useState<string[]>([]);
+  const [showHotTagMenu, setShowHotTagMenu] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [welcomeToast, setWelcomeToast] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
@@ -231,6 +232,10 @@ export default function HomePage() {
   }, [query, navigate]);
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setShowHotTagMenu(false);
+      return;
+    }
     if (e.key === 'Enter') handleSearch();
   };
 
@@ -281,7 +286,6 @@ export default function HomePage() {
   /* Stats */
   const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
   const activeBanner = homeBanners[safeBannerIdx] ?? homeBanners[0];
-  const activeBannerBackground = buildBannerBackground(activeBanner.imageUrl);
   const configuredHomeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
   const isUsingMockDomains = configuredHomeDomains.length === 0;
   const homeDomains = isUsingMockDomains ? MOCK_DOMAIN_NAV_ITEMS : configuredHomeDomains;
@@ -363,7 +367,7 @@ export default function HomePage() {
       <section className={s.hero}>
         <div
           className={s.heroBanner}
-          style={{ backgroundImage: activeBannerBackground, cursor: activeBanner.linkUrl ? 'pointer' : 'default' }}
+          style={{ cursor: activeBanner.linkUrl ? 'pointer' : 'default' }}
           onClick={() => {
             const link = activeBanner.linkUrl;
             if (!link) return;
@@ -374,20 +378,38 @@ export default function HomePage() {
             }
           }}
         >
+          <div className={s.heroSlides} aria-hidden="true">
+            {homeBanners.map((banner, index) => (
+              <div
+                key={`${banner.imageUrl}-${index}`}
+                className={`${s.heroSlide} ${index === safeBannerIdx ? s.heroSlideActive : ''}`}
+                style={{ backgroundImage: buildBannerBackground(banner.imageUrl) }}
+              />
+            ))}
+          </div>
           <div className={s.heroGlow} />
-          <div className={s.heroInner}>
+          <div key={`${safeBannerIdx}-${activeBanner.title}`} className={s.heroInner}>
             <div className={s.heroTitleRow}>
               <span className={s.bannerLabel}>{activeBanner.label}</span>
               <h1 className={s.heroTitle}>{activeBanner.title}</h1>
             </div>
             <p className={s.heroSub}>{activeBanner.desc}</p>
           </div>
-          <div className={s.heroSearchPanel} onClick={(event) => event.stopPropagation()}>
+          <div
+            className={`${s.heroSearchPanel} ${showHotTagMenu ? s.heroSearchPanelOpen : ''}`}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className={s.searchBox}>
-              <button type="button" className={s.searchModeBtn}>
+              <button
+                type="button"
+                className={`${s.searchModeBtn} ${showHotTagMenu ? s.searchModeBtnActive : ''}`}
+                aria-expanded={showHotTagMenu}
+                aria-controls="home-hot-tag-menu"
+                onClick={() => setShowHotTagMenu((open) => !open)}
+              >
                 <Flame size={13} />
                 <span>热门搜索</span>
-                <ChevronRight size={12} />
+                <ChevronRight size={12} className={s.searchModeCaret} />
               </button>
               <input
                 className={s.searchInput}
@@ -407,6 +429,29 @@ export default function HomePage() {
                 <Search size={18} />
               </button>
             </div>
+            {showHotTagMenu ? (
+              <div id="home-hot-tag-menu" className={s.hotSearchMenu}>
+                {rankedHotTags.length > 0 ? (
+                  <div className={s.hotSearchTags}>
+                    {rankedHotTags.map((tagName) => (
+                      <button
+                        key={tagName}
+                        type="button"
+                        className={s.hotSearchTag}
+                        onClick={() => {
+                          setShowHotTagMenu(false);
+                          navigate(`/list?tag=${encodeURIComponent(tagName)}`);
+                        }}
+                      >
+                        {tagName}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={s.hotSearchEmpty}>暂无热门标签</div>
+                )}
+              </div>
+            ) : null}
           </div>
           <div className={s.heroBottomRow} onClick={(event) => event.stopPropagation()}>
             <div className={s.appShortcutList}>
