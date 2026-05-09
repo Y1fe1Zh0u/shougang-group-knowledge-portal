@@ -6,12 +6,12 @@ import {
   Settings, Factory, Snowflake, Zap, Shield, CheckCircle,
   PenLine, MessageSquare, Globe, Network, User, Leaf, Truck, Wrench, GraduationCap,
   Award, MessageSquarePlus, Sparkles,
-  BookOpen, Package, Video, Flame, Briefcase, Users,
+  BookOpen, Package, Video, Flame, Briefcase, Users, Tag, TrendingUp, FolderOpen,
 } from 'lucide-react';
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
-import type { DomainConfig, SectionConfig } from '../api/adminConfig';
+import type { DomainConfig } from '../api/adminConfig';
 import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveSectionVisual } from '../utils/adminSections';
@@ -32,7 +32,7 @@ const APP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 };
 
 const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
-  Star, AlertTriangle, BarChart3, LayoutGrid,
+  Star, AlertTriangle, Tag, TrendingUp, FolderOpen, LayoutGrid, BarChart3,
 };
 
 const DOMAIN_PAGE_SIZE = 4;
@@ -103,54 +103,6 @@ const MOCK_DOMAIN_STATS = new Map([
   ['经营管理', { files: 128, tags: 19 }],
   ['能源动力', { files: 92, tags: 16 }],
 ]);
-
-const MOCK_HOME_SECTIONS: SectionConfig[] = [
-  {
-    title: '知识推荐 · 最新精选',
-    tag: '知识推荐',
-    link: '/list?tag=%E7%9F%A5%E8%AF%86%E6%8E%A8%E8%8D%90',
-    icon: 'BarChart3',
-    color: '#2563eb',
-    bg: '#eff6ff',
-    enabled: true,
-  },
-  {
-    title: '行业情报 · 趋势分析',
-    tag: '行业情报',
-    link: '/list?tag=%E8%A1%8C%E4%B8%9A%E6%83%85%E6%8A%A5',
-    icon: 'LayoutGrid',
-    color: '#2563eb',
-    bg: '#eff6ff',
-    enabled: true,
-  },
-];
-
-const MOCK_SECTION_DATA: Record<string, FileItem[]> = {
-  知识推荐: Array.from({ length: 4 }, (_, index) => ({
-    id: 9000 + index,
-    spaceId: 0,
-    title: '固体废物鉴别标准 通则',
-    summary: '',
-    source: 'mock',
-    date: '2026-05-05T14:36:00+08:00',
-    tags: index % 2 === 0 ? ['知识推荐', '热门'] : ['知识推荐'],
-    ext: 'pdf',
-    sizeLabel: '',
-    fileEncoding: '',
-  })),
-  行业情报: Array.from({ length: 4 }, (_, index) => ({
-    id: 9100 + index,
-    spaceId: 0,
-    title: '钢铁工业烧结废气超低排放治理工程技术规范',
-    summary: '【文档类型】：规范制度  【摘要】：本标准《钢铁工业烧结废气超低排放治理工程技术规范》（HJ 1408-2024）由生态环境部发布，旨在规范钢铁工业烧结废气超低排放治理工程的设计、施工、验收和运行维护，以达到环保要求。标准详细规定了烧结废气污染物的来源、分级治理路径与运行维护要点。',
-    source: 'mock',
-    date: '2026-05-05T14:40:00+08:00',
-    tags: ['行业情报'],
-    ext: 'pdf',
-    sizeLabel: '',
-    fileEncoding: '',
-  })),
-};
 
 const BANNER_OVERLAY_GRADIENT =
   'linear-gradient(180deg, rgba(43, 118, 246, 0.52) 0%, rgba(59, 143, 246, 0.36) 38%, rgba(22, 98, 178, 0.34) 100%), linear-gradient(90deg, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0.04) 46%, rgba(37, 99, 235, 0.16) 100%)';
@@ -319,9 +271,7 @@ export default function HomePage() {
   }));
   const rankedHotTags = (hotTags.length > 0 ? hotTags : MOCK_HOT_TAGS).slice(0, displayConfig.home.hotTagsCount);
   const homeSections = enabledSections.slice(0, 3);
-  const hasSectionContent = homeSections.some((section) => (sectionData[section.tag] || []).length > 0);
-  const isUsingMockSections = homeSections.length === 0 || !hasSectionContent;
-  const contentSections = isUsingMockSections ? MOCK_HOME_SECTIONS : homeSections;
+  const contentSections = homeSections;
   const homeApps = enabledApps.slice(0, displayConfig.home.appsCount);
   const assistantGreeting = getWelcomeMessage(config?.qa.welcome_message);
   const qaHotQuestions = (config?.qa.hot_questions || []).map((question) => question.trim()).filter(Boolean);
@@ -576,15 +526,18 @@ export default function HomePage() {
         <div className={s.columns}>
           {/* Left: knowledge list panels */}
           <div className={s.leftColumn}>
-            {contentSections.map((sec) => {
+            {contentSections.map((sec, index) => {
               const Icon = SECTION_ICONS[sec.icon] || Star;
               const visual = resolveSectionVisual(sec);
-              const items = isUsingMockSections ? (MOCK_SECTION_DATA[sec.tag] || []) : (sectionData[sec.tag] || []);
+              const items = sectionData[sec.tag] || [];
               const showSummary = sec.tag === '行业情报' || sec.tag === '典型案例';
-              const featuredItem = !isUsingMockSections && sec.tag === '最新精选' ? items[0] : null;
+              const featuredItem = sec.tag === '最新精选' ? items[0] : null;
               const listItems = featuredItem ? items.slice(1) : items;
               return (
-                <div key={sec.tag} className={s.panel}>
+                <div
+                  key={sec.tag}
+                  className={`${s.panel} ${index === 0 ? s.primarySectionPanel : s.tallSectionPanel}`}
+                >
                   <div className={s.panelHeader}>
                     <div className={s.panelHeaderLeft}>
                       <div className={s.panelIcon} style={{ background: visual.bg, color: visual.color }}><Icon size={14} /></div>
@@ -638,6 +591,11 @@ export default function HomePage() {
                       </div>
                     </div>
                   ))}
+                  {items.length === 0 ? (
+                    <div className={s.sectionEmpty}>
+                      暂无匹配内容
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
