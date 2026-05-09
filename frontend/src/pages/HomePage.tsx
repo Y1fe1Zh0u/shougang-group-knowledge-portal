@@ -12,7 +12,7 @@ import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
 import type { DomainConfig } from '../api/adminConfig';
-import { fetchAggregatedTags, searchFiles, type FileItem } from '../api/content';
+import { fetchAggregatedTags, searchFiles, streamChatCompletion, type FileItem } from '../api/content';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveSectionVisual } from '../utils/adminSections';
 import { formatDisplayDateTime } from '../utils/dateTime';
@@ -36,6 +36,11 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 };
 
 const DOMAIN_PAGE_SIZE = 4;
+
+type HomeQaMessage = {
+  role: 'bot' | 'user';
+  text: string;
+};
 
 const MOCK_HOT_TAGS = [
   '安全生产',
@@ -139,6 +144,9 @@ export default function HomePage() {
   const { config, error } = usePortalConfig();
   const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [query, setQuery] = useState('');
+  const [qaDraft, setQaDraft] = useState('');
+  const [qaMessages, setQaMessages] = useState<HomeQaMessage[]>([]);
+  const [qaStreaming, setQaStreaming] = useState(false);
   const [bannerIdx, setBannerIdx] = useState(0);
   const [domainPage, setDomainPage] = useState(0);
   const [sectionData, setSectionData] = useState<Record<string, FileItem[]>>({});
@@ -193,6 +201,40 @@ export default function HomePage() {
   const handleSearch = useCallback(() => {
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
   }, [query, navigate]);
+
+  const startQaConversation = useCallback((question?: string) => {
+    const text = (question ?? qaDraft).trim();
+    if (!text || qaStreaming) return;
+
+    setQaDraft('');
+    setQaStreaming(true);
+    setQaMessages((prev) => [...prev, { role: 'user', text }, { role: 'bot', text: '' }]);
+
+    void streamChatCompletion({
+      scene: 'qa',
+      text,
+      knowledgeSpaceIds: config?.qa.knowledge_space_ids ?? [],
+      onUpdate(currentText) {
+        setQaMessages((prev) => {
+          const next = [...prev];
+          const lastIdx = next.length - 1;
+          if (lastIdx < 0 || next[lastIdx].role !== 'bot') return prev;
+          next[lastIdx] = { ...next[lastIdx], text: currentText };
+          return next;
+        });
+      },
+    }).catch(() => {
+      setQaMessages((prev) => {
+        const next = [...prev];
+        const lastIdx = next.length - 1;
+        if (lastIdx < 0 || next[lastIdx].role !== 'bot') return prev;
+        next[lastIdx] = { ...next[lastIdx], text: '问答请求失败，请稍后重试。' };
+        return next;
+      });
+    }).finally(() => {
+      setQaStreaming(false);
+    });
+  }, [config?.qa.knowledge_space_ids, qaDraft, qaStreaming]);
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
@@ -276,6 +318,12 @@ export default function HomePage() {
   const assistantGreeting = getWelcomeMessage(config?.qa.welcome_message);
   const qaHotQuestions = (config?.qa.hot_questions || []).map((question) => question.trim()).filter(Boolean);
   const primaryQaQuestion = qaHotQuestions[0] || '振动纹通常如何排查？';
+  const qaPreviewMessages = qaMessages.length > 0
+    ? qaMessages
+    : [
+      { role: 'bot' as const, text: assistantGreeting },
+      { role: 'user' as const, text: primaryQaQuestion },
+    ];
 
   const expertQuestionFallbacks = [
     '振动纹通常如何排查？',
@@ -651,28 +699,57 @@ export default function HomePage() {
                 </Link>
               </div>
               <div className={s.qaComposerWrap}>
-                <div className={s.qaPreview} onClick={() => navigate('/qa')}>
-                  <div className={s.qaPreviewRow}>
-                    <div className={s.qaComposerAvatar}>
-                      <Bot size={16} />
-                    </div>
-                    <div className={s.qaComposerBubble}>
-                      {assistantGreeting}
-                    </div>
-                  </div>
-                  <div className={`${s.qaPreviewRow} ${s.qaPreviewRowUser}`}>
-                    <div className={s.qaUserBubble}>{primaryQaQuestion}</div>
-                    <div className={`${s.qaComposerAvatar} ${s.qaComposerAvatarUser}`}>
-                      <User size={16} />
-                    </div>
-                  </div>
+                <div className={s.qaPreview}>
+                  {qaPreviewMessages.map((message, index) => {
+                    const isUser = message.role === 'user';
+                    const isSuggestion = qaMessages.length === 0 && isUser;
+                    const isThinking = qaStreaming && !isUser && index === qaPreviewMessages.length - 1 && !message.text.trim();
+                    return (
+                      <div
+                        key={`${message.role}-${index}`}
+                        className={`${s.qaPreviewRow} ${isUser ? s.qaPreviewRowUser : ''}`}
+                      >
+                        {!isUser ? (
+                          <div className={s.qaComposerAvatar}>
+                            <Bot size={16} />
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={isUser ? s.qaUserBubble : s.qaComposerBubble}
+                          onClick={isSuggestion ? () => startQaConversation(message.text) : undefined}
+                          disabled={!isSuggestion}
+                        >
+                          {isThinking ? '思考中...' : message.text}
+                        </button>
+                        {isUser ? (
+                          <div className={`${s.qaComposerAvatar} ${s.qaComposerAvatarUser}`}>
+                            <User size={16} />
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className={s.qaPromptBox} onClick={() => navigate('/qa')}>
-                  <span>请输入您的问题</span>
-                  <button type="button" className={s.qaPromptSend} aria-label="发送问题">
+                <form
+                  className={s.qaPromptBox}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    startQaConversation();
+                  }}
+                >
+                  <input
+                    className={s.qaPromptInput}
+                    value={qaDraft}
+                    onChange={(event) => setQaDraft(event.target.value)}
+                    placeholder="请输入您的问题"
+                    aria-label="请输入您的问题"
+                    disabled={qaStreaming}
+                  />
+                  <button type="submit" className={s.qaPromptSend} aria-label="发送问题" disabled={qaStreaming}>
                     <ArrowUp size={14} />
                   </button>
-                </div>
+                </form>
               </div>
               <div className={s.qaCallout}>
                 <Sparkles size={13} />

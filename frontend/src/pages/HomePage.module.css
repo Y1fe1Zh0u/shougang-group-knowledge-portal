@@ -835,7 +835,8 @@
   border-radius: 8px;
   padding: 17px 12px 15px;
   min-height: 155px;
-  cursor: pointer;
+  max-height: 220px;
+  overflow-y: auto;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -881,20 +882,34 @@
   padding: 8px 12px;
   border-radius: 10px 10px 10px 4px;
   font-size: 0.78rem;
+  font-family: inherit;
   color: var(--neutral-800);
   line-height: 1.5;
   max-width: 176px;
+  text-align: left;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.04);
 }
 
 .qaUserBubble {
+  border: 0;
   background: var(--primary-600);
   color: #fff;
   padding: 8px 12px;
   border-radius: 10px 10px 4px 10px;
   font-size: 0.78rem;
+  font-family: inherit;
   line-height: 1.5;
   max-width: 176px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qaComposerBubble:disabled,
+.qaUserBubble:disabled {
+  color: inherit;
+  cursor: default;
+  opacity: 1;
+  -webkit-text-fill-color: currentColor;
 }
 
 .qaComposerButton {
@@ -918,7 +933,26 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 8px 0 12px;
-  cursor: pointer;
+}
+
+.qaPromptInput {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--neutral-800);
+  font: inherit;
+}
+
+.qaPromptInput::placeholder {
+  color: var(--neutral-400);
+}
+
+.qaPromptInput:disabled {
+  color: var(--neutral-500);
+  cursor: not-allowed;
+  -webkit-text-fill-color: var(--neutral-500);
 }
 
 .qaPromptSend {
@@ -931,6 +965,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+.qaPromptSend:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .qaComposerButton:hover {
