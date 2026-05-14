@@ -11,7 +11,7 @@ import {
 import PageShell from '../components/PageShell';
 import SectionHeader from '../components/SectionHeader';
 import TagPill from '../components/TagPill';
-import type { DomainConfig } from '../api/adminConfig';
+import type { DomainConfig, SectionConfig } from '../api/adminConfig';
 import { fetchAggregatedTags, searchFiles, streamChatCompletion, type FileItem } from '../api/content';
 import { usePortalConfig } from '../hooks/usePortalConfig';
 import { resolveSectionVisual } from '../utils/adminSections';
@@ -159,6 +159,154 @@ const MOCK_DOMAIN_STATS = new Map([
   ['管理', 217],
 ]);
 
+const MOCK_HOME_SECTIONS: SectionConfig[] = [
+  {
+    title: '最新精选',
+    tag: '最新精选',
+    link: '/list?tag=%E6%9C%80%E6%96%B0%E7%B2%BE%E9%80%89',
+    icon: 'Star',
+    color: '#2563eb',
+    bg: '#eff6ff',
+    enabled: true,
+  },
+  {
+    title: '典型案例',
+    tag: '典型案例',
+    link: '/list?tag=%E5%85%B8%E5%9E%8B%E6%A1%88%E4%BE%8B',
+    icon: 'AlertTriangle',
+    color: '#dc2626',
+    bg: '#fee2e2',
+    enabled: true,
+  },
+];
+
+const MOCK_HOME_SECTION_DATA: Record<string, FileItem[]> = {
+  最新精选: [
+    {
+      id: 91001,
+      spaceId: 9003,
+      title: '热轧产线设备点检标准化操作指引',
+      summary: '覆盖巡检路线、点检频次、异常记录和交接班协同要求，适合设备岗位日常执行和班组培训使用。',
+      source: '设备业务域演示空间',
+      date: '2026-05-13T09:20:00+08:00',
+      tags: ['最新精选', '设备', '点检'],
+      ext: 'pdf',
+      sizeLabel: '2.4 MB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 91002,
+      spaceId: 9004,
+      title: '有限空间作业风险辨识与审批要点',
+      summary: '梳理作业前确认、气体检测、监护配置和应急处置的关键控制项。',
+      source: '安全业务域演示空间',
+      date: '2026-05-12T16:45:00+08:00',
+      tags: ['最新精选', '安全生产'],
+      ext: 'docx',
+      sizeLabel: '1.1 MB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 91003,
+      spaceId: 9008,
+      title: '能源中心日负荷预测数据看板说明',
+      summary: '说明关键指标口径、异常波动识别方式和调度联动流程。',
+      source: '能源业务域演示空间',
+      date: '2026-05-11T10:12:00+08:00',
+      tags: ['最新精选', '能源管控'],
+      ext: 'xlsx',
+      sizeLabel: '860 KB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 91004,
+      spaceId: 9001,
+      title: '重点客户技术协议归档与检索规范',
+      summary: '统一技术协议命名、版本标识和归档字段，提升营销、质量和研发协同查询效率。',
+      source: '营销业务域演示空间',
+      date: '2026-05-10T15:18:00+08:00',
+      tags: ['最新精选', '营销'],
+      ext: 'docx',
+      sizeLabel: '1.4 MB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 91005,
+      spaceId: 9007,
+      title: '生产系统权限申请与变更流程说明',
+      summary: '面向生产一线系统账号开通、权限变更和离岗回收场景，明确审批链路和安全审计要求。',
+      source: '信息业务域演示空间',
+      date: '2026-05-09T09:35:00+08:00',
+      tags: ['最新精选', '信息'],
+      ext: 'pdf',
+      sizeLabel: '980 KB',
+      fileEncoding: 'UTF-8',
+    },
+  ],
+  典型案例: [
+    {
+      id: 92001,
+      spaceId: 9009,
+      title: '高强钢板形波动问题复盘与参数优化',
+      summary: '从订单规格、轧制节奏、温控窗口和在线检测数据四个维度复盘板形波动原因，并形成参数优化建议。',
+      source: '质量业务域演示空间',
+      date: '2026-05-10T14:30:00+08:00',
+      tags: ['典型案例', '质量'],
+      ext: 'pdf',
+      sizeLabel: '3.2 MB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 92002,
+      spaceId: 9003,
+      title: '加热炉燃烧器异响处置案例',
+      summary: '记录异常发现、现场检查、备件替换和复产验证过程，为同类设备故障提供排查路径。',
+      source: '设备业务域演示空间',
+      date: '2026-05-09T11:05:00+08:00',
+      tags: ['典型案例', '设备'],
+      ext: 'docx',
+      sizeLabel: '1.8 MB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 92003,
+      spaceId: 9004,
+      title: '检修交叉作业安全协同案例',
+      summary: '围绕检修窗口压缩、外协人员交叉进入和风险告知不足等问题，沉淀班前会与现场监护改进项。',
+      source: '安全业务域演示空间',
+      date: '2026-05-08T08:40:00+08:00',
+      tags: ['典型案例', '安全生产'],
+      ext: 'pdf',
+      sizeLabel: '2.0 MB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 92004,
+      spaceId: 9008,
+      title: '空压站能耗异常波动分析案例',
+      summary: '通过分时负荷、设备启停和管网压力数据定位异常点，并形成运行策略调整建议。',
+      source: '能源业务域演示空间',
+      date: '2026-05-07T13:22:00+08:00',
+      tags: ['典型案例', '能源管控'],
+      ext: 'xlsx',
+      sizeLabel: '760 KB',
+      fileEncoding: 'UTF-8',
+    },
+    {
+      id: 92005,
+      spaceId: 9002,
+      title: '月度成本归集口径差异处理案例',
+      summary: '对比产线、班组和科目口径差异，沉淀跨部门成本归集校验清单。',
+      source: '财务业务域演示空间',
+      date: '2026-05-06T16:10:00+08:00',
+      tags: ['典型案例', '财务'],
+      ext: 'pdf',
+      sizeLabel: '1.2 MB',
+      fileEncoding: 'UTF-8',
+    },
+  ],
+};
+
 const BANNER_OVERLAY_GRADIENT =
   'linear-gradient(180deg, rgba(43, 118, 246, 0.52) 0%, rgba(59, 143, 246, 0.36) 38%, rgba(22, 98, 178, 0.34) 100%), linear-gradient(90deg, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0.04) 46%, rgba(37, 99, 235, 0.16) 100%)';
 
@@ -191,7 +339,7 @@ function formatCount(value: number): string {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { config, error } = usePortalConfig();
+  const { config, loading: configLoading, error } = usePortalConfig();
   const displayConfig = toRuntimeDisplayConfig(config?.display);
   const [query, setQuery] = useState('');
   const [qaDraft, setQaDraft] = useState('');
@@ -200,6 +348,7 @@ export default function HomePage() {
   const [bannerIdx, setBannerIdx] = useState(0);
   const [domainPage, setDomainPage] = useState(0);
   const [sectionData, setSectionData] = useState<Record<string, FileItem[]>>({});
+  const [sectionDataFailed, setSectionDataFailed] = useState(false);
   const [hotTags, setHotTags] = useState<string[]>([]);
   const [showHotTagMenu, setShowHotTagMenu] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -306,6 +455,7 @@ export default function HomePage() {
       active = false;
     };
 
+    setSectionDataFailed(false);
     void (async () => {
       try {
         const [sectionResults, tagResults] = await Promise.all([
@@ -326,9 +476,11 @@ export default function HomePage() {
           Object.fromEntries(sectionResults.map(([tag, result]) => [tag, result.data])),
         );
         setHotTags(tagResults);
+        setSectionDataFailed(false);
         setLoadError('');
       } catch (err) {
         if (!active) return;
+        setSectionDataFailed(true);
         setLoadError(err instanceof Error ? err.message : '首页数据加载失败');
       }
     })();
@@ -342,7 +494,9 @@ export default function HomePage() {
   const totalFiles = enabledSpaces.reduce((total, space) => total + space.file_count, 0);
   const activeBanner = homeBanners[safeBannerIdx] ?? homeBanners[0];
   const configuredHomeDomains = enabledDomains.slice(0, displayConfig.home.domainCount);
-  const isUsingMockDomains = configuredHomeDomains.length === 0;
+  const useMockShellContent = !config && !configLoading;
+  const useMockHomeContent = useMockShellContent || sectionDataFailed;
+  const isUsingMockDomains = useMockShellContent && configuredHomeDomains.length === 0;
   const homeDomains = isUsingMockDomains ? MOCK_DOMAIN_NAV_ITEMS : configuredHomeDomains;
   const domainPageCount = Math.max(1, Math.ceil(homeDomains.length / DOMAIN_PAGE_SIZE));
   const safeDomainPage = domainPage % domainPageCount;
@@ -355,8 +509,8 @@ export default function HomePage() {
     });
     return [domain.name, spaces.reduce((total, space) => total + space.file_count, 0)];
   }));
-  const rankedHotTags = (hotTags.length > 0 ? hotTags : MOCK_HOT_TAGS).slice(0, displayConfig.home.hotTagsCount);
-  const homeSections = enabledSections.slice(0, 3);
+  const rankedHotTags = (useMockHomeContent ? MOCK_HOT_TAGS : hotTags).slice(0, displayConfig.home.hotTagsCount);
+  const homeSections = (useMockHomeContent ? MOCK_HOME_SECTIONS : enabledSections).slice(0, 3);
   const contentSections = homeSections;
   const homeApps = enabledApps.slice(0, displayConfig.home.appsCount);
   const assistantGreeting = getWelcomeMessage(config?.qa.welcome_message);
@@ -367,6 +521,7 @@ export default function HomePage() {
     : [
       { role: 'bot' as const, text: assistantGreeting },
       { role: 'user' as const, text: primaryQaQuestion },
+      { role: 'bot' as const, text: '建议先核对轧机、卷取机和传动系统的振动趋势，再结合钢卷位置、速度段和设备点检记录定位异常来源。' },
     ];
 
   const expertQuestionFallbacks = [
@@ -620,10 +775,8 @@ export default function HomePage() {
             {contentSections.map((sec, index) => {
               const Icon = SECTION_ICONS[sec.icon] || Star;
               const visual = resolveSectionVisual(sec);
-              const items = sectionData[sec.tag] || [];
-              const showSummary = sec.tag === '行业情报' || sec.tag === '典型案例';
-              const featuredItem = sec.tag === '最新精选' ? items[0] : null;
-              const listItems = featuredItem ? items.slice(1) : items;
+              const fetchedItems = sectionData[sec.tag] || [];
+              const items = useMockHomeContent ? (MOCK_HOME_SECTION_DATA[sec.tag] || []) : fetchedItems;
               return (
                 <div
                   key={sec.tag}
@@ -641,25 +794,7 @@ export default function HomePage() {
                       更多 <ChevronRight size={14} />
                     </Link>
                   </div>
-                  {featuredItem ? (
-                    <div
-                      className={s.featuredItem}
-                      onClick={() =>
-                        navigate(`/space/${featuredItem.spaceId}/file/${featuredItem.id}`, {
-                          state: { returnTo: sec.link },
-                        })}
-                    >
-                      <div className={s.featuredTitle}>{featuredItem.title}</div>
-                      <div className={s.featuredSummary}>{featuredItem.summary}</div>
-                      <div className={s.featuredMeta}>
-                        {getPrimaryTag(featuredItem) ? (
-                          <TagPill name={getPrimaryTag(featuredItem)!} neutral />
-                        ) : null}
-                        <span className={s.featuredDate}>{formatDisplayDateTime(featuredItem.date)}</span>
-                      </div>
-                    </div>
-                  ) : null}
-                  {listItems.map((f) => (
+                  {items.map((f) => (
                     <div
                       key={f.id}
                       className={s.listItem}
@@ -670,9 +805,7 @@ export default function HomePage() {
                     >
                       <div className={s.itemBody}>
                         <span className={s.itemTitle}>{f.title}</span>
-                        {showSummary ? (
-                          <div className={s.itemSummary}>{f.summary}</div>
-                        ) : null}
+                        <div className={s.itemSummary}>{f.summary}</div>
                         <div className={s.itemMeta}>
                           {getPrimaryTag(f) ? (
                             <TagPill name={getPrimaryTag(f)!} neutral />
@@ -731,7 +864,7 @@ export default function HomePage() {
           {/* Right column */}
           <div className={s.sideColumn}>
             {/* 智能问答 */}
-            <div className={s.qaPanel}>
+            <div className={`${s.qaPanel} ${s.aiQaPanel}`}>
               <div className={s.qaHeader}>
                 <div className={s.qaHeaderLeft}>
                   <div className={s.panelIcon}><Bot size={14} /></div>
